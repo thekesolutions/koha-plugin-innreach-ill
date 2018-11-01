@@ -1,0 +1,99 @@
+{
+  "/innreach/v2/circ/verifypatron": {
+    "post": {
+      "x-mojo-to": "Com::Theke::INNReach::PatronsController#verifypatron",
+      "operationId": "verifypatron",
+      "tags": ["patrons"],
+      "parameters": [
+        {
+          "description": "Patron verification data",
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "visiblePatronId": {
+                "type": "string",
+                "description": "Internal identifier for the patron"
+              },
+              "patronAgencyCode": {
+                "type": "string",
+                "description": "Patron agency code"
+              },
+              "passcode": {
+                "type": "string",
+                "description": "The patron pin/password"
+              },
+            },
+            "required": ["visiblePatronId", "patronAgencyCode", "passcode"]
+          }
+        }
+      ],
+      "produces": [
+        "application/json"
+      ],
+      "responses": {
+        "200": {
+          "description": "A representation of an authority record"
+        },
+        "404": {
+          "description": "An error occured",
+          "schema": {
+              "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "errors": {
+                    "type": "array"
+                  },
+                  "requestAllowed": {
+                    "type": "boolean"
+                  },
+                  "patronInfo": {
+                    "type": "object",
+                    "properties": {
+                      "patronID": {
+                        "type": "string",
+                        "description": "Permanent unique patron ID"
+                      },
+                      "patronAgencyCode": {
+                        "type": "string",
+                        "description": "5 character code"
+                      },
+                      "centralPatronType": {
+                        "type": "integer",
+                        "description": "0-255"
+                      },
+                      "patronExpireDate": {
+                        "type": "string",
+                        "description": "32-bit UNIX timestamp"
+                      },
+                      "localLoans": {
+                        "type": "integer",
+                        "description": "Number of local (within library) loans"
+                      },
+                      "nonlocalLoans": {
+                        "type": "integer",
+                        "description": "Number of non-local (INN-Reach, ILL, etc.) loans"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "x-koha-authorization": {
+        "permissions": {
+          "borrowers": "1"
+        }
+      }
+    }
+  }
+}
