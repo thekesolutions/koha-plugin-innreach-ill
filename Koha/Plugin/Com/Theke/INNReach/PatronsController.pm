@@ -69,7 +69,7 @@ sub verifypatron {
     my $agency_code         = $patron->branchcode;                     # TODO: map to central code
     my $central_patron_type = $patron->categorycode;                   # TODO: map to central type
     my $local_loans         = $patron->checkouts->count;
-    my $non_local_loans = 0;    # TODO: retrieve from INNReach table
+    my $non_local_loans     = 0;    # TODO: retrieve from INNReach table
 
     my $patron_info = {
         patronID          => $patron->borrowernumber,
@@ -80,9 +80,20 @@ sub verifypatron {
         nonlocalLoans     => $non_local_loans,
     };
 
+    my $status = ($pass_valid) ? 'ok' : 'invalid_auth';
+    my $reason = ( $status eq 'invalid_auth' )
+               ? 'Patron authentication failure.'
+               : '';
+
     return $c->render(
         status  => 200,
-        openapi => { patronInfo => $patron_info, errors => [], requestAllowed => $pass_valid }
+        openapi => {
+            status         => $status,
+            reason         => $reason,
+            errors         => [],
+            requestAllowed => $pass_valid,
+            patronInfo     => $patron_info
+        }
     );
 }
 
