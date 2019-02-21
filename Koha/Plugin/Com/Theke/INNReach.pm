@@ -58,7 +58,7 @@ sub api_routes {
 sub api_namespace {
     my ( $self ) = @_;
     
-    return 'bibliocommons';
+    return 'innreach';
 }
 
 1;

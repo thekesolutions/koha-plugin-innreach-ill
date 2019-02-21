@@ -1,9 +1,12 @@
 {
-  "/innreach/v2/circ/verifypatron": {
+  "/v2/circ/verifypatron": {
     "post": {
       "x-mojo-to": "Com::Theke::INNReach::PatronsController#verifypatron",
       "operationId": "verifypatron",
-      "tags": ["patrons"],
+      "description": "Endpoint used by Central to verify patron status on the local server",
+      "tags": [
+        "patrons"
+      ],
       "parameters": [
         {
           "description": "Patron verification data",
@@ -24,9 +27,8 @@
               "passcode": {
                 "type": "string",
                 "description": "The patron pin/password"
-              },
-            },
-            "required": ["visiblePatronId", "patronAgencyCode", "passcode"]
+              }
+            }
           }
         }
       ],
@@ -35,58 +37,56 @@
       ],
       "responses": {
         "200": {
-          "description": "A representation of an authority record"
-        },
-        "404": {
-          "description": "An error occured",
+          "description": "A boolean representing the patron pin/password validation and general status",
           "schema": {
-              "type": "object",
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "errors": {
+                "type": "array"
+              },
+              "requestAllowed": {
+                "type": "boolean"
+              },
+              "patronInfo": {
+                "type": "object",
                 "properties": {
-                  "status": {
-                    "type": "string"
+                  "patronID": {
+                    "type": "string",
+                    "description": "Permanent unique patron ID"
                   },
-                  "reason": {
-                    "type": "string"
+                  "patronAgencyCode": {
+                    "type": "string",
+                    "description": "5 character code"
                   },
-                  "errors": {
-                    "type": "array"
+                  "centralPatronType": {
+                    "type": "integer",
+                    "description": "0-255"
                   },
-                  "requestAllowed": {
-                    "type": "boolean"
+                  "patronExpireDate": {
+                    "type": "string",
+                    "description": "32-bit UNIX timestamp"
                   },
-                  "patronInfo": {
-                    "type": "object",
-                    "properties": {
-                      "patronID": {
-                        "type": "string",
-                        "description": "Permanent unique patron ID"
-                      },
-                      "patronAgencyCode": {
-                        "type": "string",
-                        "description": "5 character code"
-                      },
-                      "centralPatronType": {
-                        "type": "integer",
-                        "description": "0-255"
-                      },
-                      "patronExpireDate": {
-                        "type": "string",
-                        "description": "32-bit UNIX timestamp"
-                      },
-                      "localLoans": {
-                        "type": "integer",
-                        "description": "Number of local (within library) loans"
-                      },
-                      "nonlocalLoans": {
-                        "type": "integer",
-                        "description": "Number of non-local (INN-Reach, ILL, etc.) loans"
-                      }
-                    }
+                  "localLoans": {
+                    "type": "integer",
+                    "description": "Number of local (within library) loans"
+                  },
+                  "nonlocalLoans": {
+                    "type": "integer",
+                    "description": "Number of non-local (INN-Reach, ILL, etc.) loans"
                   }
                 }
               }
             }
           }
+        },
+        "404": {
+          "description": "An error occured"
         }
       },
       "x-koha-authorization": {

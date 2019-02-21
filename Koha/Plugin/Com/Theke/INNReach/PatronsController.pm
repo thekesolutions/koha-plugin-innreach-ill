@@ -21,6 +21,8 @@ use Mojo::Base 'Mojolicious::Controller';
 
 use C4::Auth qw(checkpw_hash);
 use C4::Context;
+
+use Koha::DateUtils;
 use Koha::Patrons;
 
 =head1 Koha::Plugin::Com::Theke::INNReach::PatronsController
@@ -43,9 +45,9 @@ sub verifypatron {
     my $patron_agency_code = $body->{patronAgencyCode};
     my $passcode           = $body->{passcode};
 
-    unless ( ( defined $patron_id or
-               defined $patron_agency_code ) and
-               defined $passcode ) {
+    unless ( ( defined $patron_id or defined $patron_agency_code )
+        and defined $passcode )
+    {
         return $c->render( status => 400, openapi => { error => 'Invalid parameters' } );
     }
 
@@ -53,20 +55,35 @@ sub verifypatron {
     if ( defined $patron_id ) {
         $patron = Koha::Patrons->find( { cardnumber => $patron_id } );
     }
-    else {
-        $patron = Koha::Patrons->find( { userid => $patron_id } );
-    }
 
     unless ($patron) {
         return $c->render( status => 404, openapi => { error => 'Object not found.' } );
     }
 
-    my $result
+    my $pass_valid
         = ( checkpw_hash( $passcode, $patron->password ) )
         ? Mojo::JSON->true
         : Mojo::JSON->false;
 
-    return $c->render( status => 200, openapi => $result );
+    my $expiration_date     = dt_from_string( $patron->dateexpiry );
+    my $agency_code         = $patron->branchcode;                     # TODO: map to central code
+    my $central_patron_type = $patron->categorycode;                   # TODO: map to central type
+    my $local_loans         = $patron->checkouts->count;
+    my $non_local_loans = 0;    # TODO: retrieve from INNReach table
+
+    my $patron_info = {
+        patronID          => $patron->borrowernumber,
+        patronExpireDate  => $expiration_date->epoch(),
+        patronAgencyCode  => $agency_code,
+        centralPatronType => $central_patron_type,
+        localLoans        => $local_loans,
+        nonlocalLoans     => $non_local_loans,
+    };
+
+    return $c->render(
+        status  => 200,
+        openapi => { patronInfo => $patron_info, errors => [], requestAllowed => $pass_valid }
+    );
 }
 
 1;
