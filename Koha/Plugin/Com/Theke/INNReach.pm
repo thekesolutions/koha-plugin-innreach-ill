@@ -27,7 +27,7 @@ our $metadata = {
     name            => 'INNReach connector plugin for Koha',
     author          => 'Theke Solutions',
     date_authored   => '2018-09-10',
-    date_updated    => "2018-09-10",
+    date_updated    => "2019-02-20",
     minimum_version => '18.05.00.000',
     maximum_version => undef,
     version         => $VERSION,
@@ -45,6 +45,63 @@ sub new {
 
     return $self;
 }
+
+sub configure {
+    my ( $self, $args ) = @_;
+    my $cgi = $self->{'cgi'};
+
+    my $template = $self->get_template({ file => 'configure.tt' });
+
+    unless ( scalar $cgi->param('save') ) {
+
+        ## Grab the values we already have for our settings, if any exist
+        $template->param(
+            central_servers => $self->retrieve_data('central_servers'),
+        );
+
+        $self->output_html( $template->output() );
+    }
+    else {
+        $self->store_data(
+            {
+                central_servers => scalar $cgi->param('central_servers'),
+            }
+        );
+        $template->param(
+            central_servers => $self->retrieve_data('central_servers'),
+        );
+        $self->output_html( $template->output() );
+    }
+}
+
+# sub install {
+#     my ( $self, $args ) = @_;
+
+#     my $central_servers = $self->get_qualified_table_name('central_servers');
+
+#     return C4::Context->dbh->do(qq{
+#         CREATE TABLE  $central_servers (
+#             `code` VARCHAR(5) NOT NULL DEFAULT '',
+#             `description` VARCHAR(191) DEFAULT '',
+#             PRIMARY KEY (`code`)
+#         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+#     });
+
+#     my $library_to_central = $self->get_qualified_table_name('library_to_central');
+
+#     return C4::Context->dbh->do(qq{
+#         CREATE TABLE  $library_to_central (
+#             `library_id` VARCHAR(10) DEFAULT NULL,
+#             `code` VARCHAR(5) NOT NULL DEFAULT '',
+#             `description` VARCHAR(191),
+#             PRIMARY KEY (`code`),
+#             CONSTRAINT `branches_innreach_ibfk_1`
+#                 FOREIGN KEY (`library_id`)
+#                 REFERENCES `branches` (`branchcode`)
+#                 ON DELETE CASCADE ON UPDATE CASCADE
+#         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+#     });
+# }
 
 sub api_routes {
     my ( $self, $args ) = @_;

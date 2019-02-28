@@ -1,0 +1,61 @@
+[% INCLUDE 'doc-head-open.inc' %]
+ <title>Koha &rsaquo; INNReach integration &rsaquo; Configuration</title>
+[% INCLUDE 'doc-head-close.inc' %]
+  <style>
+    .gobi {
+      width: 70%;
+    }
+  </style>
+  <script type="text/javascript">
+
+      $(document).ready(function(){
+        $("#refresh").on("click",function(e){
+            e.preventDefault;
+            $('#api_key').val(gen_api_key(32));
+        });
+      });
+
+      function gen_api_key(size) {
+        var output = "";
+        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+        for (var i = 0; i < size; i++)
+          output += chars.charAt(Math.floor(Math.random() * chars.length));
+
+        return output;
+      }
+  </script>
+</head>
+<body>
+[% INCLUDE 'header.inc' %]
+[% INCLUDE 'cat-search.inc' %]
+
+<div id="breadcrumbs">
+    <a href="/cgi-bin/koha/mainpage.pl">Home</a> &rsaquo;
+    <a href="?class=[% CLASS %]&method=tool">INNReach integration</a> &rsaquo;
+    Configuration
+</div>
+
+<div id="doc3" class="yui-t2">
+  <div id="yui-main">
+    <h2>INNReach configuration</h2>
+    <br/>
+      <h4>Central servers</h4>
+      <form method="post">
+            <input type="hidden" name="class"  value="[% CLASS %]"/>
+            <input type="hidden" name="method" value="configure"/>
+            <input type="hidden" name="step"   value="configure"/>
+            <input type="hidden" name="save"   value="1"/>
+
+            <div class="input-group" style="width: 440px;">
+                <span class="input-group-addon" id="central_servers_label">Central servers</span>
+                <input type="text" class="form-control" aria-describedby="central_servers_label" name="central_servers" id="central_servers" value="[% central_servers %]" />
+            </div>
+            <br/>
+            <button type="submit" value="Save" class="btn btn-default" type="button">Save</button>
+      </form>
+  </div>
+  <div class="yui-b">
+    <div id="navmenu">&nbsp;</div>
+  </div>
+[% INCLUDE 'intranet-bottom.inc' %]
