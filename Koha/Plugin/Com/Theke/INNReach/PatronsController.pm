@@ -60,16 +60,16 @@ sub verifypatron {
         return $c->render( status => 404, openapi => { error => 'Object not found.' } );
     }
 
-    my $pass_valid
-        = ( checkpw_hash( $passcode, $patron->password ) )
-        ? Mojo::JSON->true
-        : Mojo::JSON->false;
-
+    my $pass_valid          = ( checkpw_hash( $passcode, $patron->password ) );
     my $expiration_date     = dt_from_string( $patron->dateexpiry );
     my $agency_code         = $patron->branchcode;                     # TODO: map to central code
     my $central_patron_type = $patron->categorycode;                   # TODO: map to central type
     my $local_loans         = $patron->checkouts->count;
     my $non_local_loans     = 0;    # TODO: retrieve from INNReach table
+
+    # Borrowed from SIP/Patron.pm
+    my $fines_amount = ($patron->account->balance > 0) ? $fines_amount : 0;
+    my $max_fees     = C4::Context->preference('noissuescharge') // 0;
 
     my $patron_info = {
         patronID          => $patron->borrowernumber,
@@ -80,10 +80,21 @@ sub verifypatron {
         nonlocalLoans     => $non_local_loans,
     };
 
-    my $status = ($pass_valid) ? 'ok' : 'invalid_auth';
-    my $reason = ( $status eq 'invalid_auth' )
-               ? 'Patron authentication failure.'
-               : '';
+    push @errors;
+
+    push @status, 'invalid_auth' unless $pass_valid;
+    push @status, 'debarred'     if $patron->is_debarred;
+    push @status, 'expired'      if $patron->is_expired;
+    push @status, 'debt'         if $fines_amount > $max_fees;
+
+    my $THE_status = 'ok';
+    my $THE_reason = '';
+
+    if ( scalar @status > 0 ) {
+        # There's something preventing circ, pick the first reason
+        $THE_status = $status[0];
+        $THE_reason = $codes_to_status->{$THE_status};
+    }
 
     return $c->render(
         status  => 200,
@@ -91,10 +102,21 @@ sub verifypatron {
             status         => $status,
             reason         => $reason,
             errors         => [],
-            requestAllowed => $pass_valid,
+            requestAllowed => ( $status eq 'ok' ) ? Mojo::JSON->true : Mojo::JSON->false,
             patronInfo     => $patron_info
         }
     );
 }
+
+=head2 Internal methods
+
+=cut
+
+my $codes_to_status = {
+    debarred     => 'The patron is restricted.',
+    debt         => 'Patron debt reached the limit.',
+    expired      => 'The patron has expired.'
+    invalid_auth => 'Patron authentication failure.',
+};
 
 1;
