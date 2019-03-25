@@ -29,6 +29,17 @@ use Koha::Patrons;
 
 A class implementing the controller methods for the patron-related endpoints
 
+=head2 Global mappings
+
+=cut
+
+our $codes_to_status = {
+    debarred     => 'The patron is restricted.',
+    debt         => 'Patron debt reached the limit.',
+    expired      => 'The patron has expired.',
+    invalid_auth => 'Patron authentication failure.',
+};
+
 =head2 Class Methods
 
 =head3 verifypatron
@@ -63,12 +74,12 @@ sub verifypatron {
     my $pass_valid          = ( checkpw_hash( $passcode, $patron->password ) );
     my $expiration_date     = dt_from_string( $patron->dateexpiry );
     my $agency_code         = $patron->branchcode;                     # TODO: map to central code
-    my $central_patron_type = $patron->categorycode;                   # TODO: map to central type
+    my $central_patron_type = 123; #$patron->categorycode;             # TODO: map to central type
     my $local_loans         = $patron->checkouts->count;
     my $non_local_loans     = 0;    # TODO: retrieve from INNReach table
 
     # Borrowed from SIP/Patron.pm
-    my $fines_amount = ($patron->account->balance > 0) ? $fines_amount : 0;
+    my $fines_amount = ($patron->account->balance > 0) ? $patron->account->balance : 0;
     my $max_fees     = C4::Context->preference('noissuescharge') // 0;
 
     my $patron_info = {
@@ -80,7 +91,9 @@ sub verifypatron {
         nonlocalLoans     => $non_local_loans,
     };
 
-    push @errors;
+    my @status;
+    my @errors;
+    #push @errors;
 
     push @status, 'invalid_auth' unless $pass_valid;
     push @status, 'debarred'     if $patron->is_debarred;
@@ -99,10 +112,10 @@ sub verifypatron {
     return $c->render(
         status  => 200,
         openapi => {
-            status         => $status,
-            reason         => $reason,
-            errors         => [],
-            requestAllowed => ( $status eq 'ok' ) ? Mojo::JSON->true : Mojo::JSON->false,
+            status         => $THE_status,
+            reason         => $THE_reason,
+            errors         => \@errors,
+            requestAllowed => ( $THE_status eq 'ok' ) ? Mojo::JSON->true : Mojo::JSON->false,
             patronInfo     => $patron_info
         }
     );
@@ -111,12 +124,5 @@ sub verifypatron {
 =head2 Internal methods
 
 =cut
-
-my $codes_to_status = {
-    debarred     => 'The patron is restricted.',
-    debt         => 'Patron debt reached the limit.',
-    expired      => 'The patron has expired.'
-    invalid_auth => 'Patron authentication failure.',
-};
 
 1;
