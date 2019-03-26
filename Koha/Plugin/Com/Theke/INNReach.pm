@@ -56,7 +56,7 @@ sub configure {
 
         ## Grab the values we already have for our settings, if any exist
         $template->param(
-            central_servers => $self->retrieve_data('central_servers'),
+            configuration => $self->retrieve_data('configuration'),
         );
 
         $self->output_html( $template->output() );
@@ -64,11 +64,11 @@ sub configure {
     else {
         $self->store_data(
             {
-                central_servers => scalar $cgi->param('central_servers'),
+                configuration => scalar $cgi->param('configuration'),
             }
         );
         $template->param(
-            central_servers => $self->retrieve_data('central_servers'),
+            configuration => $self->retrieve_data('configuration'),
         );
         $self->output_html( $template->output() );
     }

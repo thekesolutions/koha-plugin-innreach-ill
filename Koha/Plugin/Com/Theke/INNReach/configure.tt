@@ -42,20 +42,24 @@
     <br/>
       <h4>Central servers</h4>
       <form method="post">
-            <input type="hidden" name="class"  value="[% CLASS %]"/>
-            <input type="hidden" name="method" value="configure"/>
-            <input type="hidden" name="step"   value="configure"/>
-            <input type="hidden" name="save"   value="1"/>
-
-            <div class="input-group" style="width: 440px;">
-                <span class="input-group-addon" id="central_servers_label">Central servers</span>
-                <input type="text" class="form-control" aria-describedby="central_servers_label" name="central_servers" id="central_servers" value="[% central_servers %]" />
-            </div>
-            <br/>
-            <button type="submit" value="Save" class="btn btn-default" type="button">Save</button>
+        <input type="hidden" name="class"  value="[% CLASS %]"/>
+        <input type="hidden" name="method" value="configure"/>
+        <input type="hidden" name="step"   value="configure"/>
+        <input type="hidden" name="save"   value="1"/>
+        <div class="input-group" style="width: 440px;">
+          <span class="input-group-addon" id="configuration_label">Configuration</span>
+          <textarea rows="30"
+                    columns="100"
+                    class="form-control"
+                    aria-describedby="configuration_label"
+                    name="configuration" id="configuration">[%- configuration -%]</textarea>
+        </div>
+        <br/>
+        <button type="submit" value="Save" class="btn btn-default" type="button">Save</button>
       </form>
   </div>
   <div class="yui-b">
     <div id="navmenu">&nbsp;</div>
   </div>
+
 [% INCLUDE 'intranet-bottom.inc' %]
