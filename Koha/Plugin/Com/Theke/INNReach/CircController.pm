@@ -30,7 +30,7 @@ A class implementing the controller methods for the patron-related endpoints
 
 =head3 itemhold
 
-Method that generates an item hold
+TODO: this method is a stub
 
 =cut
 
@@ -66,7 +66,7 @@ sub itemhold {
 
 =head3 patronhold
 
-Method that generates a patron hold
+TODO: this method is a stub
 
 =cut
 
@@ -93,6 +93,307 @@ sub patronhold {
         return $c->render(
             status  => 200,
             openapi => {}
+        );
+    }
+    catch {
+        return $c->render( status => 500, openapi => { error => 'Some error' } );
+    };
+}
+
+=head3 borrowerrenew
+
+TODO: this method is a stub
+
+=cut
+
+sub borrowerrenew {
+    my $c = shift->openapi->valid_input or return;
+
+    my $transactionId = $c->validation->param('transactionId');
+    my $centralCode   = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime   = $body->{transactionTime};
+    my $dueDateTime       = $body->{dueDateTime};
+    my $patronId          = $body->{patronId};
+    my $patronAgencyCode  = $body->{patronAgencyCode};
+    my $itemAgencyCode    = $body->{itemAgencyCode};
+    my $itemId            = $body->{itemId};
+
+    return try {
+        # do your stuff
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render( status => 500, openapi => { error => 'Some error' } );
+    };
+}
+
+=head3 cancelitemhold
+
+TODO: this method is a stub
+
+=cut
+
+sub cancelitemhold {
+    my $c = shift->openapi->valid_input or return;
+
+    my $transactionId = $c->validation->param('transactionId');
+    my $centralCode   = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime   = $body->{transactionTime};
+    my $patronId          = $body->{patronId};
+    my $patronAgencyCode  = $body->{patronAgencyCode};
+    my $itemAgencyCode    = $body->{itemAgencyCode};
+    my $itemId            = $body->{itemId};
+
+    return try {
+        # do your stuff
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render( status => 500, openapi => { error => 'Some error' } );
+    };
+}
+
+=head3 cancelrequest
+
+TODO: this method is a stub
+
+=cut
+
+sub cancelrequest {
+    my $c = shift->openapi->valid_input or return;
+
+    my $transactionId = $c->validation->param('transactionId');
+    my $centralCode   = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime   = $body->{transactionTime};
+    my $patronId          = $body->{patronId};
+    my $patronAgencyCode  = $body->{patronAgencyCode};
+    my $itemAgencyCode    = $body->{itemAgencyCode};
+    my $itemId            = $body->{itemId};
+    my $reason            = $body->{reason};
+    my $reasonCode        = $body->{reasonCode}; # 7
+
+    return try {
+        # do your stuff
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render( status => 500, openapi => { error => 'Some error' } );
+    };
+}
+
+=head3 finalcheckin
+
+TODO: this method is a stub
+
+=cut
+
+sub finalcheckin {
+    my $c = shift->openapi->valid_input or return;
+
+    my $transactionId = $c->validation->param('transactionId');
+    my $centralCode   = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime   = $body->{transactionTime};
+    my $patronId          = $body->{patronId};
+    my $patronAgencyCode  = $body->{patronAgencyCode};
+    my $itemAgencyCode    = $body->{itemAgencyCode};
+    my $itemId            = $body->{itemId};
+
+    return try {
+        # do your stuff
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render( status => 500, openapi => { error => 'Some error' } );
+    };
+}
+
+=head3 intransit
+
+TODO: this method is a stub
+
+=cut
+
+sub intransit {
+    my $c = shift->openapi->valid_input or return;
+
+    my $transactionId = $c->validation->param('transactionId');
+    my $centralCode   = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime   = $body->{transactionTime};
+    my $patronId          = $body->{patronId};
+    my $patronAgencyCode  = $body->{patronAgencyCode};
+    my $itemAgencyCode    = $body->{itemAgencyCode};
+    my $itemId            = $body->{itemId};
+
+    return try {
+        # do your stuff
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render( status => 500, openapi => { error => 'Some error' } );
+    };
+}
+
+=head3 itemshipped
+
+TODO: this method is a stub
+
+=cut
+
+sub itemshipped {
+    my $c = shift->openapi->valid_input or return;
+
+    my $transactionId = $c->validation->param('transactionId');
+    my $centralCode   = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime   = $body->{transactionTime};
+    my $patronId          = $body->{patronId};
+    my $patronAgencyCode  = $body->{patronAgencyCode};
+    my $itemAgencyCode    = $body->{itemAgencyCode};
+    my $itemId            = $body->{itemId};
+    my $centralItemType   = $body->{centralItemType};
+    my $itemBarcode       = $body->{itemBarcode};
+    my $title             = $body->{title};
+    my $author            = $body->{author};
+    my $callNumber        = $body->{callNumber};
+    my $itemLocation      = $body->{itemLocation};
+    my $pickupLocation    = $body->{pickupLocation};
+    my $needBefore        = $body->{needBefore};
+
+    return try {
+        # do your stuff
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render( status => 500, openapi => { error => 'Some error' } );
+    };
+}
+
+=head3 ownerrenew
+
+TODO: this method is a stub
+
+=cut
+
+sub ownerrenew {
+    my $c = shift->openapi->valid_input or return;
+
+    my $transactionId = $c->validation->param('transactionId');
+    my $centralCode   = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime   = $body->{transactionTime};
+    my $dueDateTime       = $body->{dueDateTime};
+    my $patronId          = $body->{patronId};
+    my $patronAgencyCode  = $body->{patronAgencyCode};
+    my $itemAgencyCode    = $body->{itemAgencyCode};
+    my $itemId            = $body->{itemId};
+
+    return try {
+        # do your stuff
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render( status => 500, openapi => { error => 'Some error' } );
+    };
+}
+
+=head3 claimsreturned
+
+TODO: this method is a stub
+
+=cut
+
+sub claimsreturned {
+    my $c = shift->openapi->valid_input or return;
+
+    my $transactionId = $c->validation->param('transactionId');
+    my $centralCode   = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime    = $body->{transactionTime};
+    my $claimsReturnedDate = $body->{claimsReturnedDate};
+    my $patronId           = $body->{patronId};
+    my $patronAgencyCode   = $body->{patronAgencyCode};
+    my $itemAgencyCode     = $body->{itemAgencyCode};
+    my $itemId             = $body->{itemId};
+
+    return try {
+        # do your stuff
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
         );
     }
     catch {

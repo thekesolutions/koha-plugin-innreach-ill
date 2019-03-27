@@ -1,4 +1,640 @@
 {
+  "/v2/circ/borrowerrenew/{trackingId}/{centralCode}": {
+    "put": {
+      "x-mojo-to": "Com::Theke::INNReach::CircController#borrowerrenew",
+      "operationId": "borrowerrenew",
+      "description": "Originates an item hold at central that is sent to the owning site.",
+      "tags": [
+        "circulation"
+      ],
+      "parameters": [
+        {
+          "name": "trackingId",
+          "in": "path",
+          "description": "ID used for transaction tracking",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "centralCode",
+          "in": "path",
+          "description": "Unique code that identifies the central server. 3-5 character lowercase alphanumeric",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "Item renew data",
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "transactionTime": {
+                "description": "Epoch UNIX time stamp, for example: 1544466568",
+                "type": "integer"
+              },
+              "dueDateTime": {
+                "description": "Epoch UNIX time stamp, for example: 1544466568",
+                "type": "integer"
+              },
+              "patronId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              },
+              "patronAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "produces": [
+        "application/json"
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful item hold"
+        },
+        "404": {
+          "description": "An error occured"
+        }
+      },
+      "x-koha-authorization": {
+        "permissions": {
+          "circulation": "1"
+        }
+      }
+    }
+  },
+  "/v2/circ/cancelitemhold/{trackingId}/{centralCode}": {
+    "put": {
+      "x-mojo-to": "Com::Theke::INNReach::CircController#cancelitemhold",
+      "operationId": "cancelitemhold",
+      "description": "Originates an item hold at central that is sent to the owning site.",
+      "tags": [
+        "circulation"
+      ],
+      "parameters": [
+        {
+          "name": "trackingId",
+          "in": "path",
+          "description": "ID used for transaction tracking",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "centralCode",
+          "in": "path",
+          "description": "Unique code that identifies the central server. 3-5 character lowercase alphanumeric",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "Cancel item hold data",
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "transactionTime": {
+                "description": "Epoch UNIX time stamp, for example: 1544466568",
+                "type": "integer"
+              },
+              "patronId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              },
+              "patronAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "produces": [
+        "application/json"
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful item hold"
+        },
+        "404": {
+          "description": "An error occured"
+        }
+      },
+      "x-koha-authorization": {
+        "permissions": {
+          "circulation": "1"
+        }
+      }
+    }
+  },
+  "/v2/circ/cancelrequest/{trackingId}/{centralCode}": {
+    "put": {
+      "x-mojo-to": "Com::Theke::INNReach::CircController#cancelrequest",
+      "operationId": "cancelrequest",
+      "description": "Originates an item hold at central that is sent to the owning site.",
+      "tags": [
+        "circulation"
+      ],
+      "parameters": [
+        {
+          "name": "trackingId",
+          "in": "path",
+          "description": "ID used for transaction tracking",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "centralCode",
+          "in": "path",
+          "description": "Unique code that identifies the central server. 3-5 character lowercase alphanumeric",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "Cancel request data",
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "transactionTime": {
+                "description": "Epoch UNIX time stamp, for example: 1544466568",
+                "type": "integer"
+              },
+              "patronId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              },
+              "patronAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              },
+              "reason": {
+                "description": "",
+                "type": "string"
+              },
+              "reasonCode": {
+                "description": "This value will always be 7.",
+                "type": "integer"
+              }
+            }
+          }
+        }
+      ],
+      "produces": [
+        "application/json"
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful item hold"
+        },
+        "404": {
+          "description": "An error occured"
+        }
+      },
+      "x-koha-authorization": {
+        "permissions": {
+          "circulation": "1"
+        }
+      }
+    }
+  },
+  "/v2/circ/finalcheckin/{trackingId}/{centralCode}": {
+    "put": {
+      "x-mojo-to": "Com::Theke::INNReach::CircController#finalcheckin",
+      "operationId": "finalcheckin",
+      "description": "Originates an item hold at central that is sent to the owning site.",
+      "tags": [
+        "circulation"
+      ],
+      "parameters": [
+        {
+          "name": "trackingId",
+          "in": "path",
+          "description": "ID used for transaction tracking",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "centralCode",
+          "in": "path",
+          "description": "Unique code that identifies the central server. 3-5 character lowercase alphanumeric",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "Cancel request data",
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "transactionTime": {
+                "description": "Epoch UNIX time stamp, for example: 1544466568",
+                "type": "integer"
+              },
+              "patronId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              },
+              "patronAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "produces": [
+        "application/json"
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful item hold"
+        },
+        "404": {
+          "description": "An error occured"
+        }
+      },
+      "x-koha-authorization": {
+        "permissions": {
+          "circulation": "1"
+        }
+      }
+    }
+  },
+  "/v2/circ/intransit/{trackingId}/{centralCode}": {
+    "put": {
+      "x-mojo-to": "Com::Theke::INNReach::CircController#intransit",
+      "operationId": "intransit",
+      "description": "Originates an item hold at central that is sent to the owning site.",
+      "tags": [
+        "circulation"
+      ],
+      "parameters": [
+        {
+          "name": "trackingId",
+          "in": "path",
+          "description": "ID used for transaction tracking",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "centralCode",
+          "in": "path",
+          "description": "Unique code that identifies the central server. 3-5 character lowercase alphanumeric",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "Cancel request data",
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "transactionTime": {
+                "description": "Epoch UNIX time stamp, for example: 1544466568",
+                "type": "integer"
+              },
+              "patronId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              },
+              "patronAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "produces": [
+        "application/json"
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful item hold"
+        },
+        "404": {
+          "description": "An error occured"
+        }
+      },
+      "x-koha-authorization": {
+        "permissions": {
+          "circulation": "1"
+        }
+      }
+    }
+  },
+  "/v2/circ/itemshipped/{trackingId}/{centralCode}": {
+    "put": {
+      "x-mojo-to": "Com::Theke::INNReach::CircController#itemshipped",
+      "operationId": "itemshipped",
+      "description": "Originates an item hold at central that is sent to the owning site.",
+      "tags": [
+        "circulation"
+      ],
+      "parameters": [
+        {
+          "name": "trackingId",
+          "in": "path",
+          "description": "ID used for transaction tracking",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "centralCode",
+          "in": "path",
+          "description": "Unique code that identifies the central server. 3-5 character lowercase alphanumeric",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "Cancel request data",
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "transactionTime": {
+                "description": "Epoch UNIX time stamp, for example: 1544466568",
+                "type": "integer"
+              },
+              "patronId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              },
+              "patronAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              },
+              "centralItemType": {
+                "description": "0-255",
+                "type": "integer"
+              },
+              "itemBarcode": {
+                "description": "If present in item or affiliated bib",
+                "type": "string"
+              },
+              "title": {
+                "description": "256 bytes maximum Send if the item has a title.",
+                "type": "string"
+              },
+              "author": {
+                "description": "256 bytes maximum",
+                "type": "string"
+              },
+              "callNumber": {
+                "description": "256 bytes maximum",
+                "type": "string"
+              },
+              "itemLocation": {
+                "description": "Description of item's home location. This should correspond to one of the locations provided",
+                "type": "string"
+              },
+              "pickupLocation": {
+                "description": "512 bytes",
+                "type": "string"
+              },
+              "needBefore": {
+                "description": "Epoch UNIX time stamp, for example: 1544466568",
+                "type": "integer"
+              }
+            }
+          }
+        }
+      ],
+      "produces": [
+        "application/json"
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful item hold"
+        },
+        "404": {
+          "description": "An error occured"
+        }
+      },
+      "x-koha-authorization": {
+        "permissions": {
+          "circulation": "1"
+        }
+      }
+    }
+  },
+  "/v2/circ/ownerrenew/{trackingId}/{centralCode}": {
+    "put": {
+      "x-mojo-to": "Com::Theke::INNReach::CircController#ownerrenew",
+      "operationId": "ownerrenew",
+      "description": "Owner renew.",
+      "tags": [
+        "circulation"
+      ],
+      "parameters": [
+        {
+          "name": "trackingId",
+          "in": "path",
+          "description": "ID used for transaction tracking",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "centralCode",
+          "in": "path",
+          "description": "Unique code that identifies the central server. 3-5 character lowercase alphanumeric",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "Owner renew data",
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "transactionTime": {
+                "description": "Epoch UNIX time stamp, for example: 1544466568",
+                "type": "integer"
+              },
+              "dueDateTime": {
+                "description": "Epoch UNIX time stamp, for example: 1544466568",
+                "type": "integer"
+              },
+              "patronId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              },
+              "patronAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "produces": [
+        "application/json"
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful item hold"
+        },
+        "404": {
+          "description": "An error occured"
+        }
+      },
+      "x-koha-authorization": {
+        "permissions": {
+          "circulation": "1"
+        }
+      }
+    }
+  },
+  "/v2/circ/claimsreturned/{trackingId}/{centralCode}": {
+    "put": {
+      "x-mojo-to": "Com::Theke::INNReach::CircController#claimsreturned",
+      "operationId": "claimsreturned",
+      "description": "Owner renew.",
+      "tags": [
+        "circulation"
+      ],
+      "parameters": [
+        {
+          "name": "trackingId",
+          "in": "path",
+          "description": "ID used for transaction tracking",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "centralCode",
+          "in": "path",
+          "description": "Unique code that identifies the central server. 3-5 character lowercase alphanumeric",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "Owner renew data",
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "transactionTime": {
+                "description": "Epoch UNIX time stamp, for example: 1544466568",
+                "type": "integer"
+              },
+              "claimsReturnedDate": {
+                "description": "Epoch UNIX time stamp, for example: 1544466568",
+                "type": "integer"
+              },
+              "patronId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              },
+              "patronAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "produces": [
+        "application/json"
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful item hold"
+        },
+        "404": {
+          "description": "An error occured"
+        }
+      },
+      "x-koha-authorization": {
+        "permissions": {
+          "circulation": "1"
+        }
+      }
+    }
+  },
   "/v2/circ/itemhold/{trackingId}/{centralCode}": {
     "post": {
       "x-mojo-to": "Com::Theke::INNReach::CircController#itemhold",
