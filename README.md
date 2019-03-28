@@ -35,6 +35,18 @@ This could be easily done in rebuild_zebra.pl, but we might need a separate serv
     PUT  /api/v1/contrib/innreach/v2/circ/returnuncirculated/{trackingId}/{centralCode} 
 ```
 
+## Configuration structure
+
+```
+    api_key: a_key
+    api_secret: a_secret
+    centralServers:
+        - d2ir
+    library_to_agency:
+        CPL: code1
+        MPL: code2
+    localServerCode: mykoha
+```
 
 ## Install
 Download the latest _.kpz_ file from the [releases](https://github.com/thekesolutions/koha-plugin-innreach/releases) page.
