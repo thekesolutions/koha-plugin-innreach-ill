@@ -401,6 +401,159 @@ sub claimsreturned {
     };
 }
 
+=head3 itemreceived
+
+TODO: this method is a stub
+
+=cut
+
+sub itemreceived {
+    my $c = shift->openapi->valid_input or return;
+
+    my $transactionId = $c->validation->param('transactionId');
+    my $centralCode   = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime    = $body->{transactionTime};
+    my $patronId           = $body->{patronId};
+    my $patronAgencyCode   = $body->{patronAgencyCode};
+    my $itemAgencyCode     = $body->{itemAgencyCode};
+    my $itemId             = $body->{itemId};
+    my $centralItemType    = $body->{centralItemType};
+    my $author             = $body->{author};
+    my $title              = $body->{title};
+    my $itemBarcode        = $body->{itemBarcode};
+    my $callNumber         = $body->{callNumber};
+    my $centralPatronType  = $body->{centralPatronType};
+
+    return try {
+        # do your stuff
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render( status => 500, openapi => { error => 'Some error' } );
+    };
+}
+
+=head3 receiveunshipped
+
+TODO: this method is a stub
+
+=cut
+
+sub receiveunshipped {
+    my $c = shift->openapi->valid_input or return;
+
+    my $transactionId = $c->validation->param('transactionId');
+    my $centralCode   = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime    = $body->{transactionTime};
+    my $patronId           = $body->{patronId};
+    my $patronAgencyCode   = $body->{patronAgencyCode};
+    my $itemAgencyCode     = $body->{itemAgencyCode};
+    my $itemId             = $body->{itemId};
+
+    return try {
+        # do your stuff
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render( status => 500, openapi => { error => 'Some error' } );
+    };
+}
+
+=head3 returnuncirculated
+
+TODO: this method is a stub
+
+=cut
+
+sub returnuncirculated {
+    my $c = shift->openapi->valid_input or return;
+
+    my $transactionId = $c->validation->param('transactionId');
+    my $centralCode   = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime  = $body->{transactionTime};
+    my $patronId         = $body->{patronId};
+    my $patronAgencyCode = $body->{patronAgencyCode};
+    my $itemAgencyCode   = $body->{itemAgencyCode};
+    my $itemId           = $body->{itemId};
+    my $author           = $body->{author};
+    my $title            = $body->{title};
+
+    return try {
+        # do your stuff
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render( status => 500, openapi => { error => 'Some error' } );
+    };
+}
+
+=head3 transferrequest
+
+TODO: this method is a stub
+
+=cut
+
+sub transferrequest {
+    my $c = shift->openapi->valid_input or return;
+
+    my $transactionId = $c->validation->param('transactionId');
+    my $centralCode   = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime  = $body->{transactionTime};
+    my $patronId         = $body->{patronId};
+    my $patronAgencyCode = $body->{patronAgencyCode};
+    my $itemAgencyCode   = $body->{itemAgencyCode};
+    my $itemId           = $body->{itemId};
+    my $newItemId        = $body->{newItemId};
+
+    return try {
+        # do your stuff
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render( status => 500, openapi => { error => 'Some error' } );
+    };
+}
+
 =head2 Internal methods
 
 =cut
