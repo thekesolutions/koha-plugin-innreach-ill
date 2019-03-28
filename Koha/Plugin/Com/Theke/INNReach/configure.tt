@@ -46,7 +46,7 @@
         <input type="hidden" name="method" value="configure"/>
         <input type="hidden" name="step"   value="configure"/>
         <input type="hidden" name="save"   value="1"/>
-        <div class="input-group" style="width: 440px;">
+        <div class="input-group">
           <span class="input-group-addon" id="configuration_label">Configuration</span>
           <textarea rows="30"
                     columns="100"

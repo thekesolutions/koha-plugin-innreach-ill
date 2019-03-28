@@ -19,7 +19,8 @@ use Modern::Perl;
 
 use base qw(Koha::Plugins::Base);
 
-use Mojo::JSON qw(decode_json);;
+use Mojo::JSON qw(decode_json);
+use YAML;
 
 our $VERSION = "{VERSION}";
 
@@ -72,6 +73,16 @@ sub configure {
         );
         $self->output_html( $template->output() );
     }
+}
+
+sub configuration {
+    my ($self) = @_;
+
+    my $configuration;
+    eval { $configuration = YAML::Load( $self->retrieve_data('configuration') . "\n\n" ); };
+    die($@) if $@;
+
+    return $configuration;
 }
 
 # sub install {
