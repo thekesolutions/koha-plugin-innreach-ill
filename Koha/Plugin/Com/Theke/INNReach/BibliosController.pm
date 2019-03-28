@@ -25,6 +25,8 @@ use Try::Tiny;
 use Koha::Biblios;
 use Koha::Biblio::Metadatas;
 
+use Koha::Plugin::Com::Theke::INNReach;
+
 use Mojo::Base 'Mojolicious::Controller';
 
 =head1 Koha::Plugin::Com::Theke::INNReach::BibliosController
@@ -62,9 +64,12 @@ sub getbibrecord {
         );
     }
 
+    my $configuration = Koha::Plugin::Com::Theke::INNReach->new()->configuration;
+    my $library_to_agency = $configuration->{library_to_agency};
+
     return try {
 
-        my $suppress = 'n';
+        my $suppress = 'n'; # expected default
         # TODO: calculate $suppress => y, n, g
         my $encoded_record = encode_base64url( $record->as_usmarc );
 
@@ -75,7 +80,7 @@ sub getbibrecord {
                 reason => '',
                 errors => [],
                 bibinfo => {
-                    agencyCode      => 'STUFF',   # TODO: get agency code
+                    agencyCode      => $library_to_agency->{'MPL'}, # TODO: where do we get it?
                     marc21BibFormat => 'ISO2709', # Only supported value
                     marc21BibData   => $encoded_record,
                     titleHoldCount  => $biblio->holds->count,
