@@ -26,7 +26,7 @@ use Mojo::Base 'Mojolicious::Controller';
 
 A class implementing the controller methods for the patron-related endpoints
 
-=head2 Class Methods
+=head2 Class methods
 
 =head3 itemhold
 

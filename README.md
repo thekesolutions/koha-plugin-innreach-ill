@@ -40,6 +40,7 @@ This could be easily done in rebuild_zebra.pl, but we might need a separate serv
 ```
     api_key: a_key
     api_secret: a_secret
+    api_base_url: https://rssandbox-api.iii.com
     centralServers:
         - d2ir
     library_to_agency:

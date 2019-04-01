@@ -42,14 +42,19 @@ sub new {
     }
 
     my $client_secret = $args->{client_secret};
-    unless ($client_id) {
+    unless ($client_secret) {
         INNReach::OAuth2Error::MissingClientCredentials->throw();
+    }
+
+    my $api_base_url = $args->{api_base_url};
+    unless ( $api_base_url ) {
+        INNReach::OAuth2Error->throw("Missing api_base_url in configuration");
     }
 
     my $credentials = encode_base64url( "$client_id:$client_secret" );
 
     my $self = $class->SUPER::new($args);
-    $self->{token_endpoint} = "https://rssandbox-api.iii.com/auth/v1/oauth2/token";
+    $self->{token_endpoint} = "$api_base_url/auth/v1/oauth2/token";
     $self->{ua}          = LWP::UserAgent->new();
     $self->{scope}       = "innreach_tp";
     $self->{grant_type}  = 'client_credentials';
