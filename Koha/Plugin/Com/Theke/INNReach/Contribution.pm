@@ -112,7 +112,6 @@ sub contribute_bib {
     my $encoded_record = encode_base64url( $record->as_usmarc );
 
     my $data = {
-        agencyCode      => $library_to_agency->{'MPL'}, # TODO: where do we get it?
         marc21BibFormat => 'ISO2709', # Only supported value
         marc21BibData   => $encoded_record,
         titleHoldCount  => $biblio->holds->count,

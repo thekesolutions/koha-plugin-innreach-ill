@@ -17,6 +17,7 @@ package Koha::Plugin::Com::Theke::INNReach::BibliosController;
 
 use Modern::Perl;
 
+use List::MoreUtils qw(any);
 use MARC::Record;
 use MARC::File::XML;
 use MIME::Base64 qw{ encode_base64url };
@@ -55,7 +56,7 @@ sub getbibrecord {
     unless ( $biblio and $record ) {
         my $reason = ( $biblio ) ? 'Problem retrieving object' : 'Object not found';
         return $c->render(
-            status  => 200,
+            status  => 404,
             openapi => {
                 status => 'error',
                 reason => $reason,
@@ -63,9 +64,6 @@ sub getbibrecord {
             }
         );
     }
-
-    my $configuration = Koha::Plugin::Com::Theke::INNReach->new()->configuration;
-    my $library_to_agency = $configuration->{library_to_agency};
 
     return try {
 
@@ -80,7 +78,6 @@ sub getbibrecord {
                 reason => '',
                 errors => [],
                 bibinfo => {
-                    agencyCode      => $library_to_agency->{'MPL'}, # TODO: where do we get it?
                     marc21BibFormat => 'ISO2709', # Only supported value
                     marc21BibData   => $encoded_record,
                     titleHoldCount  => $biblio->holds->count,
@@ -92,7 +89,7 @@ sub getbibrecord {
     }
     catch {
         return $c->render(
-            status => 200,
+            status => 500,
             openapi => {
                 status => 'error',
                 reason => 'Internal unhandled error'
