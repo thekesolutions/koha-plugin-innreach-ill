@@ -18,6 +18,7 @@ package Koha::Plugin::Com::Theke::INNReach::Contribution;
 use Modern::Perl;
 
 use HTTP::Request::Common qw{ POST DELETE PUT };
+use JSON qw(encode_json);
 use MARC::Record;
 use MARC::File::XML;
 use MIME::Base64 qw{ encode_base64url };
@@ -31,6 +32,7 @@ use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::OAuth2;
 
 use Data::Printer colored => 1;
+binmode STDOUT, ':encoding(UTF-8)';
 
 use base qw(Class::Accessor);
 
@@ -54,12 +56,18 @@ sub new {
 
     my $args;
 
-    $args->{config} = Koha::Plugin::Com::Theke::INNReach->new()->configuration;
-    $args->{oauth}  = Koha::Plugin::Com::Theke::INNReach::OAuth2->new(
-        {   client_id     => $args->{config}->{client_id},
-            client_secret => $args->{config}->{client_secret}
-        }
-    );
+    try {
+        $args->{config} = Koha::Plugin::Com::Theke::INNReach->new()->configuration;
+        $args->{oauth2} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new(
+            {   client_id     => $args->{config}->{client_id},
+                client_secret => $args->{config}->{client_secret},
+                api_base_url  => $args->{config}->{api_base_url}
+            }
+        );
+    }
+    catch {
+        die "$_";
+    };
 
     my $self = $class->SUPER::new($args);
 
@@ -545,7 +553,7 @@ Method for retrieving a valid access token
 sub token {
     my ($self) = @_;
 
-    return $self->oauth2->get_token;
+    return $self->{oauth2}->get_token;
 }
 
 =head3 post_request
@@ -557,14 +565,16 @@ Generic request for POST
 sub post_request {
     my ($self, $args) = @_;
 
-    return POST(
-        $self->config->{api_base_url} . '/' . $args->{endpoint},
-        Authorization => "Bearer " . $self->token,
-        'X-From-Code' => $self->config->{localServerCode},
-        'X-To-Code'   => $args->{centralCode},
-        Accept        => "application/json",,
-        ContentType   => "application/x-www-form-urlencoded",
-        Content       => $args->{data}
+    return $self->oauth2->ua->request(
+        POST(
+            $self->config->{api_base_url} . '/' . $args->{endpoint},
+            'Authorization' => "Bearer " . $self->token,
+            'X-From-Code'   => $self->config->{localServerCode},
+            'X-To-Code'     => $args->{centralCode},
+            'Accept'        => "application/json",
+            'Content-Type'  => "application/json",
+            'Content'       => encode_json( $args->{data} )
+        )
     );
 }
 
@@ -577,14 +587,15 @@ Generic request for PUT
 sub put_request {
     my ($self, $args) = @_;
 
-    return PUT(
-        $self->config->{api_base_url} . '/' . $args->{endpoint},
-        Authorization => "Bearer " . $self->token,
-        'X-From-Code' => $self->config->{localServerCode},
-        'X-To-Code'   => $args->{centralCode},
-        Accept        => "application/json",,
-        ContentType   => "application/x-www-form-urlencoded",
-        Content       => $args->{data}
+    return $self->oauth2->ua->request(
+        PUT($self->config->{api_base_url} . '/' . $args->{endpoint},
+            'Authorization' => "Bearer " . $self->token,
+            'X-From-Code'   => $self->config->{localServerCode},
+            'X-To-Code'     => $args->{centralCode},
+            'Accept'        => "application/json",
+            'Content-Type'  => "application/json",
+            'Content'       => encode_json( $args->{data} )
+        )
     );
 }
 
@@ -597,12 +608,14 @@ Generic request for DELETE
 sub delete_request {
     my ($self, $args) = @_;
 
-    return DELETE(
-        $self->config->{api_base_url} . '/' . $args->{endpoint},
-        Authorization => "Bearer " . $self->token,
-        'X-From-Code' => $self->config->{localServerCode},
-        'X-To-Code'   => $args->{centralCode},
-        Accept        => "application/json",
+    return $self->oauth2->ua->request(
+        DELETE(
+            $self->config->{api_base_url} . '/' . $args->{endpoint},
+            'Authorization' => "Bearer " . $self->token,
+            'X-From-Code'   => $self->config->{localServerCode},
+            'X-To-Code'     => $args->{centralCode},
+            'Accept'        => "application/json",
+        )
     );
 }
 

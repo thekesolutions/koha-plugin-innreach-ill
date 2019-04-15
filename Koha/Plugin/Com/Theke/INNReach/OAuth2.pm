@@ -19,7 +19,7 @@ use Modern::Perl;
 
 use base qw(Class::Accessor);
 
-__PACKAGE__->mk_accessors(qw( ua ));
+__PACKAGE__->mk_accessors(qw( ua access_token ));
 
 use DateTime;
 use HTTP::Request::Common qw{ POST };
@@ -38,12 +38,12 @@ sub new {
 
     my $client_id     = $args->{client_id};
     unless ($client_id) {
-        INNReach::OAuth2Error::MissingClientID->throw();
+        INNReach::OAuth2Error::MissingClientID->throw("Missing client_id");
     }
 
     my $client_secret = $args->{client_secret};
     unless ($client_secret) {
-        INNReach::OAuth2Error::MissingClientCredentials->throw();
+        INNReach::OAuth2Error::MissingClientCredentials->throw("Missing client_secret");
     }
 
     my $api_base_url = $args->{api_base_url};
@@ -73,10 +73,14 @@ sub new {
     );
 
     bless $self, $class;
+
+    # Get the first token we will use
+    $self->refresh_token;
+
     return $self;
 }
 
-sub get_token {
+sub refresh_token {
     my ($self) = @_;
 
     my $ua      = $self->{ua};
@@ -93,6 +97,15 @@ sub is_token_expired {
     my ($self) = @_;
 
     return $self->{expiration} < DateTime->now();
+}
+
+sub get_token {
+    my ($self) = @_;
+
+    $self->refresh_token
+        if $self->is_token_expired;
+
+    return $self->{access_token};
 }
 
 1;
