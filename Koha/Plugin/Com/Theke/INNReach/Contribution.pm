@@ -137,6 +137,82 @@ sub contribute_bib {
     }
 }
 
+=head3 contribute_batch_items
+
+    my $res = $contribution->contribute_batch_items(
+        {
+            bibId => $bibId,
+            items => $items,
+            [ centralServer => $centralServer ]
+        }
+    );
+
+Sends item information (for adding or modifying) to the central server(s). the
+I<bibId> and I<items> params are mandatory. I<items> has to be a Koha::Items iterator
+and they all need to belong to the biblio identified by bibId.
+
+POST /innreach/v2/contribution/items/<bibId>
+
+=cut
+
+sub contribute_batch_items {
+    my ($self, $args) = @_;
+
+    my $bibId = $args->{bibId};
+    die "bibId is mandatory" unless $bibId;
+
+    my $biblio = Koha::Biblios->find( $bibId );
+    unless ( $biblio ) {
+        die "Biblio not found ($bibId)";
+    }
+
+    my @itemInfo;
+
+    while ( my $item = $items->next ) {
+        unless ( $item->biblionumber == $bibId ) {
+            die "Item (" . $item->itemnumber . ") doesn't belong to bib record ($bibId)";
+        }
+
+        my $itemCircStatus = "Available"; # TODO: Available/Not Available/On Loan/Non-Lendable
+
+        my $itemInfo = {
+            itemId            => $item->itemnumber,
+            agencyCode        => $self->config->{library_to_agency}->{$item->homebranch},
+            centralItemType   => $self->config->{local_to_central_itype}->{$item->effective_itemtype},
+            locationKey       => lc( $item->homebranch ),
+            itemCircStatus    => $itemCircStatus,
+            holdCount         => $item->current_holds->count,
+            dueDateTime       => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
+            callNumber        => $item->itemcallnumber,
+            volumeDesignation => undef, # TODO
+            copyNumber        => undef, # TODO
+          # marc856URI        => undef, # We really don't have this concept in Koha
+          # marc856PublicNote => undef, # We really don't have this concept in Koha
+            itemNote          => $item->itemnotes,
+            suppress          => 'n' # TODO: revisit
+        }
+
+        push @itemInfo, $iteminfo;
+    }
+
+    my @central_servers;
+    if ( $args->{centralServer} ) {
+        push @central_servers, $args->{centralServer};
+    }
+    else {
+        @central_servers = @{ $self->config->{centralServers} };
+    }
+
+    for my $central_server (@central_servers) {
+        my $request = $self->post_request(
+            {   endpoint    => '/innreach/v2/contribution/items/' . $bibId,
+                centralCode => $central_server,
+                data        => { itemInfo => \@itemInfo }
+            }
+        );
+    }
+}
+
 =head2 Internal methods
 
 =head3 token
