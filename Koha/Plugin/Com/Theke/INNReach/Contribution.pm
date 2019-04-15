@@ -392,6 +392,100 @@ sub upload_locations_list {
     };
 }
 
+=head3 upload_single_location
+
+    my $res = $contribution->upload_single_location(
+        { library => $library,
+          [ centralServer => $centralServer ]
+        }
+    );
+
+Sends a single library/branch to the central server(s).
+
+POST /innreach/v2/contribution/locations/<locationKey>
+
+=cut
+
+sub upload_single_location {
+    my ($self, $args) = @_;
+
+    my $library = $args->{library};
+    die 'Mandatory parameter is missing: library'
+        unless $library;
+
+    try {
+
+        my $locationKey = lc($library->branchcode);
+
+        my @central_servers;
+        if ( $args->{centralServer} ) {
+            push @central_servers, $args->{centralServer};
+        }
+        else {
+            @central_servers = @{ $self->config->{centralServers} };
+        }
+
+        for my $central_server (@central_servers) {
+            my $request = $self->post_request(
+                {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
+                    centralCode => $central_server,
+                    data        => { description => $library->branchname }
+                }
+            );
+        }
+    }
+    catch {
+        die "Problem uploading the required location";
+    };
+}
+
+=head3 update_single_location
+
+    my $res = $contribution->update_single_location(
+        { library => $library,
+          [ centralServer => $centralServer ]
+        }
+    );
+
+Sends a single library/branch to the central server(s).
+
+POST /innreach/v2/contribution/locations/<locationKey>
+
+=cut
+
+sub update_single_location {
+    my ($self, $args) = @_;
+
+    my $library = $args->{library};
+    die 'Mandatory parameter is missing: library'
+        unless $library;
+
+    try {
+
+        my $locationKey = lc($library->branchcode);
+
+        my @central_servers;
+        if ( $args->{centralServer} ) {
+            push @central_servers, $args->{centralServer};
+        }
+        else {
+            @central_servers = @{ $self->config->{centralServers} };
+        }
+
+        for my $central_server (@central_servers) {
+            my $request = $self->put_request(
+                {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
+                    centralCode => $central_server,
+                    data        => { description => $library->branchname }
+                }
+            );
+        }
+    }
+    catch {
+        die "Problem uploading the required location";
+    };
+}
+
 =head2 Internal methods
 
 =head3 token
@@ -413,6 +507,26 @@ Generic request for POST
 =cut
 
 sub post_request {
+    my ($self, $args) = @_;
+
+    return POST(
+        $self->config->{api_base_url} . '/' . $args->{endpoint},
+        Authorization => "Bearer " . $self->token,
+        'X-From-Code' => $self->config->{localServerCode},
+        'X-To-Code'   => $args->{centralCode},
+        Accept        => "application/json",,
+        ContentType   => "application/x-www-form-urlencoded",
+        Content       => $args->{data}
+    );
+}
+
+=head3 put_request
+
+Generic request for PUT
+
+=cut
+
+sub put_request {
     my ($self, $args) = @_;
 
     return POST(
