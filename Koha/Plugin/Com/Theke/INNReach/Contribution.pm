@@ -25,6 +25,7 @@ use Try::Tiny;
 
 use Koha::Biblios;
 use Koha::Biblio::Metadatas;
+use Koha::Libraries;
 
 use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::OAuth2;
@@ -182,7 +183,7 @@ sub contribute_batch_items {
             dueDateTime       => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
             callNumber        => $item->itemcallnumber,
             volumeDesignation => undef, # TODO
-            copyNumber        => undef, # TODO
+            copyNumber        => $item->copynumber, # TODO
           # marc856URI        => undef, # We really don't have this concept in Koha
           # marc856PublicNote => undef, # We really don't have this concept in Koha
             itemNote          => $item->itemnotes,
@@ -248,7 +249,7 @@ sub update_item_status {
 
         for my $central_server (@central_servers) {
             my $request = $self->post_request(
-                {   endpoint    => '/innreach/v2/contribution/itemstatus/' . $bibId,
+                {   endpoint    => '/innreach/v2/contribution/itemstatus/' . $itemId,
                     centralCode => $central_server,
                     data        => $data
                 }
@@ -341,6 +342,53 @@ sub update_bib_status {
     }
     catch {
         die "Problem updating requested biblio ($bibId)";
+    };
+}
+
+=head3 upload_locations_list
+
+    my $res = $contribution->upload_locations_list({ [ centralServer => $centralServer ] });
+
+Sends an updated list of libraries/branches to the central server(s).
+
+POST /innreach/v2/contribution/locations
+
+=cut
+
+sub upload_locations_list {
+    my ($self) = @_;
+
+    try {
+        my @locationList;
+
+        my $libraries = Koha::Libraries->search;
+
+        while ( my $library = $libraries->next ) {
+            push @locationList, {
+                locationKey => lc($library->branchcode),
+                description => $library->branchname
+            }
+        }
+
+        my @central_servers;
+        if ( $args->{centralServer} ) {
+            push @central_servers, $args->{centralServer};
+        }
+        else {
+            @central_servers = @{ $self->config->{centralServers} };
+        }
+
+        for my $central_server (@central_servers) {
+            my $request = $self->post_request(
+                {   endpoint    => '/innreach/v2/contribution/locations',
+                    centralCode => $central_server,
+                    data        => { locationList => \@locationList }
+                }
+            );
+        }
+    }
+    catch {
+        die "Problem uploading locations list";
     };
 }
 
