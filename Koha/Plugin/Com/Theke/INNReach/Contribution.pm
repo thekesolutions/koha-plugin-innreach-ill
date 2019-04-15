@@ -17,7 +17,7 @@ package Koha::Plugin::Com::Theke::INNReach::Contribution;
 
 use Modern::Perl;
 
-use HTTP::Request::Common qw{ POST DELETE };
+use HTTP::Request::Common qw{ POST DELETE PUT };
 use MARC::Record;
 use MARC::File::XML;
 use MIME::Base64 qw{ encode_base64url };
@@ -166,6 +166,8 @@ sub contribute_batch_items {
         die "Biblio not found ($bibId)";
     }
 
+    my $items = $biblio->items;
+
     my @itemInfo;
 
     while ( my $item = $items->next ) {
@@ -188,9 +190,9 @@ sub contribute_batch_items {
           # marc856PublicNote => undef, # We really don't have this concept in Koha
             itemNote          => $item->itemnotes,
             suppress          => 'n' # TODO: revisit
-        }
+        };
 
-        push @itemInfo, $iteminfo;
+        push @itemInfo, $itemInfo;
     }
 
     my @central_servers;
@@ -356,7 +358,7 @@ POST /innreach/v2/contribution/locations
 =cut
 
 sub upload_locations_list {
-    my ($self) = @_;
+    my ($self, $args) = @_;
 
     try {
         my @locationList;
@@ -449,7 +451,7 @@ sub upload_single_location {
 
 Sends a single library/branch to the central server(s).
 
-POST /innreach/v2/contribution/locations/<locationKey>
+PUT /innreach/v2/contribution/locations/<locationKey>
 
 =cut
 
@@ -482,7 +484,53 @@ sub update_single_location {
         }
     }
     catch {
-        die "Problem uploading the required location";
+        die "Problem updating the required location";
+    };
+}
+
+=head3 delete_single_location
+
+    my $res = $contribution->delete_single_location(
+        { library_id => $library_id,
+          [ centralServer => $centralServer ]
+        }
+    );
+
+Sends a single library/branch to the central server(s).
+
+DELETE /innreach/v2/contribution/locations/<locationKey>
+
+=cut
+
+sub delete_single_location {
+    my ($self, $args) = @_;
+
+    my $library_id = $args->{library_id};
+    die 'Mandatory parameter is missing: library_id'
+        unless $library_id;
+
+    try {
+
+        my $locationKey = lc($library_id);
+
+        my @central_servers;
+        if ( $args->{centralServer} ) {
+            push @central_servers, $args->{centralServer};
+        }
+        else {
+            @central_servers = @{ $self->config->{centralServers} };
+        }
+
+        for my $central_server (@central_servers) {
+            my $request = $self->delete_request(
+                {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
+                    centralCode => $central_server
+                }
+            );
+        }
+    }
+    catch {
+        die "Problem deleting the required location";
     };
 }
 
@@ -529,7 +577,7 @@ Generic request for PUT
 sub put_request {
     my ($self, $args) = @_;
 
-    return POST(
+    return PUT(
         $self->config->{api_base_url} . '/' . $args->{endpoint},
         Authorization => "Bearer " . $self->token,
         'X-From-Code' => $self->config->{localServerCode},
