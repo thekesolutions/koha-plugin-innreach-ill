@@ -172,14 +172,12 @@ sub contribute_batch_items {
             die "Item (" . $item->itemnumber . ") doesn't belong to bib record ($bibId)";
         }
 
-        my $itemCircStatus = "Available"; # TODO: Available/Not Available/On Loan/Non-Lendable
-
         my $itemInfo = {
             itemId            => $item->itemnumber,
             agencyCode        => $self->config->{library_to_agency}->{$item->homebranch},
             centralItemType   => $self->config->{local_to_central_itype}->{$item->effective_itemtype},
             locationKey       => lc( $item->homebranch ),
-            itemCircStatus    => $itemCircStatus,
+            itemCircStatus    => $self->item_circ_status({ item => $item }),
             holdCount         => $item->current_holds->count,
             dueDateTime       => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
             callNumber        => $item->itemcallnumber,
@@ -210,6 +208,56 @@ sub contribute_batch_items {
             }
         );
     }
+}
+
+=head3 update_item_status
+
+    my $res = $contribution->update_item_status({ itemId => $itemId, [ centralServer => $centralServer ] });
+
+It sends updated item status to the central server(s).
+
+POST /innreach/v2/contribution/bibstatus/<itemId>
+
+=cut
+
+sub update_item_status {
+    my ($self, $args) = @_;
+
+    my $itemId = $args->{itemId};
+
+    die "itemId is mandatory"
+        unless $itemId;
+
+    my $item;
+
+    try {
+        $item = Koha::Items->find( $itemId );
+        my $data = {
+            itemCircStatus => $self->item_circ_status({ item => $item }),
+            holdCount      => $item->current_holds->count,
+            dueDateTime    => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
+        };
+
+        my @central_servers;
+        if ( $args->{centralServer} ) {
+            push @central_servers, $args->{centralServer};
+        }
+        else {
+            @central_servers = @{ $self->config->{centralServers} };
+        }
+
+        for my $central_server (@central_servers) {
+            my $request = $self->post_request(
+                {   endpoint    => '/innreach/v2/contribution/itemstatus/' . $bibId,
+                    centralCode => $central_server,
+                    data        => $data
+                }
+            );
+        }
+    }
+    catch {
+        die "Problem updating requested item ($itemId)";
+    };
 }
 
 =head3 decontribute_bib
@@ -292,7 +340,7 @@ sub update_bib_status {
         }
     }
     catch {
-        die "Problem with requested biblio ($bibId)";
+        die "Problem updating requested biblio ($bibId)";
     };
 }
 
@@ -346,6 +394,36 @@ sub delete_request {
         'X-To-Code'   => $args->{centralCode},
         Accept        => "application/json",
     );
+}
+
+=head3 item_circ_status
+
+Calculates the value for itemCircStatus
+
+=cut
+
+sub item_circ_status {
+    my ($self, $args) = @_;
+
+    die "Mandatory parameter missing: item"
+        unless exists $args->{item};
+
+    my $item = $args->{item};
+    die "Parameter type incorrect for item"
+        unless ref($item) eq 'Koha::Item';
+
+    my $status = 'Available';
+    if ( $item->onloan ) {
+        $status = 'On Loan';
+    }
+    elsif ( $item->withdrawn && $item->withdrawn > 0 ) {
+        $status = 'Not Available';
+    }
+    elsif ( $item->notforloan ) {
+        $status = 'Non-Lendable';
+    }
+
+    return $status;
 }
 
 1;
