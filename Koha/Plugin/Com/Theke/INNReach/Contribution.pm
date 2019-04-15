@@ -137,12 +137,14 @@ sub contribute_bib {
     }
 
     for my $central_server (@central_servers) {
-        my $request = $self->post_request(
+        my $response = $self->post_request(
             {   endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
                 centralCode => $central_server,
                 data        => $data
             }
         );
+        warn p( $response )
+            if $response->is_error;
     }
 }
 
@@ -212,12 +214,14 @@ sub contribute_batch_items {
     }
 
     for my $central_server (@central_servers) {
-        my $request = $self->post_request(
+        my $response = $self->post_request(
             {   endpoint    => '/innreach/v2/contribution/items/' . $bibId,
                 centralCode => $central_server,
                 data        => { itemInfo => \@itemInfo }
             }
         );
+        warn p( $response )
+            if $response->is_error;
     }
 }
 
@@ -258,12 +262,14 @@ sub update_item_status {
         }
 
         for my $central_server (@central_servers) {
-            my $request = $self->post_request(
+            my $response = $self->post_request(
                 {   endpoint    => '/innreach/v2/contribution/itemstatus/' . $itemId,
                     centralCode => $central_server,
                     data        => $data
                 }
             );
+            warn p( $response )
+                if $response->is_error;
         }
     }
     catch {
@@ -300,11 +306,13 @@ sub decontribute_bib {
     }
 
     for my $central_server (@central_servers) {
-        my $request = $self->delete_request(
+        my $response = $self->delete_request(
             {   endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
                 centralCode => $central_server
             }
         );
+        warn p( $response )
+            if $response->is_error;
     }
 }
 
@@ -342,12 +350,14 @@ sub update_bib_status {
         }
 
         for my $central_server (@central_servers) {
-            my $request = $self->post_request(
+            my $response = $self->post_request(
                 {   endpoint    => '/innreach/v2/contribution/bibstatus/' . $bibId,
                     centralCode => $central_server,
                     data        => $data
                 }
             );
+            warn p( $response )
+                if $response->is_error;
         }
     }
     catch {
@@ -389,12 +399,14 @@ sub upload_locations_list {
         }
 
         for my $central_server (@central_servers) {
-            my $request = $self->post_request(
+            my $response = $self->post_request(
                 {   endpoint    => '/innreach/v2/contribution/locations',
                     centralCode => $central_server,
                     data        => { locationList => \@locationList }
                 }
             );
+            warn p( $response )
+                if $response->is_error;
         }
     }
     catch {
@@ -436,12 +448,14 @@ sub upload_single_location {
         }
 
         for my $central_server (@central_servers) {
-            my $request = $self->post_request(
+            my $response = $self->post_request(
                 {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
                     centralCode => $central_server,
                     data        => { description => $library->branchname }
                 }
             );
+            warn p( $response )
+                if $response->is_error;
         }
     }
     catch {
@@ -483,12 +497,14 @@ sub update_single_location {
         }
 
         for my $central_server (@central_servers) {
-            my $request = $self->put_request(
+            my $response = $self->put_request(
                 {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
                     centralCode => $central_server,
                     data        => { description => $library->branchname }
                 }
             );
+            warn p( $response )
+                if $response->is_error;
         }
     }
     catch {
@@ -530,11 +546,13 @@ sub delete_single_location {
         }
 
         for my $central_server (@central_servers) {
-            my $request = $self->delete_request(
+            my $response = $self->delete_request(
                 {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
                     centralCode => $central_server
                 }
             );
+            warn p( $response )
+                if $response->is_error;
         }
     }
     catch {
