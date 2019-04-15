@@ -249,6 +249,53 @@ sub decontribute_bib {
     }
 }
 
+=head3 update_bib_status
+
+    my $res = $contribution->update_bib_status({ bibId => $bibId, [ centralServer => $centralServer ] });
+
+It sends updated bib status to the central server(s).
+
+POST /innreach/v2/contribution/bibstatus/<bibId>
+
+=cut
+
+sub update_bib_status {
+    my ($self, $args) = @_;
+
+    my $bibId = $args->{bibId};
+    die "bibId is mandatory" unless $bibId;
+
+    my ( $biblio, $metadata, $record );
+
+    try {
+        $biblio   = Koha::Biblios->find( $bibId );
+        my $data = {
+            titleHoldCount  => $biblio->holds->count,
+            itemCount       => $biblio->items->count,
+        };
+
+        my @central_servers;
+        if ( $args->{centralServer} ) {
+            push @central_servers, $args->{centralServer};
+        }
+        else {
+            @central_servers = @{ $self->config->{centralServers} };
+        }
+
+        for my $central_server (@central_servers) {
+            my $request = $self->post_request(
+                {   endpoint    => '/innreach/v2/contribution/bibstatus/' . $bibId,
+                    centralCode => $central_server,
+                    data        => $data
+                }
+            );
+        }
+    }
+    catch {
+        die "Problem with requested biblio ($bibId)";
+    };
+}
+
 =head2 Internal methods
 
 =head3 token
