@@ -140,8 +140,7 @@ sub contribute_bib {
 =head3 contribute_batch_items
 
     my $res = $contribution->contribute_batch_items(
-        {
-            bibId => $bibId,
+        {   bibId => $bibId,
             items => $items,
             [ centralServer => $centralServer ]
         }
@@ -213,6 +212,43 @@ sub contribute_batch_items {
     }
 }
 
+=head3 decontribute_bib
+
+    my $res = $contribution->decontribute_bib(
+        {   bibId => $bibId,
+            [ centralServer => $centralServer ]
+        }
+    );
+
+Makes an API request to INN-Reach central server(s) to decontribute the specified record.
+
+DELETE /innreach/v2/contribution/bib/<bibId>
+
+=cut
+
+sub decontribute_bib {
+    my ($self, $args) = @_;
+
+    my $bibId = $args->{bibId};
+    die "bibId is mandatory" unless $bibId;
+
+    my @central_servers;
+    if ( $args->{centralServer} ) {
+        push @central_servers, $args->{centralServer};
+    }
+    else {
+        @central_servers = @{ $self->config->{centralServers} };
+    }
+
+    for my $central_server (@central_servers) {
+        my $request = $self->delete_request(
+            {   endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
+                centralCode => $central_server
+            }
+        );
+    }
+}
+
 =head2 Internal methods
 
 =head3 token
@@ -244,6 +280,24 @@ sub post_request {
         Accept        => "application/json",,
         ContentType   => "application/x-www-form-urlencoded",
         Content       => $args->{data}
+    );
+}
+
+=head3 delete_request
+
+Generic request for DELETE
+
+=cut
+
+sub delete_request {
+    my ($self, $args) = @_;
+
+    return DELETE(
+        $self->config->{api_base_url} . '/' . $args->{endpoint},
+        Authorization => "Bearer " . $self->token,
+        'X-From-Code' => $self->config->{localServerCode},
+        'X-To-Code'   => $args->{centralCode},
+        Accept        => "application/json",
     );
 }
 
