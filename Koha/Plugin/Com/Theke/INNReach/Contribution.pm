@@ -113,6 +113,10 @@ sub contribute_bib {
 
     # Got the biblio, POST it
     my $suppress = 'n'; # expected default
+    my $suppress_subfield = $marc->subfield('942','n');
+    if ( $suppress_subfield ) {
+        $suppress = 'y';
+    }
 
     # delete all local fields ("Omit 9XX fields" rule)
     my @local = $record->field('9..');
