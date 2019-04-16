@@ -127,8 +127,8 @@ sub contribute_bib {
     my $data = {
         marc21BibFormat => 'ISO2709', # Only supported value
         marc21BibData   => $encoded_record,
-        titleHoldCount  => $biblio->holds->count,
-        itemCount       => $biblio->items->count,
+        titleHoldCount  => $biblio->holds->count + 0,
+        itemCount       => $biblio->items->count + 0,
         suppress        => $suppress
     };
 
@@ -148,7 +148,9 @@ sub contribute_bib {
             }
         );
         warn p( $response )
-            if $response->is_error;
+            if $response->is_error or $ENV{DEBUG};
+        warn p( $data )
+            if $response->is_error or $ENV{DEBUG};
     }
 }
 
@@ -195,7 +197,7 @@ sub contribute_batch_items {
             centralItemType   => $self->config->{local_to_central_itype}->{$item->effective_itemtype},
             locationKey       => lc( $item->homebranch ),
             itemCircStatus    => $self->item_circ_status({ item => $item }),
-            holdCount         => $item->current_holds->count,
+            holdCount         => $item->current_holds->count + 0,
             dueDateTime       => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
             callNumber        => $item->itemcallnumber,
             volumeDesignation => undef, # TODO
@@ -225,7 +227,7 @@ sub contribute_batch_items {
             }
         );
         warn p( $response )
-            if $response->is_error;
+            if $response->is_error or $ENV{DEBUG};
     }
 }
 
@@ -273,7 +275,7 @@ sub update_item_status {
                 }
             );
             warn p( $response )
-                if $response->is_error;
+                if $response->is_error or $ENV{DEBUG};
         }
     }
     catch {
@@ -316,7 +318,7 @@ sub decontribute_bib {
             }
         );
         warn p( $response )
-            if $response->is_error;
+            if $response->is_error or $ENV{DEBUG};
     }
 }
 
@@ -361,7 +363,7 @@ sub update_bib_status {
                 }
             );
             warn p( $response )
-                if $response->is_error;
+                if $response->is_error or $ENV{DEBUG};
         }
     }
     catch {
@@ -410,7 +412,7 @@ sub upload_locations_list {
                 }
             );
             warn p( $response )
-                if $response->is_error;
+                if $response->is_error or $ENV{DEBUG};
         }
     }
     catch {
@@ -459,7 +461,7 @@ sub upload_single_location {
                 }
             );
             warn p( $response )
-                if $response->is_error;
+                if $response->is_error or $ENV{DEBUG};
         }
     }
     catch {
@@ -508,7 +510,7 @@ sub update_single_location {
                 }
             );
             warn p( $response )
-                if $response->is_error;
+                if $response->is_error or $ENV{DEBUG};
         }
     }
     catch {
@@ -556,7 +558,7 @@ sub delete_single_location {
                 }
             );
             warn p( $response )
-                if $response->is_error;
+                if $response->is_error or $ENV{DEBUG};
         }
     }
     catch {
