@@ -38,15 +38,25 @@ This could be easily done in rebuild_zebra.pl, but we might need a separate serv
 ## Configuration structure
 
 ```
-    api_key: a_key
-    api_secret: a_secret
-    api_base_url: https://rssandbox-api.iii.com
     centralServers:
         - d2ir
-    library_to_agency:
+    api_base_url: https://rssandbox-api.iii.com
+    client_id: a_client_id
+    client_secret: a_client_secret
+    localServerCode: koha1
+    mainAgency: code2
+    library_to_location:
         CPL: code1
         MPL: code2
-    localServerCode: mykoha
+    local_to_central_itype:
+        BK: 200
+        CF: 201
+        CR: 200
+        MP: 200
+        MU: 201
+        MX: 201
+        REF: 202
+        VM: 201
 ```
 
 ## Install
