@@ -113,7 +113,7 @@ sub contribute_bib {
 
     # Got the biblio, POST it
     my $suppress = 'n'; # expected default
-    my $suppress_subfield = $marc->subfield('942','n');
+    my $suppress_subfield = $record->subfield('942','n');
     if ( $suppress_subfield ) {
         $suppress = 'y';
     }
