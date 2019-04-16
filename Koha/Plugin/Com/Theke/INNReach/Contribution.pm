@@ -547,7 +547,7 @@ sub delete_single_location {
 
         for my $central_server (@central_servers) {
             my $response = $self->delete_request(
-                {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
+                {   endpoint    => '/innreach/v2/location/' . $locationKey,
                     centralCode => $central_server
                 }
             );
