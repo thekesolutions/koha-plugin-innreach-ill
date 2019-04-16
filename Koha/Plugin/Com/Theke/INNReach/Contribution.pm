@@ -522,7 +522,7 @@ sub update_single_location {
 
 Sends a single library/branch to the central server(s).
 
-DELETE /innreach/v2/contribution/locations/<locationKey>
+DELETE /innreach/v2/location/<locationKey>
 
 =cut
 
