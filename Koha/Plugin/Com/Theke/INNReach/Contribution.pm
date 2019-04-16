@@ -21,7 +21,7 @@ use HTTP::Request::Common qw{ POST DELETE PUT };
 use JSON qw(encode_json);
 use MARC::Record;
 use MARC::File::XML;
-use MIME::Base64 qw{ encode_base64url };
+use MIME::Base64 qw{ encode_base64 };
 use Try::Tiny;
 
 use Koha::Biblios;
@@ -118,7 +118,7 @@ sub contribute_bib {
     my @local = $record->field('9..');
     $record->delete_fields(@local);
     # Encode ISO2709 record
-    my $encoded_record = encode_base64url( $record->as_usmarc );
+    my $encoded_record = encode_base64( $record->as_usmarc );
 
     my $data = {
         marc21BibFormat => 'ISO2709', # Only supported value
