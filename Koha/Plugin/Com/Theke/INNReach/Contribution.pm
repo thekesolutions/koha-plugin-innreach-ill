@@ -17,8 +17,9 @@ package Koha::Plugin::Com::Theke::INNReach::Contribution;
 
 use Modern::Perl;
 
-use HTTP::Request::Common qw{ POST DELETE PUT };
-use JSON qw(encode_json);
+use Encode qw(encode decode);
+use HTTP::Request::Common qw{ DELETE GET POST PUT };
+use JSON qw(encode_json decode_json);
 use MARC::Record;
 use MARC::File::XML;
 use MIME::Base64 qw{ encode_base64 };
@@ -193,7 +194,7 @@ sub contribute_batch_items {
 
         my $itemInfo = {
             itemId            => $item->itemnumber,
-            agencyCode        => $self->config->{library_to_agency}->{$item->homebranch},
+            agencyCode        => $self->config->{mainAgency},
             centralItemType   => $self->config->{local_to_central_itype}->{$item->effective_itemtype},
             locationKey       => lc( $item->homebranch ),
             itemCircStatus    => $self->item_circ_status({ item => $item }),
@@ -566,6 +567,76 @@ sub delete_single_location {
     };
 }
 
+=head3 get_central_item_types
+
+    my $res = $contribution->get_central_item_types(
+        { centralServer => $centralServer }
+    );
+
+Sends a a request for defined item types to a central server.
+
+GET /innreach/v2/contribution/itemtypes
+
+=cut
+
+sub get_central_item_types {
+    my ($self, $args) = @_;
+
+    my $response;
+
+    try {
+
+        my $centralServer = $args->{centralServer};
+        $response = $self->get_request(
+            {   endpoint    => '/innreach/v2/contribution/itemtypes',
+                centralCode => $centralServer
+            }
+        );
+        warn p( $response )
+            if $response->is_error or $ENV{DEBUG};
+    }
+    catch {
+        die "Problem fetching the item types list";
+    };
+
+    return decode_json($response->decoded_content)->{itemTypeList};
+}
+
+=head3 get_locations_list
+
+    my $res = $contribution->get_locations_list(
+        { centralServer => $centralServer }
+    );
+
+Sends a a request for defined locations to a central server.
+
+GET /innreach/v2/contribution/locations
+
+=cut
+
+sub get_locations_list {
+    my ($self, $args) = @_;
+
+    my $response;
+
+    try {
+
+        my $centralServer = $args->{centralServer};
+        $response = $self->get_request(
+            {   endpoint    => '/innreach/v2/contribution/locations',
+                centralCode => $centralServer
+            }
+        );
+        warn p( $response )
+            if $response->is_error or $ENV{DEBUG};
+    }
+    catch {
+        die "Problem fetching the item types list";
+    };
+
+    return decode_json($response->decoded_content)->{locationList};
+}
+
 =head2 Internal methods
 
 =head3 token
@@ -619,6 +690,26 @@ sub put_request {
             'Accept'        => "application/json",
             'Content-Type'  => "application/json",
             'Content'       => encode_json( $args->{data} )
+        )
+    );
+}
+
+=head3 get_request
+
+Generic request for GET
+
+=cut
+
+sub get_request {
+    my ($self, $args) = @_;
+
+    return $self->oauth2->ua->request(
+        GET($self->config->{api_base_url} . '/' . $args->{endpoint},
+            'Authorization' => "Bearer " . $self->token,
+            'X-From-Code'   => $self->config->{localServerCode},
+            'X-To-Code'     => $args->{centralCode},
+            'Accept'        => "application/json",
+            'Content-Type'  => "application/json"
         )
     );
 }
