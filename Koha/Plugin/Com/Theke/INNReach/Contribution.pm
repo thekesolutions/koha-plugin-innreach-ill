@@ -17,9 +17,9 @@ package Koha::Plugin::Com::Theke::INNReach::Contribution;
 
 use Modern::Perl;
 
-use Encode qw(encode decode);
+use Encode qw{ encode decode };
 use HTTP::Request::Common qw{ DELETE GET POST PUT };
-use JSON qw(encode_json decode_json);
+use JSON qw{ encode_json decode_json };
 use MARC::Record;
 use MARC::File::XML;
 use MIME::Base64 qw{ encode_base64 };
@@ -123,9 +123,10 @@ sub contribute_bib {
     my @local = $record->field('9..');
     $record->delete_fields(@local);
     # Encode ISO2709 record
-    my $encoded_record = encode_base64( $record->as_usmarc );
+    my $encoded_record = encode_base64( encode("UTF-8",$record->as_usmarc), "" );
 
     my $data = {
+        bibId           => "$bibId",
         marc21BibFormat => 'ISO2709', # Only supported value
         marc21BibData   => $encoded_record,
         titleHoldCount  => $biblio->holds->count + 0,
@@ -150,7 +151,7 @@ sub contribute_bib {
         );
         warn p( $response )
             if $response->is_error or $ENV{DEBUG};
-        warn p( $data )
+        warn p( encode_json($data) )
             if $response->is_error or $ENV{DEBUG};
     }
 }
@@ -634,7 +635,7 @@ sub get_locations_list {
         die "Problem fetching the item types list";
     };
 
-    return decode_json($response->decoded_content)->{locationList};
+    return decode_json(encode('UTF-8',$response->content))->{locationList};
 }
 
 =head2 Internal methods
@@ -660,7 +661,7 @@ Generic request for POST
 sub post_request {
     my ($self, $args) = @_;
 
-    return $self->oauth2->ua->request(
+    my $request =
         POST(
             $self->config->{api_base_url} . '/' . $args->{endpoint},
             'Authorization' => "Bearer " . $self->token,
@@ -669,7 +670,12 @@ sub post_request {
             'Accept'        => "application/json",
             'Content-Type'  => "application/json",
             'Content'       => encode_json( $args->{data} )
-        )
+        );
+
+    warn p( $request ) if $ENV{DEBUG};
+
+    return $self->oauth2->ua->request(
+        $request
     );
 }
 
@@ -682,7 +688,7 @@ Generic request for PUT
 sub put_request {
     my ($self, $args) = @_;
 
-    return $self->oauth2->ua->request(
+    my $request =
         PUT($self->config->{api_base_url} . '/' . $args->{endpoint},
             'Authorization' => "Bearer " . $self->token,
             'X-From-Code'   => $self->config->{localServerCode},
@@ -690,7 +696,9 @@ sub put_request {
             'Accept'        => "application/json",
             'Content-Type'  => "application/json",
             'Content'       => encode_json( $args->{data} )
-        )
+        );
+    return $self->oauth2->ua->request(
+        $request
     );
 }
 
