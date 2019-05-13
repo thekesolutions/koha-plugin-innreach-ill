@@ -127,7 +127,7 @@ sub status_graph {
             name           => 'Item request cancelled by requestor',
             ui_method_name => 'Item request cancelled',
             method         => '',
-            next_actions   => [ 'DONE' ],
+            next_actions   => [ 'COMP' ],
             ui_method_icon => '',
         },
         O_ITEM_SHIPPED => {
@@ -154,7 +154,7 @@ sub status_graph {
             name           => 'Item in transit from borrowing site',
             ui_method_name => 'Return item',
             method         => '',
-            next_actions   => [ 'DONE' ],
+            next_actions   => [ ],
             ui_method_icon => '',
         },
         O_ITEM_CHECKED_IN => {
@@ -163,7 +163,7 @@ sub status_graph {
             name           => 'Item checked-in at owning site',
             ui_method_name => 'Check-in',
             method         => 'item_checkin',
-            next_actions   => [ 'DONE' ],
+            next_actions   => [ 'COMP' ],
             ui_method_icon => 'fa-inbox',
         },
 
@@ -173,7 +173,7 @@ sub status_graph {
             id             => 'DONE',
             name           => 'Transaction completed',
             ui_method_name => 'Done',
-            method         => 'finish_transaction',
+            method         => '',
             next_actions   => [],
             ui_method_icon => 'fa-inbox',
         },
