@@ -118,7 +118,7 @@ sub status_graph {
             name           => 'Item Requested',
             ui_method_name => 'Item Requested',
             method         => '',
-            next_actions   => [ 'O_ITEM_SHIPPED' ],
+            next_actions   => [ 'O_ITEM_SHIPPED', 'O_ITEM_CANCELLED_BY_US' ],
             ui_method_icon => '',
         },
         O_ITEM_CANCELLED => {
@@ -137,7 +137,7 @@ sub status_graph {
             ui_method_name => 'Cancel request',
             method         => 'cancel_request',
             next_actions   => [ 'COMP' ],
-            ui_method_icon => '',
+            ui_method_icon => 'fa-times',
         },
         O_ITEM_SHIPPED => {
             prev_actions => [ 'O_ITEM_REQUESTED' ],
