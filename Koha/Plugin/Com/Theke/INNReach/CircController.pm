@@ -20,47 +20,269 @@ use Modern::Perl;
 use Try::Tiny;
 use C4::Reserves;
 
+use Koha::DateUtils qw(dt_from_string);
+
+use Koha::Illbackends::INNReach::Base;
+use Koha::Illrequests;
+use Koha::Illrequestattributes;
+use Koha::Items;
+
 use Mojo::Base 'Mojolicious::Controller';
 
 =head1 Koha::Plugin::Com::Theke::INNReach::PatronsController
 
 A class implementing the controller methods for the patron-related endpoints
 
-=head2 Class methods
+=head1 Class methods
+
+=head2 Endpoints for the owning site flow
 
 =head3 itemhold
 
-TODO: this method is a stub
+This method creates an ILLRequest and sets its status to O_ITEM_REQUESTED
 
 =cut
 
 sub itemhold {
     my $c = shift->openapi->valid_input or return;
 
-    my $transactionId = $c->validation->param('transactionId');
-    my $centralCode   = $c->validation->param('centralCode');
+    my $trackingId  = $c->validation->param('trackingId');
+    my $centralCode = $c->validation->param('centralCode');
 
     my $body = $c->validation->param('body');
 
-    my $transactionTime   = $body->{transactionTime};
-    my $pickupLocation    = $body->{pickupLocation};
-    my $patronId          = $body->{patronId};
-    my $patronAgencyCode  = $body->{patronAgencyCode};
-    my $itemAgencyCode    = $body->{itemAgencyCode};
-    my $itemId            = $body->{itemId};
-    my $needBefore        = $body->{needBefore};
-    my $centralPatronType = $body->{centralPatronType};
-    my $patronName        = $body->{patronName};
+    my $attributes = {
+        transactionTime   => $body->{transactionTime},
+        pickupLocation    => $body->{pickupLocation},
+        patronId          => $body->{patronId},
+        patronAgencyCode  => $body->{patronAgencyCode},
+        itemAgencyCode    => $body->{itemAgencyCode},
+        itemId            => $body->{itemId},
+        needBefore        => $body->{needBefore},
+        centralPatronType => $body->{centralPatronType},
+        patronName        => $body->{patronName},
+        trackingId        => $trackingId,
+        centralCode       => $centralCode
+    };
+
+    my $item = Koha::Items->find( $attributes->{itemId} );
+    return $c->render(
+        status   => 400,
+        openapi => {
+            status => 'error',
+            reason => 'Requested a non-existent item',
+            errors => []
+        }
+    ) unless $item;
 
     return try {
-        # do your stuff
+
+        # Create the request
+        my $req = Koha::Illrequest->new({
+            branchcode => 'ILL',  # FIXME
+            borrowernumber => 53, # FIXME
+            biblio_id => $item->biblionumber,
+            updated   => dt_from_string(),
+            status    => 'O_ITEM_REQUESTED',
+            backend   => 'INNReach'
+        })->store;
+
+        # Add the custom attributes
+        while ( my ( $type, $value ) = each %{$attributes} ) {
+            if ($value && length $value > 0) {
+                Koha::Illrequestattribute->new(
+                    {
+                        illrequest_id => $req->illrequest_id,
+                        type          => $type,
+                        value         => $value,
+                        readonly      => 1
+                    }
+                )->store;
+            }
+        }
+
         return $c->render(
             status  => 200,
-            openapi => {}
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
         );
     }
     catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
+        return $c->render(
+            status => 500,
+            openapi => {
+                status => 'error',
+                reason => 'Unknown error',
+                errors => []
+            }
+        );
+    };
+}
+
+=head3 itemreceived
+
+This method changes the status of the ILL request to let the users
+know the item has been reported at destination.
+
+=cut
+
+sub itemreceived {
+    my $c = shift->openapi->valid_input or return;
+
+    my $trackingId  = $c->validation->param('trackingId');
+    my $centralCode = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    ## TODO: we are supposed to receive all this data, but: what for?
+    ## all we do here is changing the request status
+    # my $attributes = {
+    #     transactionTime   => $body->{transactionTime},
+    #     pickupLocation    => $body->{pickupLocation},
+    #     patronId          => $body->{patronId},
+    #     patronAgencyCode  => $body->{patronAgencyCode},
+    #     itemAgencyCode    => $body->{itemAgencyCode},
+    #     itemId            => $body->{itemId},
+    #     needBefore        => $body->{needBefore},
+    #     centralPatronType => $body->{centralPatronType},
+    #     patronName        => $body->{patronName},
+    #     trackingId        => $trackingId,
+    #     centralCode       => $centralCode
+    # };
+
+    return try {
+
+        # Get/validate the request
+        my $dbh = C4::Context->dbh;
+        my $sth = $dbh->prepare(qq{
+            SELECT * FROM illrequestattributes AS ra_a
+            INNER JOIN    illrequestattributes AS ra_b
+            ON ra_a.illrequest_id=ra_b.illrequest_id AND
+              (ra_a.type='trackingId'  AND ra_a.value='$trackingId') AND
+              (ra_b.type='centralCode' AND ra_b.value='$centralCode');
+        });
+
+        $sth->execute();
+        my $result = $sth->fetchrow_hashref;
+        my $req;
+
+        $req = Koha::Illrequests->find( $result->{illrequest_id} )
+            if $result->{illrequest_id};
+
+        return $c->render(
+            status  => 400,
+            openapi => {
+                status => 'error',
+                reason => 'Invalid trackingId/centralCode combination',
+                errors => []
+            }
+        ) unless $req;
+
+        $req->status('O_ITEM_RECEIVED_DESTINATION')->store;
+
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render(
+            status => 500,
+            openapi => {
+                status => 'error',
+                reason => 'Unknown error',
+                errors => []
+            }
+        );
+    };
+}
+
+=head3 intransit
+
+This method changes the status of the ILL request to let the users
+know the item has been sent back from requesting site.
+
+=cut
+
+sub intransit {
+    my $c = shift->openapi->valid_input or return;
+
+    my $trackingId  = $c->validation->param('trackingId');
+    my $centralCode = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    ## TODO: we are supposed to receive all this data, but: what for?
+    ## all we do here is changing the request status
+    # my $attributes = {
+    #     transactionTime   => $body->{transactionTime},
+    #     pickupLocation    => $body->{pickupLocation},
+    #     patronId          => $body->{patronId},
+    #     patronAgencyCode  => $body->{patronAgencyCode},
+    #     itemAgencyCode    => $body->{itemAgencyCode},
+    #     itemId            => $body->{itemId},
+    #     needBefore        => $body->{needBefore},
+    #     centralPatronType => $body->{centralPatronType},
+    #     patronName        => $body->{patronName},
+    #     trackingId        => $trackingId,
+    #     centralCode       => $centralCode
+    # };
+
+    return try {
+
+        # Get/validate the request
+        my $dbh = C4::Context->dbh;
+        my $sth = $dbh->prepare(qq{
+            SELECT * FROM illrequestattributes AS ra_a
+            INNER JOIN    illrequestattributes AS ra_b
+            ON ra_a.illrequest_id=ra_b.illrequest_id AND
+              (ra_a.type='trackingId'  AND ra_a.value='$trackingId') AND
+              (ra_b.type='centralCode' AND ra_b.value='$centralCode');
+        });
+
+        $sth->execute();
+        my $result = $sth->fetchrow_hashref;
+        my $req;
+
+        $req = Koha::Illrequests->find( $result->{illrequest_id} )
+            if $result->{illrequest_id};
+
+        return $c->render(
+            status  => 400,
+            openapi => {
+                status => 'error',
+                reason => 'Invalid trackingId/centralCode combination',
+                errors => []
+            }
+        ) unless $req;
+
+        $req->status('O_ITEM_IN_TRANSIT')->store;
+
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render(
+            status => 500,
+            openapi => {
+                status => 'error',
+                reason => 'Unknown error',
+                errors => []
+            }
+        );
     };
 }
 
@@ -247,42 +469,6 @@ sub finalcheckin {
     };
 }
 
-=head3 intransit
-
-TODO: this method is a stub
-
-=cut
-
-sub intransit {
-    my $c = shift->openapi->valid_input or return;
-
-    my $transactionId = $c->validation->param('transactionId');
-    my $centralCode   = $c->validation->param('centralCode');
-
-    my $body = $c->validation->param('body');
-
-    my $transactionTime   = $body->{transactionTime};
-    my $patronId          = $body->{patronId};
-    my $patronAgencyCode  = $body->{patronAgencyCode};
-    my $itemAgencyCode    = $body->{itemAgencyCode};
-    my $itemId            = $body->{itemId};
-
-    return try {
-        # do your stuff
-        return $c->render(
-            status  => 200,
-            openapi => {
-                status => 'ok',
-                reason => '',
-                errors => []
-            }
-        );
-    }
-    catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
-    };
-}
-
 =head3 itemshipped
 
 TODO: this method is a stub
@@ -384,48 +570,6 @@ sub claimsreturned {
     my $patronAgencyCode   = $body->{patronAgencyCode};
     my $itemAgencyCode     = $body->{itemAgencyCode};
     my $itemId             = $body->{itemId};
-
-    return try {
-        # do your stuff
-        return $c->render(
-            status  => 200,
-            openapi => {
-                status => 'ok',
-                reason => '',
-                errors => []
-            }
-        );
-    }
-    catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
-    };
-}
-
-=head3 itemreceived
-
-TODO: this method is a stub
-
-=cut
-
-sub itemreceived {
-    my $c = shift->openapi->valid_input or return;
-
-    my $transactionId = $c->validation->param('transactionId');
-    my $centralCode   = $c->validation->param('centralCode');
-
-    my $body = $c->validation->param('body');
-
-    my $transactionTime    = $body->{transactionTime};
-    my $patronId           = $body->{patronId};
-    my $patronAgencyCode   = $body->{patronAgencyCode};
-    my $itemAgencyCode     = $body->{itemAgencyCode};
-    my $itemId             = $body->{itemId};
-    my $centralItemType    = $body->{centralItemType};
-    my $author             = $body->{author};
-    my $title              = $body->{title};
-    my $itemBarcode        = $body->{itemBarcode};
-    my $callNumber         = $body->{callNumber};
-    my $centralPatronType  = $body->{centralPatronType};
 
     return try {
         # do your stuff

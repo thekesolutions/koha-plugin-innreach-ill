@@ -721,8 +721,14 @@
         "200": {
           "description": "Successful item hold"
         },
+        "400": {
+          "description": "Bad request"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "500": {
+          "description": "Internal error"
         }
       },
       "x-koha-authorization": {
@@ -1083,8 +1089,14 @@
         "200": {
           "description": "Successful item hold"
         },
+        "400": {
+          "description": "Bad request"
+        },
         "404": {
           "description": "An error occured"
+        },
+        "500": {
+          "description": "Internal error"
         }
       },
       "x-koha-authorization": {
