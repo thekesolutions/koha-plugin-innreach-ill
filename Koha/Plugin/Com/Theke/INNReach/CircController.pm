@@ -156,21 +156,7 @@ sub itemreceived {
     return try {
 
         # Get/validate the request
-        my $dbh = C4::Context->dbh;
-        my $sth = $dbh->prepare(qq{
-            SELECT * FROM illrequestattributes AS ra_a
-            INNER JOIN    illrequestattributes AS ra_b
-            ON ra_a.illrequest_id=ra_b.illrequest_id AND
-              (ra_a.type='trackingId'  AND ra_a.value='$trackingId') AND
-              (ra_b.type='centralCode' AND ra_b.value='$centralCode');
-        });
-
-        $sth->execute();
-        my $result = $sth->fetchrow_hashref;
-        my $req;
-
-        $req = Koha::Illrequests->find( $result->{illrequest_id} )
-            if $result->{illrequest_id};
+        my $req = get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
         return $c->render(
             status  => 400,
@@ -238,21 +224,7 @@ sub intransit {
     return try {
 
         # Get/validate the request
-        my $dbh = C4::Context->dbh;
-        my $sth = $dbh->prepare(qq{
-            SELECT * FROM illrequestattributes AS ra_a
-            INNER JOIN    illrequestattributes AS ra_b
-            ON ra_a.illrequest_id=ra_b.illrequest_id AND
-              (ra_a.type='trackingId'  AND ra_a.value='$trackingId') AND
-              (ra_b.type='centralCode' AND ra_b.value='$centralCode');
-        });
-
-        $sth->execute();
-        my $result = $sth->fetchrow_hashref;
-        my $req;
-
-        $req = Koha::Illrequests->find( $result->{illrequest_id} )
-            if $result->{illrequest_id};
+        my $req = get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
         return $c->render(
             status  => 400,
