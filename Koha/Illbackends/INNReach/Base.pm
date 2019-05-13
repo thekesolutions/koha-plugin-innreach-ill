@@ -125,8 +125,17 @@ sub status_graph {
             prev_actions => [ 'O_ITEM_REQUESTED' ],
             id             => 'O_ITEM_CANCELLED',
             name           => 'Item request cancelled by requestor',
-            ui_method_name => 'Item request cancelled',
+            ui_method_name => 'Item request cancelled by requestor',
             method         => '',
+            next_actions   => [ 'COMP' ],
+            ui_method_icon => '',
+        },
+        O_ITEM_CANCELLED_BY_US => {
+            prev_actions => [ 'O_ITEM_REQUESTED' ],
+            id             => 'O_ITEM_CANCELLED_BY_US',
+            name           => 'Item request cancelled',
+            ui_method_name => 'Cancel request',
+            method         => 'cancel_request',
             next_actions   => [ 'COMP' ],
             ui_method_icon => '',
         },
@@ -237,6 +246,41 @@ sub item_checkin {
         status  => '',
         message => '',
         method  => 'item_shipped',
+        stage   => 'commit',
+        next    => 'illview',
+        value   => '',
+    };
+}
+
+sub cancel_request {
+    my ( $self, $params ) = @_;
+
+    my $req = $params->{request};
+
+    my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
+    my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
+    my $patronName  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'patronName'  })->value;
+
+    # my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
+    # my $response = $innreach->post_request(
+    #     {   endpoint    => "/innreach/v2/circ/owningsitecancel/$trackingId/$centralCode",
+    #         centralCode => $centralCode,
+    #         data        => {
+    #             localBibId => undef,
+    #             reason     => '',
+    #             reasonCode => '7',
+    #             patronName => $patronName
+    #         }
+    #     }
+    # );
+
+    $req->status('O_ITEM_CANCELLED_BY_US')->store;
+
+    return {
+        error   => 0,
+        status  => '',
+        message => '',
+        method  => 'cancel_request',
         stage   => 'commit',
         next    => 'illview',
         value   => '',
