@@ -286,6 +286,76 @@ sub intransit {
     };
 }
 
+=head3 cancelitemhold
+
+This method changes the status of the ILL request to let the users
+know the requesting site has cancelled the request.
+
+This can only happen when the ILL request status is O_ITEM_REQUESTED.
+
+=cut
+
+sub cancelitemhold {
+    my $c = shift->openapi->valid_input or return;
+
+    my $trackingId  = $c->validation->param('trackingId');
+    my $centralCode = $c->validation->param('centralCode');
+
+    # my $body = $c->validation->param('body');
+
+    # my $attributes = {
+    #     transactionTime  => $body->{transactionTime},
+    #     patronId         => $body->{patronId},
+    #     patronAgencyCode => $body->{patronAgencyCode},
+    #     itemAgencyCode   => $body->{itemAgencyCode},
+    #     itemId           => $body->{itemId}
+    # }
+
+    return try {
+
+        my $req = get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+
+        return $c->render(
+            status  => 404,
+            openapi => {
+                status => 'error',
+                reason => 'Invalid trackingId/centralCode combination',
+                errors => []
+            }
+        ) unless $req;
+
+        return $c->render(
+            status  => 409,
+            openapi => {
+                status => 'error',
+                reason => 'The request cannot be canceled at this stage',
+                errors => []
+            }
+        ) unless $req->status eq 'O_ITEM_REQUESTED';
+
+        $req->status('O_ITEM_CANCELLED')->store;
+
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render(
+            status => 500,
+            openapi => {
+                status => 'error',
+                reason => 'Internal error',
+                errors => []
+            }
+        );
+    };
+}
+
 =head3 patronhold
 
 TODO: this method is a stub
@@ -338,42 +408,6 @@ sub borrowerrenew {
 
     my $transactionTime   = $body->{transactionTime};
     my $dueDateTime       = $body->{dueDateTime};
-    my $patronId          = $body->{patronId};
-    my $patronAgencyCode  = $body->{patronAgencyCode};
-    my $itemAgencyCode    = $body->{itemAgencyCode};
-    my $itemId            = $body->{itemId};
-
-    return try {
-        # do your stuff
-        return $c->render(
-            status  => 200,
-            openapi => {
-                status => 'ok',
-                reason => '',
-                errors => []
-            }
-        );
-    }
-    catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
-    };
-}
-
-=head3 cancelitemhold
-
-TODO: this method is a stub
-
-=cut
-
-sub cancelitemhold {
-    my $c = shift->openapi->valid_input or return;
-
-    my $transactionId = $c->validation->param('transactionId');
-    my $centralCode   = $c->validation->param('centralCode');
-
-    my $body = $c->validation->param('body');
-
-    my $transactionTime   = $body->{transactionTime};
     my $patronId          = $body->{patronId};
     my $patronAgencyCode  = $body->{patronAgencyCode};
     my $itemAgencyCode    = $body->{itemAgencyCode};
@@ -700,6 +734,37 @@ sub transferrequest {
 
 =head2 Internal methods
 
+=head3 get_ill_request
+
+This method retrieves the Koha::ILLRequest using trackingId and centralCode
+
 =cut
+
+sub get_ill_request {
+    my ( $args ) = @_;
+
+    my $trackingId  = $args->{trackingId};
+    my $centralCode = $args->{centralCode};
+
+        # Get/validate the request
+    my $dbh = C4::Context->dbh;
+    my $sth = $dbh->prepare(qq{
+        SELECT * FROM illrequestattributes AS ra_a
+        INNER JOIN    illrequestattributes AS ra_b
+        ON ra_a.illrequest_id=ra_b.illrequest_id AND
+          (ra_a.type='trackingId'  AND ra_a.value='$trackingId') AND
+          (ra_b.type='centralCode' AND ra_b.value='$centralCode');
+    });
+
+    $sth->execute();
+    my $result = $sth->fetchrow_hashref;
+
+    my $req;
+
+    $req = Koha::Illrequests->find( $result->{illrequest_id} )
+        if $result->{illrequest_id};
+
+    return $req;
+}
 
 1;

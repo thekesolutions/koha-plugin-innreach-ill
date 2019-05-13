@@ -121,6 +121,15 @@ sub status_graph {
             next_actions   => [ 'O_ITEM_SHIPPED' ],
             ui_method_icon => '',
         },
+        O_ITEM_CANCELLED => {
+            prev_actions => [ 'O_ITEM_REQUESTED' ],
+            id             => 'O_ITEM_CANCELLED',
+            name           => 'Item request cancelled by requestor',
+            ui_method_name => 'Item request cancelled',
+            method         => '',
+            next_actions   => [ 'DONE' ],
+            ui_method_icon => '',
+        },
         O_ITEM_SHIPPED => {
             prev_actions => [ 'O_ITEM_REQUESTED' ],
             id             => 'O_ITEM_SHIPPED',
