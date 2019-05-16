@@ -26,6 +26,7 @@ use Koha::Illbackends::INNReach::Base;
 use Koha::Illrequests;
 use Koha::Illrequestattributes;
 use Koha::Items;
+use Koha::Plugin::Com::Theke::INNReach;
 
 use Mojo::Base 'Mojolicious::Controller';
 
@@ -48,6 +49,10 @@ sub itemhold {
 
     my $trackingId  = $c->validation->param('trackingId');
     my $centralCode = $c->validation->param('centralCode');
+
+    # TODO: check why we cannot use the stashed patron
+    #my $user_id = $c->stash('koha.user')->borrowernumber;
+    my $user_id = Koha::Plugin::Com::Theke::INNReach->new->configuration->{local_patron_id};
 
     my $body = $c->validation->param('body');
 
@@ -75,16 +80,21 @@ sub itemhold {
         }
     ) unless $item;
 
+    # Add biblio info
+    my $biblio = $item->biblio;
+    $attributes->{author} = $biblio->author;
+    $attributes->{title}  = $biblio->title;
+
     return try {
 
         # Create the request
         my $req = Koha::Illrequest->new({
-            branchcode => 'ILL',  # FIXME
-            borrowernumber => 53, # FIXME
-            biblio_id => $item->biblionumber,
-            updated   => dt_from_string(),
-            status    => 'O_ITEM_REQUESTED',
-            backend   => 'INNReach'
+            branchcode     => 'ILL',  # FIXME
+            borrowernumber => $user_id,
+            biblio_id      => $item->biblionumber,
+            updated        => dt_from_string(),
+            status         => 'O_ITEM_REQUESTED',
+            backend        => 'INNReach'
         })->store;
 
         # Add the custom attributes
