@@ -245,7 +245,7 @@ sub item_checkin {
         error   => 0,
         status  => '',
         message => '',
-        method  => 'item_shipped',
+        method  => 'item_checkin',
         stage   => 'commit',
         next    => 'illview',
         value   => '',
