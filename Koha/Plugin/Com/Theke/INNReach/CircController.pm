@@ -338,41 +338,188 @@ sub cancelitemhold {
     };
 }
 
+=head2 Endpoints for the owning site flow
+
 =head3 patronhold
 
-TODO: this method is a stub
+This method creates an ILLRequest and sets its status to B_ITEM_REQUESTED
 
 =cut
 
 sub patronhold {
     my $c = shift->openapi->valid_input or return;
 
-    my $transactionId = $c->validation->param('transactionId');
-    my $centralCode   = $c->validation->param('centralCode');
+    my $trackingId  = $c->validation->param('trackingId');
+    my $centralCode = $c->validation->param('centralCode');
 
     my $body = $c->validation->param('body');
 
-    my $transactionTime   = $body->{transactionTime};
-    my $pickupLocation    = $body->{pickupLocation};
-    my $patronId          = $body->{patronId};
-    my $patronAgencyCode  = $body->{patronAgencyCode};
-    my $itemAgencyCode    = $body->{itemAgencyCode};
-    my $itemId            = $body->{itemId};
-    my $needBefore        = $body->{needBefore};
-    my $centralPatronType = $body->{centralPatronType};
-    my $patronName        = $body->{patronName};
+    my $attributes = {
+        transactionTime   => $body->{transactionTime},
+        pickupLocation    => $body->{pickupLocation},
+        patronId          => $body->{patronId},
+        patronAgencyCode  => $body->{patronAgencyCode},
+        itemAgencyCode    => $body->{itemAgencyCode},
+        itemId            => $body->{itemId},
+        centralItemType   => $body->{centralItemType},
+        title             => $body->{title},
+        author            => $body->{author},
+        callNumber        => $body->{callNumber},
+        needBefore        => $body->{needBefore},
+        trackingId        => $trackingId,
+        centralCode       => $centralCode
+    };
+
+    my $user_id = $attributes->{patronId};
 
     return try {
-        # do your stuff
+
+        # Create the request
+        my $req = Koha::Illrequest->new({
+            branchcode     => 'ILL',  # FIXME
+            borrowernumber => $user_id,
+            biblio_id      => undef,
+            updated        => dt_from_string(),
+            status         => 'B_ITEM_REQUESTED',
+            backend        => 'INNReach'
+        })->store;
+
+        # Add the custom attributes
+        while ( my ( $type, $value ) = each %{$attributes} ) {
+            if ($value && length $value > 0) {
+                Koha::Illrequestattribute->new(
+                    {
+                        illrequest_id => $req->illrequest_id,
+                        type          => $type,
+                        value         => $value,
+                        readonly      => 1
+                    }
+                )->store;
+            }
+        }
+
         return $c->render(
             status  => 200,
-            openapi => {}
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
         );
     }
     catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
+        return $c->render(
+            status => 500,
+            openapi => {
+                status => 'error',
+                reason => "$_",
+                errors => []
+            }
+        );
     };
 }
+
+=head3 itemshipped
+
+This method changes the status of the ILL request to let the users
+know the item has been reported at destination.
+
+=cut
+
+sub itemshipped {
+    my $c = shift->openapi->valid_input or return;
+
+    my $trackingId  = $c->validation->param('trackingId');
+    my $centralCode = $c->validation->param('centralCode');
+
+    return try {
+
+        # Get/validate the request
+        my $req = get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+
+        return $c->render(
+            status  => 400,
+            openapi => {
+                status => 'error',
+                reason => 'Invalid trackingId/centralCode combination',
+                errors => []
+            }
+        ) unless $req;
+
+        $req->status('B_ITEM_SHIPPED')->store;
+
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render(
+            status => 500,
+            openapi => {
+                status => 'error',
+                reason => 'Unknown error',
+                errors => []
+            }
+        );
+    };
+}
+
+=head3 finalcheckin
+
+This method changes the status of the ILL request to let the users
+know the item has been reported at destination.
+
+=cut
+
+sub finalcheckin {
+    my $c = shift->openapi->valid_input or return;
+
+    my $trackingId  = $c->validation->param('trackingId');
+    my $centralCode = $c->validation->param('centralCode');
+
+    return try {
+
+        # Get/validate the request
+        my $req = get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+
+        return $c->render(
+            status  => 400,
+            openapi => {
+                status => 'error',
+                reason => 'Invalid trackingId/centralCode combination',
+                errors => []
+            }
+        ) unless $req;
+
+        $req->status('B_ITEM_CHECKED_IN')->store;
+
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render(
+            status => 500,
+            openapi => {
+                status => 'error',
+                reason => 'Unknown error',
+                errors => []
+            }
+        );
+    };
+}
+
+=head2 TODO AREA
 
 =head3 borrowerrenew
 
@@ -432,86 +579,6 @@ sub cancelrequest {
     my $itemId            = $body->{itemId};
     my $reason            = $body->{reason};
     my $reasonCode        = $body->{reasonCode}; # 7
-
-    return try {
-        # do your stuff
-        return $c->render(
-            status  => 200,
-            openapi => {
-                status => 'ok',
-                reason => '',
-                errors => []
-            }
-        );
-    }
-    catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
-    };
-}
-
-=head3 finalcheckin
-
-TODO: this method is a stub
-
-=cut
-
-sub finalcheckin {
-    my $c = shift->openapi->valid_input or return;
-
-    my $transactionId = $c->validation->param('transactionId');
-    my $centralCode   = $c->validation->param('centralCode');
-
-    my $body = $c->validation->param('body');
-
-    my $transactionTime   = $body->{transactionTime};
-    my $patronId          = $body->{patronId};
-    my $patronAgencyCode  = $body->{patronAgencyCode};
-    my $itemAgencyCode    = $body->{itemAgencyCode};
-    my $itemId            = $body->{itemId};
-
-    return try {
-        # do your stuff
-        return $c->render(
-            status  => 200,
-            openapi => {
-                status => 'ok',
-                reason => '',
-                errors => []
-            }
-        );
-    }
-    catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
-    };
-}
-
-=head3 itemshipped
-
-TODO: this method is a stub
-
-=cut
-
-sub itemshipped {
-    my $c = shift->openapi->valid_input or return;
-
-    my $transactionId = $c->validation->param('transactionId');
-    my $centralCode   = $c->validation->param('centralCode');
-
-    my $body = $c->validation->param('body');
-
-    my $transactionTime   = $body->{transactionTime};
-    my $patronId          = $body->{patronId};
-    my $patronAgencyCode  = $body->{patronAgencyCode};
-    my $itemAgencyCode    = $body->{itemAgencyCode};
-    my $itemId            = $body->{itemId};
-    my $centralItemType   = $body->{centralItemType};
-    my $itemBarcode       = $body->{itemBarcode};
-    my $title             = $body->{title};
-    my $author            = $body->{author};
-    my $callNumber        = $body->{callNumber};
-    my $itemLocation      = $body->{itemLocation};
-    my $pickupLocation    = $body->{pickupLocation};
-    my $needBefore        = $body->{needBefore};
 
     return try {
         # do your stuff

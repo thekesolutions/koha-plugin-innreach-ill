@@ -176,18 +176,81 @@ sub status_graph {
             ui_method_icon => 'fa-inbox',
         },
 
-        # Common statuses
-        DONE => {
-            prev_actions => [ 'O_ITEM_IN_TRANSIT' ],
-            id             => 'DONE',
-            name           => 'Transaction completed',
-            ui_method_name => 'Done',
+        # status graph for borrowing site
+        B_ITEM_REQUESTED => {
+            prev_actions => [ ],
+            id             => 'B_ITEM_REQUESTED',
+            name           => 'Item requested to owning site',
+            ui_method_name => 'Item requested to owning site',
             method         => '',
-            next_actions   => [],
+            next_actions   => [ 'B_ITEM_SHIPPED', 'B_ITEM_CANCELLED_BY_US' ],
+            ui_method_icon => '',
+        },
+        B_ITEM_CANCELLED => {
+            prev_actions => [ 'B_ITEM_REQUESTED' ],
+            id             => 'B_ITEM_CANCELLED',
+            name           => 'Item request cancelled by requestor',
+            ui_method_name => 'Item request cancelled by requestor',
+            method         => '',
+            next_actions   => [ 'COMP' ],
+            ui_method_icon => '',
+        },
+        B_ITEM_CANCELLED_BY_US => {
+            prev_actions => [ 'B_ITEM_REQUESTED' ],
+            id             => 'B_ITEM_CANCELLED_BY_US',
+            name           => 'Item request cancelled',
+            ui_method_name => 'Cancel request',
+            method         => 'cancel_request_by_us',
+            next_actions   => [ 'COMP' ],
+            ui_method_icon => 'fa-times',
+        },
+        B_ITEM_SHIPPED => {
+            prev_actions => [ 'B_ITEM_REQUESTED' ],
+            id             => 'B_ITEM_SHIPPED',
+            name           => 'Item shipped by owning site',
+            ui_method_name => '',
+            method         => '',
+            next_actions   => [ 'B_ITEM_RECEIVED' ],
+            ui_method_icon => '',
+        },
+        B_ITEM_RECEIVED => {
+            prev_actions => [ 'B_ITEM_SHIPPED' ],
+            id             => 'B_ITEM_RECEIVED',
+            name           => 'Item received',
+            ui_method_name => 'Receive item',
+            method         => 'item_received',
+            next_actions   => [ 'B_ITEM_IN_TRANSIT' ],
             ui_method_icon => 'fa-inbox',
         },
+        B_ITEM_IN_TRANSIT => {
+            prev_actions => [ 'B_ITEM_RECEIVED' ],
+            id             => 'B_ITEM_IN_TRANSIT',
+            name           => 'Item in transit to owning site',
+            ui_method_name => 'Item in transit',
+            method         => 'item_in_transit',
+            next_actions   => [ ],
+            ui_method_icon => 'fa-send-o',
+        },
+        B_ITEM_CHECKED_IN => {
+            prev_actions => [ 'B_ITEM_IN_TRANSIT' ],
+            id             => 'B_ITEM_CHECKED_IN',
+            name           => 'Item checked-in at owning site',
+            ui_method_name => 'Check-in',
+            method         => '',
+            next_actions   => [ 'COMP' ],
+            ui_method_icon => '',
+        }
     };
 }
+
+=head2 Owning site methods
+
+=head3 item_shipped
+
+Method triggered by the UI, to notify the requesting site the item has been
+shipped.
+
+=cut
 
 sub item_shipped {
     my ( $self, $params ) = @_;
@@ -223,6 +286,13 @@ sub item_shipped {
     };
 }
 
+=head3 item_checkin
+
+Method triggered by the UI, to notify the requesting site that the final
+item check-in has taken place.
+
+=cut
+
 sub item_checkin {
     my ( $self, $params ) = @_;
 
@@ -251,6 +321,13 @@ sub item_checkin {
         value   => '',
     };
 }
+
+=head3 cancel_request
+
+Method triggered by the UI, to cancel the request. Can only happen when the request
+is on O_ITEM_REQUESTED status.
+
+=cut
 
 sub cancel_request {
     my ( $self, $params ) = @_;
@@ -287,7 +364,81 @@ sub cancel_request {
     };
 }
 
-## Helpers
+=head2 Requesting site methods
+
+=head3 item_received
+
+Method triggered by the UI, to notify the owning site that the item has been
+received.
+
+=cut
+
+sub item_received {
+    my ( $self, $params ) = @_;
+
+    my $req = $params->{request};
+
+    my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
+    my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
+
+    # my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
+    # my $response = $innreach->post_request(
+    #     {   endpoint    => "/innreach/v2/circ/itemreceived/$trackingId/$centralCode",
+    #         centralCode => $centralCode,
+    #         data        => undef
+    #     }
+    # );
+
+    $req->status('B_ITEM_RECEIVED')->store;
+
+    return {
+        error   => 0,
+        status  => '',
+        message => '',
+        method  => 'item_received',
+        stage   => 'commit',
+        next    => 'illview',
+        value   => '',
+    };
+}
+
+=head3 item_in_transit
+
+Method triggered by the UI, to notify the owning site the item has been
+sent back to them and is in transit.
+
+=cut
+
+sub item_in_transit {
+    my ( $self, $params ) = @_;
+
+    my $req = $params->{request};
+
+    my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
+    my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
+
+    # my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
+    # my $response = $innreach->post_request(
+    #     {   endpoint    => "/innreach/v2/circ/intransit/$trackingId/$centralCode",
+    #         centralCode => $centralCode,
+    #         data        => undef
+    #     }
+    # );
+
+    $req->status('B_ITEM_IN_TRANSIT')->store;
+
+    return {
+        error   => 0,
+        status  => '',
+        message => '',
+        method  => 'item_in_transit',
+        stage   => 'commit',
+        next    => 'illview',
+        value   => '',
+    };
+}
+
+=head2 Helper methods
 
 =head3 _get_core_fields
 
