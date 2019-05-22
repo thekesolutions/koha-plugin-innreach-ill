@@ -1223,6 +1223,10 @@
               "passcode": {
                 "type": "string",
                 "description": "The patron pin/password"
+              },
+              "patronName": {
+                "type": "string",
+                "description": "Maximum 128 characters"
               }
             }
           }
@@ -1281,8 +1285,14 @@
             }
           }
         },
+        "400": {
+          "description": "Bad request"
+        },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Object not found"
         }
       },
       "x-koha-authorization": {

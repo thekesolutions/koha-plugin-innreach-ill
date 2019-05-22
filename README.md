@@ -88,6 +88,7 @@ flows and require further conversations to get implemented properly.
     client_secret: a_client_secret
     localServerCode: koha1
     mainAgency: code2
+    require_patron_auth: true
     library_to_location:
         CPL: code1
         MPL: code2

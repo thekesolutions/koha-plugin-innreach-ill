@@ -22,25 +22,16 @@ use Mojo::Base 'Mojolicious::Controller';
 use C4::Auth qw(checkpw_hash);
 use C4::Context;
 
-use Koha::DateUtils;
+use Koha::DateUtils qw(dt_from_string);
 use Koha::Patrons;
+
+use Koha::Plugin::Com::Theke::INNReach;
 
 =head1 Koha::Plugin::Com::Theke::INNReach::PatronsController
 
 A class implementing the controller methods for the patron-related endpoints
 
-=head2 Global mappings
-
-=cut
-
-our $codes_to_status = {
-    debarred     => 'The patron is restricted.',
-    debt         => 'Patron debt reached the limit.',
-    expired      => 'The patron has expired.',
-    invalid_auth => 'Patron authentication failure.',
-};
-
-=head2 Class Methods
+=head2 Class methods
 
 =head3 verifypatron
 
@@ -54,17 +45,39 @@ sub verifypatron {
     my $body               = $c->validation->param('body');
     my $patron_id          = $body->{visiblePatronId};
     my $patron_agency_code = $body->{patronAgencyCode};
-    my $passcode           = $body->{passcode};
+    my $patronName         = $body->{patronName};
+    my $passcode           = $body->{passcode} // undef;
 
-    unless ( ( defined $patron_id or defined $patron_agency_code )
-        and defined $passcode )
+    my $require_patron_auth = Koha::Plugin::Com::Theke::INNReach->new->configuration->{require_patron_auth} // 'false';
+    $require_patron_auth = ( $require_patron_auth eq 'true' ) ? 1 : 0;
+
+    if ( $require_patron_auth and !defined $passcode ) {
+        return $c->render(
+            status  => 403,
+            openapi => {
+                status => 'error',
+                reason => 'Patron authentication required, passcode not supplied',
+                errors => [],
+            }
+        );
+    }
+
+    unless ( defined $patron_id and
+             defined $patron_agency_code and
+             defined $patronName )
     {
+        # All fields are mandatory
+        my @errors;
+        push @errors, 'Missing visiblePatronId'  unless $patron_id;
+        push @errors, 'Missing patronAgencyCode' unless $patron_agency_code;
+        push @errors, 'Missing patronName'       unless $patronName;
+
         return $c->render(
             status  => 400,
             openapi => {
                 status => 'error',
                 reason => 'Invalid parameters',
-                errors => [],
+                errors => \@errors,
             }
         );
     }
@@ -85,7 +98,12 @@ sub verifypatron {
         );
     }
 
-    my $pass_valid          = ( checkpw_hash( $passcode, $patron->password ) );
+    my $pass_valid = 1;
+
+    if ( $require_patron_auth ) {
+        $pass_valid = ( checkpw_hash( $passcode, $patron->password ) );
+    }
+
     my $expiration_date     = dt_from_string( $patron->dateexpiry );
     my $agency_code         = $patron->branchcode;                     # TODO: map to central code
     my $central_patron_type = 123; #$patron->categorycode;             # TODO: map to central type
@@ -105,22 +123,20 @@ sub verifypatron {
         nonlocalLoans     => $non_local_loans,
     };
 
-    my @status;
     my @errors;
-    #push @errors;
 
-    push @status, 'invalid_auth' unless $pass_valid;
-    push @status, 'debarred'     if $patron->is_debarred;
-    push @status, 'expired'      if $patron->is_expired;
-    push @status, 'debt'         if $fines_amount > $max_fees;
+    push @errors, 'Patron authentication failure.' unless $pass_valid;
+    push @errors, 'The patron is restricted.'      if $patron->is_debarred;
+    push @errors, 'The patron has expired.'        if $patron->is_expired;
+    push @errors, 'Patron debt reached the limit.' if $fines_amount > $max_fees;
 
     my $THE_status = 'ok';
     my $THE_reason = '';
 
-    if ( scalar @status > 0 ) {
+    if ( scalar @errors > 0 ) {
         # There's something preventing circ, pick the first reason
-        $THE_status = $status[0];
-        $THE_reason = $codes_to_status->{$THE_status};
+        $THE_status = 'error';
+        $THE_reason = $errors[0];
     }
 
     return $c->render(
