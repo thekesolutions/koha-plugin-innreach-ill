@@ -32,8 +32,7 @@ our $metadata = {
     minimum_version => '18.05.00.000',
     maximum_version => undef,
     version         => $VERSION,
-    description     => 'This plugin implements API endpoints required'
-                     . 'for the integration of INNReach with Koha.'
+    description     => 'INN-Reach ILL integration module.'
 };
 
 sub new {
