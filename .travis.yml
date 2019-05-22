@@ -10,7 +10,7 @@ install:
 
 before_script:
   - npm install -g gulp-cli
-  - npm install jsonfile
+  - npm install
 
 script:
   - bash deploy.sh
