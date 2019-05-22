@@ -59,7 +59,14 @@ sub verifypatron {
     unless ( ( defined $patron_id or defined $patron_agency_code )
         and defined $passcode )
     {
-        return $c->render( status => 400, openapi => { error => 'Invalid parameters' } );
+        return $c->render(
+            status  => 400,
+            openapi => {
+                status => 'error',
+                reason => 'Invalid parameters',
+                errors => [],
+            }
+        );
     }
 
     my $patron;
@@ -68,7 +75,14 @@ sub verifypatron {
     }
 
     unless ($patron) {
-        return $c->render( status => 404, openapi => { error => 'Object not found.' } );
+        return $c->render(
+            status  => 404,
+            openapi => {
+                status => 'error',
+                reason => 'Patron not found',
+                errors => []
+            }
+        );
     }
 
     my $pass_valid          = ( checkpw_hash( $passcode, $patron->password ) );
