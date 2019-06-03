@@ -6,6 +6,8 @@
 *.o
 *.pm.tdy
 *.bs
+# Node.js
+node_modules/
 
 # Devel::Cover
 cover_db/
