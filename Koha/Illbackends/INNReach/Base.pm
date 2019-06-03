@@ -440,6 +440,22 @@ sub item_in_transit {
 
 =head2 Helper methods
 
+=head3 create
+
+=cut
+
+sub create {
+    return {
+        error   => 0,
+        status  => '',
+        message => '',
+        method  => 'create',
+        stage   => '',
+        next    => 'illview',
+        value   => '',
+    };
+}
+
 =head3 _get_core_fields
 
 Return a hashref of core fields
