@@ -151,7 +151,7 @@ sub contribute_bib {
         );
         warn p( $response )
             if $response->is_error or $ENV{DEBUG};
-        warn p( encode_json($data) )
+        warn p( $data )
             if $response->is_error or $ENV{DEBUG};
     }
 }

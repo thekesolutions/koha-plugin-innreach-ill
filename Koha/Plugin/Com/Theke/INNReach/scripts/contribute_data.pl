@@ -16,12 +16,14 @@ my $all           = 0;
 my $noout         = 0;
 my $exclude_items = 0;
 my $locations     = 0;
+my $delete_location;
 
 my $result = GetOptions(
     'biblio_id=s'   => \$biblio_id,
     'all'           => \$all,
     'exclude_items' => \$exclude_items,
     'locations'     => \$locations,
+    'delete_location=s' => \$delete_location,
     'noout'         => \$noout,
 );
 
@@ -71,6 +73,10 @@ elsif ($all) {
 
 if ( $locations ) {
     $contribution->upload_locations_list();
+}
+
+if ( $delete_location ) {
+    $contribution->delete_single_location( $delete_location );
 }
 
 1;
