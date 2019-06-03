@@ -15,14 +15,14 @@ my $biblio_id;
 my $all           = 0;
 my $noout         = 0;
 my $exclude_items = 0;
-my $locations     = 0;
+my $overwrite_locations     = 0;
 my $delete_location;
 
 my $result = GetOptions(
     'biblio_id=s'   => \$biblio_id,
     'all'           => \$all,
     'exclude_items' => \$exclude_items,
-    'locations'     => \$locations,
+    'overwrite_locations'     => \$overwrite_locations,
     'delete_location=s' => \$delete_location,
     'noout'         => \$noout,
 );
@@ -45,7 +45,7 @@ sub print_usage {
     --biblio_id            Only contribute the specified biblio_id
     --all                  Contribute all records
     --exclude_items        Exclude items from this batch update
-    --locations            Update Central server's locations
+    --overwrite_locations  Update Central server's locations
     --delete_location id   Sends a request to remove library id from the locations list
     --noout                No output
 
@@ -72,7 +72,14 @@ elsif ($all) {
     }
 }
 
-if ( $locations ) {
+if ( $overwrite_locations ) {
+    my $response = $contribution->get_locations_list({ centralServer => 'd2ir' });
+
+    # delete current locations
+    foreach my $location ( @{ $response } ) {
+        $contribution->delete_single_location({ library_id => $location->{locationKey} });
+    }
+    # upload all new locations
     $contribution->upload_locations_list();
 }
 

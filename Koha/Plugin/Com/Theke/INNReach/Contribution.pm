@@ -632,7 +632,7 @@ sub get_locations_list {
             if $response->is_error or $ENV{DEBUG};
     }
     catch {
-        die "Problem fetching the item types list";
+        die "Problem fetching the locations list";
     };
 
     return decode_json(encode('UTF-8',$response->content))->{locationList};
