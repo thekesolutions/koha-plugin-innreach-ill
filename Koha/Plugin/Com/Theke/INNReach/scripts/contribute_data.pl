@@ -42,11 +42,12 @@ sub print_usage {
 
     C'mon! Valid options are
 
-    --biblio_id     Only contribute the specified biblio_id
-    --all           Contribute all records
-    --exclude_items Exclude items from this batch update
-    --locations     Update Central server's locations
-    --noout         No output
+    --biblio_id            Only contribute the specified biblio_id
+    --all                  Contribute all records
+    --exclude_items        Exclude items from this batch update
+    --locations            Update Central server's locations
+    --delete_location id   Sends a request to remove library id from the locations list
+    --noout                No output
 
 Note: --biblio_id and --all are mutually exclussive
 
@@ -76,7 +77,7 @@ if ( $locations ) {
 }
 
 if ( $delete_location ) {
-    $contribution->delete_single_location( $delete_location );
+    $contribution->delete_single_location({ library_id => $delete_location });
 }
 
 1;
