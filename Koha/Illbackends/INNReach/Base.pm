@@ -262,16 +262,16 @@ sub item_shipped {
     my $itemId      = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemId' })->value;
     my $item = Koha::Items->find( $itemId );
 
-    # my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
-    # my $response = $innreach->post_request(
-    #     {   endpoint    => "/innreach/v2/circ/itemshipped/$trackingId/$centralCode",
-    #         centralCode => $centralCode,
-    #         data        => {
-    #             callNumber  => $item->itemcallnumber // q{},
-    #             itemBarcode => $item->barcode // q{},
-    #         }
-    #     }
-    # );
+    my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
+    my $response = $innreach->post_request(
+        {   endpoint    => "/innreach/v2/circ/itemshipped/$trackingId/$centralCode",
+            centralCode => $centralCode,
+            data        => {
+                callNumber  => $item->itemcallnumber // q{},
+                itemBarcode => $item->barcode // q{},
+            }
+        }
+    );
 
     $req->status('O_ITEM_SHIPPED')->store;
 
@@ -301,13 +301,13 @@ sub item_checkin {
     my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId' })->value;
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
 
-    # my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
-    # my $response = $innreach->post_request(
-    #     {   endpoint    => "/innreach/v2/circ/finalcheckin/$trackingId/$centralCode",
-    #         centralCode => $centralCode,
-    #         data        => undef
-    #     }
-    # );
+    my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
+    my $response = $innreach->post_request(
+        {   endpoint    => "/innreach/v2/circ/finalcheckin/$trackingId/$centralCode",
+            centralCode => $centralCode,
+            data        => undef
+        }
+    );
 
     $req->status('O_ITEM_CHECKED_IN')->store;
 
@@ -338,18 +338,18 @@ sub cancel_request {
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
     my $patronName  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'patronName'  })->value;
 
-    # my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
-    # my $response = $innreach->post_request(
-    #     {   endpoint    => "/innreach/v2/circ/owningsitecancel/$trackingId/$centralCode",
-    #         centralCode => $centralCode,
-    #         data        => {
-    #             localBibId => undef,
-    #             reason     => '',
-    #             reasonCode => '7',
-    #             patronName => $patronName
-    #         }
-    #     }
-    # );
+    my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
+    my $response = $innreach->post_request(
+        {   endpoint    => "/innreach/v2/circ/owningsitecancel/$trackingId/$centralCode",
+            centralCode => $centralCode,
+            data        => {
+                localBibId => undef,
+                reason     => '',
+                reasonCode => '7',
+                patronName => $patronName
+            }
+        }
+    );
 
     $req->status('O_ITEM_CANCELLED_BY_US')->store;
 
@@ -381,13 +381,13 @@ sub item_received {
     my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
 
-    # my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
-    # my $response = $innreach->post_request(
-    #     {   endpoint    => "/innreach/v2/circ/itemreceived/$trackingId/$centralCode",
-    #         centralCode => $centralCode,
-    #         data        => undef
-    #     }
-    # );
+    my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
+    my $response = $innreach->post_request(
+        {   endpoint    => "/innreach/v2/circ/itemreceived/$trackingId/$centralCode",
+            centralCode => $centralCode,
+            data        => undef
+        }
+    );
 
     $req->status('B_ITEM_RECEIVED')->store;
 
@@ -417,13 +417,13 @@ sub item_in_transit {
     my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
 
-    # my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
-    # my $response = $innreach->post_request(
-    #     {   endpoint    => "/innreach/v2/circ/intransit/$trackingId/$centralCode",
-    #         centralCode => $centralCode,
-    #         data        => undef
-    #     }
-    # );
+    my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
+    my $response = $innreach->post_request(
+        {   endpoint    => "/innreach/v2/circ/intransit/$trackingId/$centralCode",
+            centralCode => $centralCode,
+            data        => undef
+        }
+    );
 
     $req->status('B_ITEM_IN_TRANSIT')->store;
 
