@@ -77,7 +77,7 @@ sub getbibrecord {
                 status => 'ok',
                 reason => '',
                 errors => [],
-                bibinfo => {
+                bibInfo => {
                     marc21BibFormat => 'ISO2709', # Only supported value
                     marc21BibData   => $encoded_record,
                     titleHoldCount  => $biblio->holds->count,
