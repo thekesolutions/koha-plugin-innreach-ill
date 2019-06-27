@@ -638,6 +638,41 @@ sub get_locations_list {
     return decode_json(encode('UTF-8',$response->content))->{locationList};
 }
 
+=head3 get_central_patron_types_list
+
+    my $res = $contribution->get_central_patron_types_list(
+        { centralServer => $centralServer }
+    );
+
+Sends a a request for defined locations to a central server.
+
+GET /innreach/v2/circ/patrontypes
+
+=cut
+
+sub get_central_patron_types_list {
+    my ($self, $args) = @_;
+
+    my $response;
+
+    try {
+
+        my $centralServer = $args->{centralServer};
+        $response = $self->get_request(
+            {   endpoint    => '/innreach/v2/circ/patrontypes',
+                centralCode => $centralServer
+            }
+        );
+        warn p( $response )
+            if $response->is_error or $ENV{DEBUG};
+    }
+    catch {
+        die "Problem fetching the central patron types list";
+    };
+
+    return decode_json(encode('UTF-8',$response->content))->{patronTypeList};
+}
+
 =head2 Internal methods
 
 =head3 token
