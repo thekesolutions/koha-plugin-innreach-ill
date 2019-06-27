@@ -84,34 +84,98 @@ sub configuration {
     return $configuration;
 }
 
-# sub install {
-#     my ( $self, $args ) = @_;
+sub install {
+    my ( $self, $args ) = @_;
 
-#     my $central_servers = $self->get_qualified_table_name('central_servers');
+    my $task_queue = $self->get_qualified_table_name('task_queue');
 
-#     return C4::Context->dbh->do(qq{
-#         CREATE TABLE  $central_servers (
-#             `code` VARCHAR(5) NOT NULL DEFAULT '',
-#             `description` VARCHAR(191) DEFAULT '',
-#             PRIMARY KEY (`code`)
-#         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-#     });
+    return C4::Context->dbh->do(qq{
+        CREATE TABLE $task_queue (
+            `id`           INT(11) NOT NULL AUTO_INCREMENT,
+            `object_type`  ENUM('biblio', 'item') NOT NULL DEFAULT 'biblio',
+            `object_id`    INT(11) NOT NULL DEFAULT 0,
+            `action`       ENUM('create', 'modify', 'delete') NOT NULL DEFAULT 'modify',
+            `status`       ENUM('queued', 'retry', 'success', 'error') NOT NULL DEFAULT 'queued',
+            `attempts`     INT(11) NOT NULL DEFAULT 0,
+            `timestamp`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `status` (`status`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    }) unless $self->_table_exists( $task_queue );
+}
 
-#     my $library_to_central = $self->get_qualified_table_name('library_to_central');
 
-#     return C4::Context->dbh->do(qq{
-#         CREATE TABLE  $library_to_central (
-#             `library_id` VARCHAR(10) DEFAULT NULL,
-#             `code` VARCHAR(5) NOT NULL DEFAULT '',
-#             `description` VARCHAR(191),
-#             PRIMARY KEY (`code`),
-#             CONSTRAINT `branches_innreach_ibfk_1`
-#                 FOREIGN KEY (`library_id`)
-#                 REFERENCES `branches` (`branchcode`)
-#                 ON DELETE CASCADE ON UPDATE CASCADE
-#         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-#     });
-# }
+sub upgrade {
+    my ( $self, $args ) = @_;
+
+    my $database_version = $self->retrieve_data('__INSTALLED_VERSION__') || 0;
+
+    if ( $self->_version_compare( $database_version, "1.1.0" ) == -1 ) {
+
+        my $task_queue = $self->get_qualified_table_name('task_queue');
+
+        C4::Context->dbh->do(qq{
+            CREATE TABLE $task_queue (
+                `id`           INT(11) NOT NULL AUTO_INCREMENT,
+                `object_type`  ENUM('biblio', 'item') NOT NULL DEFAULT 'biblio',
+                `object_id`    INT(11) NOT NULL DEFAULT 0,
+                `action`       ENUM('create', 'modify', 'delete') NOT NULL DEFAULT 'modify',
+                `status`       ENUM('queued', 'retry', 'success', 'error') NOT NULL DEFAULT 'queued',
+                `attempts`     INT(11) NOT NULL DEFAULT 0,
+                `timestamp`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                KEY `status` (`status`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        }) unless $self->_table_exists( $task_queue );
+
+        $self->store_data({ '__INSTALLED_VERSION__' => "1.1.0" });
+    }
+
+    return 1;
+}
+
+sub _table_exists {
+    my $table = shift;
+    eval {
+        C4::Context->dbh->{PrintError} = 0;
+        C4::Context->dbh->{RaiseError} = 1;
+        C4::Context->dbh->do(qq{SELECT * FROM $table WHERE 1 = 0 });
+    };
+    return 1 unless $@;
+    return 0;
+}
+
+sub after_biblio_action {
+    my ( $self, $args ) = @_;
+
+    my $action    = $args->{action};
+    my $biblio_id = $args->{biblio_id};
+
+    my $task_queue = $self->get_qualified_table_name('task_queue');
+
+    return C4::Context->dbh->do(qq{
+        INSERT INTO $task_queue
+            ( object_type, object_id, action, status, attempts )
+        VALUES
+            ( 'biblio', $biblio_id, $action, 'queued', 0 )
+    });
+}
+
+sub after_item_action {
+    my ( $self, $args ) = @_;
+
+    my $action  = $args->{action};
+    my $item_id = $args->{item_id};
+
+    my $task_queue = $self->get_qualified_table_name('task_queue');
+
+    return C4::Context->dbh->do(qq{
+        INSERT INTO $task_queue
+            ( object_type, object_id, action, status, attempts )
+        VALUES
+            ( 'item', $item_id, $action, 'queued', 0 )
+    });
+}
 
 sub api_routes {
     my ( $self, $args ) = @_;
