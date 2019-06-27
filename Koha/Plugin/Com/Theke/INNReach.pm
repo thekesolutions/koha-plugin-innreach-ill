@@ -29,7 +29,7 @@ our $metadata = {
     author          => 'Theke Solutions',
     date_authored   => '2018-09-10',
     date_updated    => "2019-02-20",
-    minimum_version => '18.05.00.000',
+    minimum_version => '18.05',
     maximum_version => undef,
     version         => $VERSION,
     description     => 'INN-Reach ILL integration module.'
@@ -114,7 +114,7 @@ sub upgrade {
 
     my $database_version = $self->retrieve_data('__INSTALLED_VERSION__') || 0;
 
-    if ( $self->_version_compare( $database_version, "1.0.2" ) == -1 ) {
+    if ( Koha::Plugins::Base::_version_compare( $database_version, "1.0.2" ) == -1 ) {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
