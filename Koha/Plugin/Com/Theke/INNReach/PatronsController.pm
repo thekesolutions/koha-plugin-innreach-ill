@@ -120,7 +120,7 @@ sub verifypatron {
     my $max_fees     = C4::Context->preference('noissuescharge') // 0;
 
     my $patron_info = {
-        patronID          => $patron->borrowernumber,
+        patronId          => $patron->borrowernumber,
         patronExpireDate  => $expiration_date->epoch(),
         patronAgencyCode  => $agency_code,
         centralPatronType => $central_patron_type,
