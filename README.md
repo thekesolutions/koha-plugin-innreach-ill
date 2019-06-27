@@ -101,7 +101,19 @@ flows and require further conversations to get implemented properly.
         MX: 201
         REF: 202
         VM: 201
+    local_to_central_patron_type:
+        AP: 200
+        CH: 200
+        DR: 200
+        DR2: 200
+        ILL: 202
+        LIBSTAFF: 201
+        NR: 200
+        SR: 202
 ```
+
+*Note*: Central patron types and central item types can be fetched using the defined methods
+using the Contribution class. 
 
 ## Install
 Download the latest _.kpz_ file from the [releases](https://github.com/thekesolutions/koha-plugin-innreach/releases) page.
