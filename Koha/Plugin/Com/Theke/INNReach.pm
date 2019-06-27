@@ -89,31 +89,7 @@ sub install {
 
     my $task_queue = $self->get_qualified_table_name('task_queue');
 
-    return C4::Context->dbh->do(qq{
-        CREATE TABLE $task_queue (
-            `id`           INT(11) NOT NULL AUTO_INCREMENT,
-            `object_type`  ENUM('biblio', 'item') NOT NULL DEFAULT 'biblio',
-            `object_id`    INT(11) NOT NULL DEFAULT 0,
-            `action`       ENUM('create', 'modify', 'delete') NOT NULL DEFAULT 'modify',
-            `status`       ENUM('queued', 'retry', 'success', 'error') NOT NULL DEFAULT 'queued',
-            `attempts`     INT(11) NOT NULL DEFAULT 0,
-            `timestamp`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (`id`),
-            KEY `status` (`status`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    }) unless $self->_table_exists( $task_queue );
-}
-
-
-sub upgrade {
-    my ( $self, $args ) = @_;
-
-    my $database_version = $self->retrieve_data('__INSTALLED_VERSION__') || 0;
-
-    if ( $self->_version_compare( $database_version, "1.1.0" ) == -1 ) {
-
-        my $task_queue = $self->get_qualified_table_name('task_queue');
-
+    unless ( $self->_table_exists( $task_queue ) ) {
         C4::Context->dbh->do(qq{
             CREATE TABLE $task_queue (
                 `id`           INT(11) NOT NULL AUTO_INCREMENT,
@@ -126,7 +102,37 @@ sub upgrade {
                 PRIMARY KEY (`id`),
                 KEY `status` (`status`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        }) unless $self->_table_exists( $task_queue );
+        });
+    }
+
+    return 1;
+}
+
+
+sub upgrade {
+    my ( $self, $args ) = @_;
+
+    my $database_version = $self->retrieve_data('__INSTALLED_VERSION__') || 0;
+
+    if ( $self->_version_compare( $database_version, "1.0.2" ) == -1 ) {
+
+        my $task_queue = $self->get_qualified_table_name('task_queue');
+
+        unless ($self->_table_exists( $task_queue )) {
+            C4::Context->dbh->do(qq{
+                CREATE TABLE $task_queue (
+                    `id`           INT(11) NOT NULL AUTO_INCREMENT,
+                    `object_type`  ENUM('biblio', 'item') NOT NULL DEFAULT 'biblio',
+                    `object_id`    INT(11) NOT NULL DEFAULT 0,
+                    `action`       ENUM('create', 'modify', 'delete') NOT NULL DEFAULT 'modify',
+                    `status`       ENUM('queued', 'retry', 'success', 'error') NOT NULL DEFAULT 'queued',
+                    `attempts`     INT(11) NOT NULL DEFAULT 0,
+                    `timestamp`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    KEY `status` (`status`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            });
+        }
 
         $self->store_data({ '__INSTALLED_VERSION__' => "1.1.0" });
     }
