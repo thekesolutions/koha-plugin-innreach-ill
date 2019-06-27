@@ -48,7 +48,8 @@ sub verifypatron {
     my $patronName         = $body->{patronName};
     my $passcode           = $body->{passcode} // undef;
 
-    my $require_patron_auth = Koha::Plugin::Com::Theke::INNReach->new->configuration->{require_patron_auth} // 'false';
+    my $configuration = Koha::Plugin::Com::Theke::INNReach->new->configuration;
+    my $require_patron_auth = $configuration->{require_patron_auth} // 'false';
     $require_patron_auth = ( $require_patron_auth eq 'true' ) ? 1 : 0;
 
     if ( $require_patron_auth and !defined $passcode ) {
@@ -105,8 +106,12 @@ sub verifypatron {
     }
 
     my $expiration_date     = dt_from_string( $patron->dateexpiry );
-    my $agency_code         = $patron->branchcode;                     # TODO: map to central code
-    my $central_patron_type = 123; #$patron->categorycode;             # TODO: map to central type
+    my $agency_code         = (exists $configuration->{library_to_location}->{$patron->branchcode})
+                                ? $configuration->{library_to_location}->{$patron->branchcode}
+                                : $configuration->{mainAgency};
+    my $central_patron_type = (exists $configuration->{local_to_central_patron_type}->{$patron->categorycode})
+                                ? $configuration->{local_to_central_patron_type}->{$patron->categorycode}
+                                : 200;
     my $local_loans         = $patron->checkouts->count;
     my $non_local_loans     = 0;    # TODO: retrieve from INNReach table
 
