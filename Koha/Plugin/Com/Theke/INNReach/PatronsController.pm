@@ -119,6 +119,23 @@ sub verifypatron {
     my $fines_amount = ($patron->account->balance > 0) ? $patron->account->balance : 0;
     my $max_fees     = C4::Context->preference('noissuescharge') // 0;
 
+    my $surname   = $patron->surname;
+    my $firstname = $patron->firstname;
+
+    my $THE_name = "";
+    if ( defined $surname and $surname ne '' ) {
+        $THE_name = $surname;
+        if ( defined $firstname and $firstname ne '' ) {
+            $THE_name .= ", $firstname";
+        }
+    }
+    elsif ( defined $firstname and $firstname ne '' ) {
+        $THE_name = $firstname;
+    }
+    # else { # no surname and no firstname
+    #    $THE_name = "";
+    #}
+
     my $patron_info = {
         patronId          => $patron->borrowernumber,
         patronExpireDate  => $expiration_date->epoch(),
@@ -126,6 +143,7 @@ sub verifypatron {
         centralPatronType => $central_patron_type,
         localLoans        => $local_loans,
         nonlocalLoans     => $non_local_loans,
+        patronName        => $THE_name,
     };
 
     my @errors;
