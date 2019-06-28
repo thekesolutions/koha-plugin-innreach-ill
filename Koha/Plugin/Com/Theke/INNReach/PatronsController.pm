@@ -137,10 +137,10 @@ sub verifypatron {
     #}
 
     my $patron_info = {
-        patronId          => $patron->borrowernumber,
+        patronId          => $patron->borrowernumber . "",
         patronExpireDate  => $expiration_date->epoch(),
         patronAgencyCode  => $agency_code,
-        centralPatronType => $central_patron_type,
+        centralPatronType => $central_patron_type + 0,
         localLoans        => $local_loans,
         nonlocalLoans     => $non_local_loans,
         patronName        => $THE_name,
