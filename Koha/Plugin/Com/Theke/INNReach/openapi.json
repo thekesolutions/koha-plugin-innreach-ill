@@ -1256,7 +1256,7 @@
               "patronInfo": {
                 "type": "object",
                 "properties": {
-                  "patronID": {
+                  "patronId": {
                     "type": "string",
                     "description": "Permanent unique patron ID"
                   },
@@ -1269,8 +1269,8 @@
                     "description": "0-255"
                   },
                   "patronExpireDate": {
-                    "type": "string",
-                    "description": "32-bit UNIX timestamp"
+                    "type": "integer",
+                    "description": "Epoch UNIX time stamp"
                   },
                   "localLoans": {
                     "type": "integer",
@@ -1279,6 +1279,10 @@
                   "nonlocalLoans": {
                     "type": "integer",
                     "description": "Number of non-local (INN-Reach, ILL, etc.) loans"
+                  },
+                  "patronName": {
+                    "type": "string",
+                    "decription": "Maximum 128 characters"
                   }
                 }
               }
