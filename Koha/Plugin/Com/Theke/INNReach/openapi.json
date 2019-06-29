@@ -1282,7 +1282,7 @@
                   },
                   "patronName": {
                     "type": "string",
-                    "decription": "Maximum 128 characters"
+                    "description": "Maximum 128 characters"
                   }
                 }
               }
