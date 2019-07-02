@@ -142,7 +142,7 @@ sub verifypatron {
         patronAgencyCode  => $agency_code,
         centralPatronType => $central_patron_type + 0,
         localLoans        => $local_loans,
-        nonlocalLoans     => $non_local_loans,
+        nonLocalLoans     => $non_local_loans,
         patronName        => $THE_name,
     };
 

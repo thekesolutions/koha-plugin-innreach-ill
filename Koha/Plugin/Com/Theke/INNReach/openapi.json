@@ -1276,7 +1276,7 @@
                     "type": "integer",
                     "description": "Number of local (within library) loans"
                   },
-                  "nonlocalLoans": {
+                  "nonLocalLoans": {
                     "type": "integer",
                     "description": "Number of non-local (INN-Reach, ILL, etc.) loans"
                   },
