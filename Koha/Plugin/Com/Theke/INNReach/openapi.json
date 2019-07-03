@@ -1116,20 +1116,6 @@
       ],
       "parameters": [
         {
-          "name": "trackingId",
-          "in": "path",
-          "description": "ID used for transaction tracking",
-          "required": true,
-          "type": "string"
-        },
-        {
-          "name": "centralCode",
-          "in": "path",
-          "description": "Unique code that identifies the central server. 3-5 character lowercase alphanumeric",
-          "required": true,
-          "type": "string"
-        },
-        {
           "description": "Patron hold data",
           "in": "body",
           "name": "body",
