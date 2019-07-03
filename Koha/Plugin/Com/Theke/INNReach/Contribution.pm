@@ -704,7 +704,7 @@ sub post_request {
             'X-To-Code'     => $args->{centralCode},
             'Accept'        => "application/json",
             'Content-Type'  => "application/json",
-            'Content'       => encode_json( $args->{data} )
+            'Content'       => ( exists $args->{data} ) ? encode_json( $args->{data} ) : undef
         );
 
     warn p( $request ) if $ENV{DEBUG};

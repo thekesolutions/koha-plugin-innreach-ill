@@ -305,7 +305,6 @@ sub item_checkin {
     my $response = $innreach->post_request(
         {   endpoint    => "/innreach/v2/circ/finalcheckin/$trackingId/$centralCode",
             centralCode => $centralCode,
-            data        => undef
         }
     );
 
@@ -385,7 +384,6 @@ sub item_received {
     my $response = $innreach->post_request(
         {   endpoint    => "/innreach/v2/circ/itemreceived/$trackingId/$centralCode",
             centralCode => $centralCode,
-            data        => undef
         }
     );
 
@@ -421,7 +419,6 @@ sub item_in_transit {
     my $response = $innreach->post_request(
         {   endpoint    => "/innreach/v2/circ/intransit/$trackingId/$centralCode",
             centralCode => $centralCode,
-            data        => undef
         }
     );
 
