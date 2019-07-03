@@ -1106,7 +1106,7 @@
       }
     }
   },
-  "/v2/circ/patronhold": {
+  "/v2/circ/patronhold/{trackingId}/{centralCode}": {
     "post": {
       "x-mojo-to": "Com::Theke::INNReach::CircController#patronhold",
       "operationId": "patronhold",
