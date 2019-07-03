@@ -374,9 +374,11 @@ sub patronhold {
 
     return try {
 
+        my $patron = Koha::Patrons->find( $user_id );
+
         # Create the request
         my $req = Koha::Illrequest->new({
-            branchcode     => 'ILL',  # FIXME
+            branchcode     => $patron->branchcode,
             borrowernumber => $user_id,
             biblio_id      => undef,
             updated        => dt_from_string(),
