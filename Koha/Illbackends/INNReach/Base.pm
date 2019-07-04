@@ -183,11 +183,11 @@ sub status_graph {
             name           => 'Item requested to owning site',
             ui_method_name => 'Item requested to owning site',
             method         => '',
-            next_actions   => [ 'B_ITEM_SHIPPED', 'B_ITEM_CANCELLED_BY_US' ],
+            next_actions   => [ 'B_ITEM_CANCELLED_BY_US' ],
             ui_method_icon => '',
         },
         B_ITEM_CANCELLED => {
-            prev_actions => [ 'B_ITEM_REQUESTED' ],
+            prev_actions => [ ],
             id             => 'B_ITEM_CANCELLED',
             name           => 'Item request cancelled by requestor',
             ui_method_name => 'Item request cancelled by requestor',
@@ -205,7 +205,7 @@ sub status_graph {
             ui_method_icon => 'fa-times',
         },
         B_ITEM_SHIPPED => {
-            prev_actions => [ 'B_ITEM_REQUESTED' ],
+            prev_actions => [ ],
             id             => 'B_ITEM_SHIPPED',
             name           => 'Item shipped by owning site',
             ui_method_name => '',
@@ -429,6 +429,41 @@ sub item_in_transit {
         status  => '',
         message => '',
         method  => 'item_in_transit',
+        stage   => 'commit',
+        next    => 'illview',
+        value   => '',
+    };
+}
+
+=head3 cancel_request_by_us
+
+Method triggered by the UI, to cancel the request. Can only happen when the request
+is on B_ITEM_REQUESTED status.
+
+=cut
+
+sub cancel_request_by_us {
+    my ( $self, $params ) = @_;
+
+    my $req = $params->{request};
+
+    my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
+    my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
+
+    my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
+    my $response = $innreach->post_request(
+        {   endpoint    => "/innreach/v2/circ/cancelitemhold/$trackingId/$centralCode",
+            centralCode => $centralCode,
+        }
+    );
+
+    $req->status('B_ITEM_CANCELLED_BY_US')->store;
+
+    return {
+        error   => 0,
+        status  => '',
+        message => '',
+        method  => 'cancel_request_by_us',
         stage   => 'commit',
         next    => 'illview',
         value   => '',

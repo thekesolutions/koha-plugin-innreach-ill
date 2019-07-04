@@ -25,7 +25,7 @@ use YAML;
 our $VERSION = "{VERSION}";
 
 our $metadata = {
-    name            => 'INNReach connector plugin for Koha',
+    name            => 'INN-Reach connector plugin for Koha',
     author          => 'Theke Solutions',
     date_authored   => '2018-09-10',
     date_updated    => "2019-02-20",
