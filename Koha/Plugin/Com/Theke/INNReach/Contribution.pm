@@ -324,6 +324,45 @@ sub decontribute_bib {
     }
 }
 
+=head3 decontribute_item
+
+    my $res = $contribution->decontribute_item(
+        {   itemId => $itemId,
+            [ centralServer => $centralServer ]
+        }
+    );
+
+Makes an API request to INN-Reach central server(s) to decontribute the specified item.
+
+DELETE /innreach/v2/contribution/item/<itemId>
+
+=cut
+
+sub decontribute_item {
+    my ($self, $args) = @_;
+
+    my $itemId = $args->{itemId};
+    die "itemId is mandatory" unless $itemId;
+
+    my @central_servers;
+    if ( $args->{centralServer} ) {
+        push @central_servers, $args->{centralServer};
+    }
+    else {
+        @central_servers = @{ $self->config->{centralServers} };
+    }
+
+    for my $central_server (@central_servers) {
+        my $response = $self->delete_request(
+            {   endpoint    => '/innreach/v2/contribution/item/' . $itemId,
+                centralCode => $central_server
+            }
+        );
+        warn p( $response )
+            if $response->is_error or $ENV{DEBUG};
+    }
+}
+
 =head3 update_bib_status
 
     my $res = $contribution->update_bib_status({ bibId => $bibId, [ centralServer => $centralServer ] });
