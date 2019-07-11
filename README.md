@@ -89,6 +89,7 @@ flows and require further conversations to get implemented properly.
     localServerCode: koha1
     mainAgency: code2
     require_patron_auth: true
+    local_patron_id: 93
     library_to_location:
         CPL: code1
         MPL: code2
@@ -111,6 +112,10 @@ flows and require further conversations to get implemented properly.
         NR: 200
         SR: 202
 ```
+
+**local_patron_id**: The borrowernumber for the patron INN-Reach is using through the API. It should be picked
+from the stashed user on the API call, but it was not working on 18.11. TODO: double check status. This was patched
+on master.
 
 *Note*: Central patron types and central item types can be fetched using the defined methods
 using the Contribution class. 

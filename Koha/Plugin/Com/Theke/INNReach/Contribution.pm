@@ -142,6 +142,8 @@ sub contribute_bib {
         @central_servers = @{ $self->config->{centralServers} };
     }
 
+    my @errors;
+
     for my $central_server (@central_servers) {
         my $response = $self->post_request(
             {   endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
@@ -153,21 +155,27 @@ sub contribute_bib {
             if $response->is_error or $ENV{DEBUG};
         warn p( $data )
             if $response->is_error or $ENV{DEBUG};
+
+        unless ( $response->is_success ) {
+            push @errors, $response->status_line;
+        }
     }
+
+    return @errors if scalar @errors;
 }
 
 =head3 contribute_batch_items
 
     my $res = $contribution->contribute_batch_items(
         {   bibId => $bibId,
-            items => $items,
+            item  => $item,
             [ centralServer => $centralServer ]
         }
     );
 
 Sends item information (for adding or modifying) to the central server(s). the
-I<bibId> and I<items> params are mandatory. I<items> has to be a Koha::Items iterator
-and they all need to belong to the biblio identified by bibId.
+I<bibId> param is mandatory. I<item> is optional, and needs to be a Koha::Item
+object, belonging to the biblio identified by bibId.
 
 POST /innreach/v2/contribution/items/<bibId>
 
@@ -184,11 +192,19 @@ sub contribute_batch_items {
         die "Biblio not found ($bibId)";
     }
 
-    my $items = $biblio->items;
+    my @items;
+
+    my $THE_item = $args->{item};
+    if ( $THE_item and ref($THE_item) eq 'Koha::Item' ) {
+        push @items, $THE_item;
+    }
+    else {
+        @items = $biblio->items->as_list;
+    }
 
     my @itemInfo;
 
-    while ( my $item = $items->next ) {
+    foreach my $item ( @items ) {
         unless ( $item->biblionumber == $bibId ) {
             die "Item (" . $item->itemnumber . ") doesn't belong to bib record ($bibId)";
         }
@@ -221,6 +237,8 @@ sub contribute_batch_items {
         @central_servers = @{ $self->config->{centralServers} };
     }
 
+    my @errors;
+
     for my $central_server (@central_servers) {
         my $response = $self->post_request(
             {   endpoint    => '/innreach/v2/contribution/items/' . $bibId,
@@ -230,7 +248,13 @@ sub contribute_batch_items {
         );
         warn p( $response )
             if $response->is_error or $ENV{DEBUG};
+
+        unless ( $response->is_success ) {
+            push @errors, $response->status_line;
+        }
     }
+
+    return @errors if scalar @errors;
 }
 
 =head3 update_item_status
@@ -252,6 +276,8 @@ sub update_item_status {
         unless $itemId;
 
     my $item;
+
+    my @errors;
 
     try {
         $item = Koha::Items->find( $itemId );
@@ -278,11 +304,17 @@ sub update_item_status {
             );
             warn p( $response )
                 if $response->is_error or $ENV{DEBUG};
+
+            unless ( $response->is_success ) {
+                push @errors, $response->status_line;
+            }
         }
     }
     catch {
         die "Problem updating requested item ($itemId)";
     };
+
+    return @errors if scalar @errors;
 }
 
 =head3 decontribute_bib
@@ -313,6 +345,8 @@ sub decontribute_bib {
         @central_servers = @{ $self->config->{centralServers} };
     }
 
+    my @errors;
+
     for my $central_server (@central_servers) {
         my $response = $self->delete_request(
             {   endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
@@ -321,7 +355,13 @@ sub decontribute_bib {
         );
         warn p( $response )
             if $response->is_error or $ENV{DEBUG};
+
+        unless ( $response->is_success ) {
+            push @errors, $response->status_line;
+        }
     }
+
+    return @errors if scalar @errors;
 }
 
 =head3 decontribute_item
@@ -352,6 +392,8 @@ sub decontribute_item {
         @central_servers = @{ $self->config->{centralServers} };
     }
 
+    my @errors;
+
     for my $central_server (@central_servers) {
         my $response = $self->delete_request(
             {   endpoint    => '/innreach/v2/contribution/item/' . $itemId,
@@ -360,7 +402,13 @@ sub decontribute_item {
         );
         warn p( $response )
             if $response->is_error or $ENV{DEBUG};
+
+        unless ( $response->is_success ) {
+            push @errors, $response->status_line;
+        }
     }
+
+    return @errors if scalar @errors;
 }
 
 =head3 update_bib_status
@@ -380,6 +428,8 @@ sub update_bib_status {
     die "bibId is mandatory" unless $bibId;
 
     my ( $biblio, $metadata, $record );
+
+    my @errors;
 
     try {
         $biblio   = Koha::Biblios->find( $bibId );
@@ -405,11 +455,17 @@ sub update_bib_status {
             );
             warn p( $response )
                 if $response->is_error or $ENV{DEBUG};
+
+            unless ( $response->is_success ) {
+                push @errors, $response->status_line;
+            }
         }
     }
     catch {
         die "Problem updating requested biblio ($bibId)";
     };
+
+    return @errors if scalar @errors;
 }
 
 =head3 upload_locations_list
