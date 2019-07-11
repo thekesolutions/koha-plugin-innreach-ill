@@ -98,8 +98,8 @@ sub install {
                 `action`       ENUM('create', 'modify', 'delete') NOT NULL DEFAULT 'modify',
                 `status`       ENUM('queued', 'retry', 'success', 'error') NOT NULL DEFAULT 'queued',
                 `attempts`     INT(11) NOT NULL DEFAULT 0,
-                `timestamp`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 `last_error`   VARCHAR(191) DEFAULT NULL,
+                `timestamp`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (`id`),
                 KEY `status` (`status`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
