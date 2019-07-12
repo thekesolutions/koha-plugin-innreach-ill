@@ -99,8 +99,7 @@ The following patches need to be backported for this plugin to work:
 
 * Enable _RESTOAuth2ClientCredentials_ syspref
 * Create an _ILL_ patron category
-* Create a patron for INN-Reach
-* Add permissions to the patron
+* Create a patron for INN-Reach. Required permissions: _circulate_ and _borrowers_.
 * Create an API client_id/client_secret pair
 
 ### ILL
@@ -141,38 +140,38 @@ The plugin configuration is an HTML text area in which a _YAML_ structure is pas
 are maintained on this document.
 
 ```
-    centralServers:
-        - d2ir
-    api_base_url: https://rssandbox-api.iii.com
-    client_id: a_client_id
-    client_secret: a_client_secret
-    localServerCode: koha1
-    mainAgency: code2
-    require_patron_auth: true
-    local_patron_id: 93
-    library_to_location:
-        CPL: code1
-        MPL: code2
-    local_to_central_itype:
-        BK: 200
-        CF: 201
-        CR: 200
-        MP: 200
-        MU: 201
-        MX: 201
-        REF: 202
-        VM: 201
-    local_to_central_patron_type:
-        AP: 200
-        CH: 200
-        DR: 200
-        DR2: 200
-        ILL: 202
-        LIBSTAFF: 201
-        NR: 200
-        SR: 202
-    contribution:
-        max_retries: 10
+centralServers:
+    - d2ir
+api_base_url: https://rssandbox-api.iii.com
+client_id: a_client_id
+client_secret: a_client_secret
+localServerCode: koha1
+mainAgency: code2
+require_patron_auth: true
+local_patron_id: 93
+library_to_location:
+    CPL: code1
+    MPL: code2
+local_to_central_itype:
+    BK: 200
+    CF: 201
+    CR: 200
+    MP: 200
+    MU: 201
+    MX: 201
+    REF: 202
+    VM: 201
+local_to_central_patron_type:
+    AP: 200
+    CH: 200
+    DR: 200
+    DR2: 200
+    ILL: 202
+    LIBSTAFF: 201
+    NR: 200
+    SR: 202
+contribution:
+    max_retries: 10
 ```
 
 ### Options
