@@ -90,7 +90,12 @@ Install the missing deps:
            libdata-printer-perl
 ```
 
-##  Settings
+### Patches
+The following patches need to be backported for this plugin to work:
+* [Bug 22280 - The ILL module assumes every status needs a next/previous status](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=22280) (Required for the ILL module to work).
+* [Bug 22709 - Add hooks to notify plugins of biblio and item changes](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=22709) (Required by the contribution daemon).
+
+###  Settings
 
 * Enable _RESTOAuth2ClientCredentials_ syspref
 * Create an _ILL_ patron category
@@ -98,7 +103,7 @@ Install the missing deps:
 * Add permissions to the patron
 * Create an API client_id/client_secret pair
 
-## ILL
+### ILL
 ILL needs to be set in _koha-conf.xml_ (replace _${INSTANCE}_ for your instance name):
 
 ```
