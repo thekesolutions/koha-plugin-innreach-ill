@@ -62,9 +62,9 @@ _USAGE_
 }
 
 if ( $all ) {
-	$locations    = 1;
-	$item_types   = 1;
-	$patron_types = 1;
+    $locations    = 1;
+    $item_types   = 1;
+    $patron_types = 1;
 }
 
 my $response;
@@ -73,36 +73,36 @@ my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
 my @central_servers = @{ $contribution->config->{centralServers} };
 
 if ( $locations ) {
-	print STDOUT "# Locations:\n";
-	foreach my $central_server (@central_servers) {
-		print STDOUT "## $central_server:\n";
-		$response = $contribution->get_locations_list({ centralServer => $central_server });
-		foreach my $location ( @{ $response } ) {
-	    	print STDOUT p( $location );
-		}
-	}
+    print STDOUT "# Locations:\n";
+    foreach my $central_server (@central_servers) {
+        print STDOUT "## $central_server:\n";
+        $response = $contribution->get_locations_list({ centralServer => $central_server });
+        foreach my $location ( @{ $response } ) {
+            print STDOUT p( $location );
+        }
+    }
 }
 
 if ( $item_types ) {
-	print STDOUT "# Item types:\n";
-	foreach my $central_server (@central_servers) {
-		print STDOUT "## $central_server:\n";
-		$response = $contribution->get_central_item_types({ centralServer => $central_server });
-		foreach my $item_type ( @{ $response } ) {
-	    	print STDOUT p( $item_type );
-		}
-	}
+    print STDOUT "# Item types:\n";
+    foreach my $central_server (@central_servers) {
+        print STDOUT "## $central_server:\n";
+        $response = $contribution->get_central_item_types({ centralServer => $central_server });
+        foreach my $item_type ( @{ $response } ) {
+            print STDOUT p( $item_type );
+        }
+    }
 }
 
 if ( $patron_types ) {
-	print STDOUT "# Patron types:\n";
-	foreach my $central_server (@central_servers) {
-		print STDOUT "## $central_server:\n";
-		$response = $contribution->get_central_patron_types_list({ centralServer => $central_server });
-		foreach my $patron_type ( @{ $response } ) {
-	    	print STDOUT p( $patron_type );
-		}
-	}
+    print STDOUT "# Patron types:\n";
+    foreach my $central_server (@central_servers) {
+        print STDOUT "## $central_server:\n";
+        $response = $contribution->get_central_patron_types_list({ centralServer => $central_server });
+        foreach my $patron_type ( @{ $response } ) {
+            print STDOUT p( $patron_type );
+        }
+    }
 }
 
 1;
