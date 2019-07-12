@@ -92,11 +92,11 @@ Install the missing deps:
 
 ##  Settings
 
-. Enable _RESTOAuth2ClientCredentials_ syspref
-. Create an _ILL_ patron category
-. Create a patron for INN-Reach
-. Add permissions to the patron
-. Create an API client_id/client_secret pair
+* Enable _RESTOAuth2ClientCredentials_ syspref
+* Create an _ILL_ patron category
+* Create a patron for INN-Reach
+* Add permissions to the patron
+* Create an API client_id/client_secret pair
 
 ## ILL
 ILL needs to be set in _koha-conf.xml_ (replace _${INSTANCE}_ for your instance name):
@@ -172,15 +172,15 @@ are maintained on this document.
 
 ### Options
 
-. __centralServers__: This is a list of INN-Reach central servers. A Koha instance can be part of more than one ILL network, so several can be specified. No specific business rules are designed to be set for each of them (yet) but there's room for that. The code is designed to act against a specific central server. i.e. the one that initiates the circulation flow. Records and holdings contribution are designed to be done for all configured central servers with no options to specify what is contributed where.
-. __localServerCode__: INN-Reach will assign a code to each server interacting with them. So each Koha instance is assigned a code, and it needs to be specified here.
-. __api_base_url__, __client_id__ and __client_secret__: This information needs to be provided by INN-Reach for the kick-off. It's the base URL into which Koha will make the API requests, and the id/secret pair for the _OAuth2 client credentials_ flow.
-. __require_patron_auth__: Whether or not we require the patron to input their credentials on the INN-Reach site. The code implement both use cases, but authenticating hasn't been tested on the wild due to the latency to set the environments. If there's a concrete use case we will have the chance to iron it.
-. __local_patron_id__: This is the _borrowernumber_ for the Koha user we created for INN-Reach to use (with permissions and API keys). This isn't supposed to be needed, but depending on the Koha version it wasn't possible to get the current patron from the stash. FIXME: This workaround should be removed once we are sure Koha _18.11.x_ is fixed (patched in master by us).
-. __library_to_location__: INN-Reach defines unique codes for 'agencies' (branches). _library_to_location_ is a hash for mapping Koha's branchcodes to INN-Reach-defined agency codes. See the [kick-off checklist](#koha-off-checklist).
-. __local_to_central_itype__: Hash for mapping Koha's itemtype codes to INN-Reach-defined ones. See the [kick-off checklist](#koha-off-checklist).
-. __local_to_central_patron_type__: Hash for mapping Koha's patron categories into INN-Reach-defined ones. See the [kick-off checklist](#koha-off-checklist).
-. __contribution__: Data contribution specific settings. _max_retries_ defines how many retries are to be accepted before failing to contribute a record/item.
+* __centralServers__: This is a list of INN-Reach central servers. A Koha instance can be part of more than one ILL network, so several can be specified. No specific business rules are designed to be set for each of them (yet) but there's room for that. The code is designed to act against a specific central server. i.e. the one that initiates the circulation flow. Records and holdings contribution are designed to be done for all configured central servers with no options to specify what is contributed where.
+* __localServerCode__: INN-Reach will assign a code to each server interacting with them. So each Koha instance is assigned a code, and it needs to be specified here.
+* __api_base_url__, __client_id__ and __client_secret__: This information needs to be provided by INN-Reach for the kick-off. It's the base URL into which Koha will make the API requests, and the id/secret pair for the _OAuth2 client credentials_ flow.
+* __require_patron_auth__: Whether or not we require the patron to input their credentials on the INN-Reach site. The code implement both use cases, but authenticating hasn't been tested on the wild due to the latency to set the environments. If there's a concrete use case we will have the chance to iron it.
+* __local_patron_id__: This is the _borrowernumber_ for the Koha user we created for INN-Reach to use (with permissions and API keys). This isn't supposed to be needed, but depending on the Koha version it wasn't possible to get the current patron from the stash. FIXME: This workaround should be removed once we are sure Koha _18.11.x_ is fixed (patched in master by us).
+* __library_to_location__: INN-Reach defines unique codes for 'agencies' (branches). _library_to_location_ is a hash for mapping Koha's branchcodes to INN-Reach-defined agency codes. See the [kick-off checklist](#koha-off-checklist).
+* __local_to_central_itype__: Hash for mapping Koha's itemtype codes to INN-Reach-defined ones. See the [kick-off checklist](#koha-off-checklist).
+* __local_to_central_patron_type__: Hash for mapping Koha's patron categories into INN-Reach-defined ones. See the [kick-off checklist](#koha-off-checklist).
+* __contribution__: Data contribution specific settings. _max_retries_ defines how many retries are to be accepted before failing to contribute a record/item.
 
 *Note*: Central patron types and central item types can be fetched using the defined methods
 using the Contribution class.
