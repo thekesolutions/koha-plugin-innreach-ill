@@ -178,7 +178,7 @@ sub after_biblio_action {
         INSERT INTO $task_queue
             ( object_type, object_id, action, status, attempts )
         VALUES
-            ( 'biblio', $biblio_id, $action, 'queued', 0 )
+            ( 'biblio', $biblio_id, '$action', 'queued', 0 )
     });
 }
 
