@@ -2,11 +2,10 @@
   "name": "koha-plugin-innreach",
   "version": "2.0.8",
   "previous_version": "2.0.7",
-  "description": "INNReach connector plugin for Koha",
+  "description": "INN-Reach connector plugin for Koha",
   "devDependencies": {
     "gulp": "^4.0.0",
-    "gulp-cli": "^2.0.1",
-    "gulp-github-release": "^1.1.5",
+    "gulp-cli": "^2.2.0",
     "gulp-run": "^1.7.1"
   },
   "scripts": {
@@ -14,14 +13,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/thekesolutions/koha-plugin-innreach.git"
+    "url": "git+https://gitlab.com/thekesolutions/plugins/koha-plugin-innreach.git"
   },
   "author": "Tomás Cohen Arazi <tomascohen@theke.io>",
   "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/thekesolutions/koha-plugin-innreach/issues"
+    "url": "https://gitlab.com/thekesolutions/plugins/koha-plugin-innreach/issues"
   },
-  "homepage": "https://github.com/thekesolutions/koha-plugin-innreach#readme",
+  "homepage": "https://gitlab.com/thekesolutions/plugins/koha-plugin-innreach#readme",
   "dependencies": {
     "datetime": "0.0.3",
     "jsonfile": "^5.0.0",
