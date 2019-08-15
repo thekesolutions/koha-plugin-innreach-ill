@@ -71,6 +71,7 @@ sub itemhold {
     };
 
     my $item = Koha::Items->find( $attributes->{itemId} );
+
     return $c->render(
         status   => 400,
         openapi => {
@@ -166,7 +167,7 @@ sub itemreceived {
     return try {
 
         # Get/validate the request
-        my $req = get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = Koha::Plugin::Com::Theke::INNReach::CircController::get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
         return $c->render(
             status  => 400,
@@ -295,7 +296,7 @@ sub cancelitemhold {
 
     return try {
 
-        my $req = get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = Koha::Plugin::Com::Theke::INNReach::CircController::get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
         return $c->render(
             status  => 404,
@@ -338,7 +339,7 @@ sub cancelitemhold {
     };
 }
 
-=head2 Endpoints for the owning site flow
+=head2 Endpoints for the requesting site flow
 
 =head3 patronhold
 
@@ -437,7 +438,7 @@ sub itemshipped {
     return try {
 
         # Get/validate the request
-        my $req = get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = Koha::Plugin::Com::Theke::INNReach::CircController::get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
         return $c->render(
             status  => 400,
@@ -487,7 +488,7 @@ sub finalcheckin {
     return try {
 
         # Get/validate the request
-        my $req = get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = Koha::Plugin::Com::Theke::INNReach::CircController::get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
         return $c->render(
             status  => 400,
@@ -532,7 +533,7 @@ TODO: this method is a stub
 sub borrowerrenew {
     my $c = shift->openapi->valid_input or return;
 
-    my $transactionId = $c->validation->param('transactionId');
+    my $trackingId = $c->validation->param('trackingId');
     my $centralCode   = $c->validation->param('centralCode');
 
     my $body = $c->validation->param('body');
@@ -562,28 +563,54 @@ sub borrowerrenew {
 
 =head3 cancelrequest
 
-TODO: this method is a stub
+This method handles a cancel request from central server to the borrowing
+site. It happens when the owning site issued an owningsitecancel transaction
+to the central server.
+
+This can only happen when the ILL request status is O_ITEM_REQUESTED.
 
 =cut
 
 sub cancelrequest {
     my $c = shift->openapi->valid_input or return;
 
-    my $transactionId = $c->validation->param('transactionId');
+    my $trackingId = $c->validation->param('trackingId');
     my $centralCode   = $c->validation->param('centralCode');
 
-    my $body = $c->validation->param('body');
+    # my $body = $c->validation->param('body');
 
-    my $transactionTime   = $body->{transactionTime};
-    my $patronId          = $body->{patronId};
-    my $patronAgencyCode  = $body->{patronAgencyCode};
-    my $itemAgencyCode    = $body->{itemAgencyCode};
-    my $itemId            = $body->{itemId};
-    my $reason            = $body->{reason};
-    my $reasonCode        = $body->{reasonCode}; # 7
+    # my $transactionTime   = $body->{transactionTime};
+    # my $patronId          = $body->{patronId};
+    # my $patronAgencyCode  = $body->{patronAgencyCode};
+    # my $itemAgencyCode    = $body->{itemAgencyCode};
+    # my $itemId            = $body->{itemId};
+    # my $reason            = $body->{reason};
+    # my $reasonCode        = $body->{reasonCode}; # 7
 
     return try {
-        # do your stuff
+
+        my $req = Koha::Plugin::Com::Theke::INNReach::CircController::get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+
+        return $c->render(
+            status  => 404,
+            openapi => {
+                status => 'error',
+                reason => 'Invalid trackingId/centralCode combination',
+                errors => []
+            }
+        ) unless $req;
+
+        return $c->render(
+            status  => 409,
+            openapi => {
+                status => 'error',
+                reason => 'The request cannot be canceled at this stage',
+                errors => []
+            }
+        ) unless $req->status eq 'B_ITEM_REQUESTED';
+
+        $req->status('B_ITEM_CANCELLED')->store;
+
         return $c->render(
             status  => 200,
             openapi => {
@@ -594,7 +621,14 @@ sub cancelrequest {
         );
     }
     catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
+        return $c->render(
+            status => 500,
+            openapi => {
+                status => 'error',
+                reason => 'Internal error',
+                errors => []
+            }
+        );
     };
 }
 
@@ -607,7 +641,7 @@ TODO: this method is a stub
 sub ownerrenew {
     my $c = shift->openapi->valid_input or return;
 
-    my $transactionId = $c->validation->param('transactionId');
+    my $trackingId = $c->validation->param('trackingId');
     my $centralCode   = $c->validation->param('centralCode');
 
     my $body = $c->validation->param('body');
@@ -644,7 +678,7 @@ TODO: this method is a stub
 sub claimsreturned {
     my $c = shift->openapi->valid_input or return;
 
-    my $transactionId = $c->validation->param('transactionId');
+    my $trackingId = $c->validation->param('trackingId');
     my $centralCode   = $c->validation->param('centralCode');
 
     my $body = $c->validation->param('body');
@@ -681,7 +715,7 @@ TODO: this method is a stub
 sub receiveunshipped {
     my $c = shift->openapi->valid_input or return;
 
-    my $transactionId = $c->validation->param('transactionId');
+    my $trackingId = $c->validation->param('trackingId');
     my $centralCode   = $c->validation->param('centralCode');
 
     my $body = $c->validation->param('body');
@@ -717,7 +751,7 @@ TODO: this method is a stub
 sub returnuncirculated {
     my $c = shift->openapi->valid_input or return;
 
-    my $transactionId = $c->validation->param('transactionId');
+    my $trackingId = $c->validation->param('trackingId');
     my $centralCode   = $c->validation->param('centralCode');
 
     my $body = $c->validation->param('body');
@@ -755,7 +789,7 @@ TODO: this method is a stub
 sub transferrequest {
     my $c = shift->openapi->valid_input or return;
 
-    my $transactionId = $c->validation->param('transactionId');
+    my $trackingId = $c->validation->param('trackingId');
     my $centralCode   = $c->validation->param('centralCode');
 
     my $body = $c->validation->param('body');
@@ -785,7 +819,7 @@ sub transferrequest {
 
 =head2 Internal methods
 
-=head3 get_ill_request
+=head3 Koha::Plugin::Com::Theke::INNReach::CircController::get_ill_request
 
 This method retrieves the Koha::ILLRequest using trackingId and centralCode
 

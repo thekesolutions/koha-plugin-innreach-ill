@@ -153,7 +153,7 @@
     "put": {
       "x-mojo-to": "Com::Theke::INNReach::CircController#cancelrequest",
       "operationId": "cancelrequest",
-      "description": "Originates an item hold at central that is sent to the owning site.",
+      "description": "Sends a cancel request terminating transaction from the central server to the borrowing site.",
       "tags": [
         "circulation"
       ],
@@ -365,8 +365,14 @@
         "200": {
           "description": "Successful item hold"
         },
+        "400": {
+          "description": "Bad request"
+        },
         "404": {
           "description": "An error occured"
+        },
+        "500": {
+          "description": "Internal error"
         }
       },
       "x-koha-authorization": {
@@ -639,7 +645,7 @@
     "put": {
       "x-mojo-to": "Com::Theke::INNReach::CircController#itemreceived",
       "operationId": "itemreceived",
-      "description": "Owner renew.",
+      "description": "Get notiifed the item has arrived at the borrowing site.",
       "tags": [
         "circulation"
       ],

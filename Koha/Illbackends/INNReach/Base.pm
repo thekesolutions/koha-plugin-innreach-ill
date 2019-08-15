@@ -189,8 +189,8 @@ sub status_graph {
         B_ITEM_CANCELLED => {
             prev_actions => [ ],
             id             => 'B_ITEM_CANCELLED',
-            name           => 'Item request cancelled by requestor',
-            ui_method_name => 'Item request cancelled by requestor',
+            name           => 'Item request cancelled by owning site',
+            ui_method_name => 'Item request cancelled by owning site',
             method         => '',
             next_actions   => [ 'COMP' ],
             ui_method_icon => '',
