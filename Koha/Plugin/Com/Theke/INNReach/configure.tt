@@ -1,5 +1,5 @@
 [% INCLUDE 'doc-head-open.inc' %]
- <title>Koha &rsaquo; INNReach integration &rsaquo; Configuration</title>
+ <title>Koha &rsaquo; INN-Reach integration &rsaquo; Configuration</title>
 [% INCLUDE 'doc-head-close.inc' %]
   <style>
     .gobi {
@@ -32,13 +32,13 @@
 
 <div id="breadcrumbs">
     <a href="/cgi-bin/koha/mainpage.pl">Home</a> &rsaquo;
-    <a href="?class=[% CLASS %]&method=configure">INNReach integration</a> &rsaquo;
+    <a href="?class=[% CLASS %]&method=configure">INN-Reach integration</a> &rsaquo;
     Configuration
 </div>
 
 <div id="doc3" class="yui-t2">
   <div id="yui-main">
-    <h2>INNReach configuration</h2>
+    <h2>INN-Reach configuration</h2>
     <br/>
       <h4>Central servers</h4>
       <form method="post">

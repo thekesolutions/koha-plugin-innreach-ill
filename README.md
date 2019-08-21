@@ -172,6 +172,11 @@ local_to_central_patron_type:
     SR: 202
 contribution:
     max_retries: 10
+# Default values for biblios/items configuration
+default_marc_framework: FA
+default_item_type: ILL
+default_item_ccode: null
+default_location: null
 ```
 
 ### Options

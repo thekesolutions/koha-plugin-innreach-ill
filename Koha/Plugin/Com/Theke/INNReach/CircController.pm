@@ -425,7 +425,10 @@ sub patronhold {
 =head3 itemshipped
 
 This method changes the status of the ILL request to let the users
-know the item has been reported at destination.
+know the item has been sent to the borrowing site.
+
+It also creates a virtual MARC record and item which has a hold placed
+for the patron. This virtual records are not visible in the OPAC.
 
 =cut
 
@@ -434,6 +437,13 @@ sub itemshipped {
 
     my $trackingId  = $c->validation->param('trackingId');
     my $centralCode = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    my $attributes = {
+        callNumber  => $body->{callNumber},
+        itemBarcode => $body->{itemBarcode},
+    };
 
     return try {
 
@@ -449,7 +459,36 @@ sub itemshipped {
             }
         ) unless $req;
 
-        $req->status('B_ITEM_SHIPPED')->store;
+        my $config = Koha::Plugin::Com::Theke::INNReach->new->configuration;
+
+        # Create the MARC record and item
+        my ($biblio_id, $item_id) = $c->add_virtual_record(
+            { req         => $req,
+              config      => $config,
+              call_number => $attributes->{callNumber},
+              barcode     => $attributes->{itemBarcode},
+            }
+        );
+        # FIXME: Place a hold
+
+        # Update request
+        $req->biblio_id($biblio_d);
+            ->status('B_ITEM_SHIPPED');
+            ->store;
+
+        # Add new attributes for tracking
+        while ( my ( $type, $value ) = each %{$attributes} ) {
+            if ($value && length $value > 0) {
+                Koha::Illrequestattribute->new(
+                    {
+                        illrequest_id => $req->illrequest_id,
+                        type          => $type,
+                        value         => $value,
+                        readonly      => 0
+                    }
+                )->store;
+            }
+        }
 
         return $c->render(
             status  => 200,
@@ -851,5 +890,90 @@ sub get_ill_request {
 
     return $req;
 }
+
+=head3 add_virtual_record_and_item
+
+This method is used for adding a virtual (hidden for end-users) MARC record
+with an item, so a hold is placed for it.
+
+=cut
+
+sub add_virtual_record_and_item {
+    my ( $c, $args ) = @_;
+
+    my $req         = $args->{req};
+    my $config      = $args->{config};
+    my $call_number = $args->{call_number};
+    my $barcode     = $args->{barcode};
+
+    my $marc_flavour   = C4::Context->preference('marcflavour');
+    my $framework_code = $config->{default_marc_framework} || 'FA';
+    my $item_type      = $config->{default_item_type};
+    my $ccode          = $config->{default_item_ccode};
+
+    unless ( $item_type ) {
+        return $c->render(
+            status => 500,
+            openapi => {
+                status => 'error',
+                reason => "'default_item_type' entry missing",
+                errors => []
+            }
+        );
+    }
+
+    my $attributes  = $req->illrequestattributes;
+
+    my $author_attr = $attributes->search({ type => 'author' })->next;
+    my $author      = ( $author_attr ) ? $author_attr->value : '';
+    my $title_attr  = $attributes->search({ type => 'title' })->next;
+    my $title       = ( $title_attr ) ? $title_attr->value : '';
+
+    my $record;
+
+    if ( $marc_flavour eq 'MARC21' ) {
+        $record = MARC::Record->new();
+        $record->leader('     nac a22     1u 4500');
+        $record->insert_fields_ordered(
+            MARC::Field->new(
+                '100', '1', '0', 'a' => $author
+            ),
+            MARC::Field->new(
+                '245', '1', '0', 'a' => $title
+            ),
+            MARC::Field->new(
+                '942', '1', '0',
+                    'n' => 1,
+                    'c' => $item_type
+            )
+        );
+    }
+    else {
+        return $c->render(
+            status => 500,
+            openapi => {
+                status => 'error',
+                reason => "$marc_flavour is not supported (yet)",
+                errors => []
+            }
+        );
+    }
+
+    my ( $biblio_id, $biblioitemnumber ) = AddBiblio( $record, $framework_code );
+
+    my $patron = Koha::Patrons->find( $req->borrowernumber );
+
+    my $item = {
+        barcode          => $barcode,
+        holdingbranch    => $patron->branchcode,
+        homebranch       => $patron->branchcode,
+        itype            => $item_type,
+        itemcallnumber   => $call_number,
+        ccode            => $ccode
+    };
+    my ( undef, undef, $item_id ) = AddItem( $item, $biblionumber );
+    return ( $biblio_id, $item_id );
+}
+
 
 1;
