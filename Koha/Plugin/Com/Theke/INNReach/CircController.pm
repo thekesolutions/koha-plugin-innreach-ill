@@ -910,6 +910,7 @@ sub add_virtual_record_and_item {
     my $framework_code = $config->{default_marc_framework} || 'FA';
     my $item_type      = $config->{default_item_type};
     my $ccode          = $config->{default_item_ccode};
+    my $location       = $config->{default_location};
 
     unless ( $item_type ) {
         return $c->render(
@@ -969,7 +970,8 @@ sub add_virtual_record_and_item {
         homebranch       => $patron->branchcode,
         itype            => $item_type,
         itemcallnumber   => $call_number,
-        ccode            => $ccode
+        ccode            => $ccode,
+        location         => $location,
     };
     my ( undef, undef, $item_id ) = AddItem( $item, $biblionumber );
     return ( $biblio_id, $item_id );
