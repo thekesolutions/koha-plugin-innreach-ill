@@ -802,11 +802,14 @@ sub post_request {
             'Content'       => ( exists $args->{data} ) ? encode_json( $args->{data} ) : undef
         );
 
-    warn p( $request ) if $ENV{DEBUG};
-
-    return $self->oauth2->ua->request(
-        $request
-    );
+    if ( $self->config->{debug_mode} ) {
+        warn p( $request );
+    }
+    else {
+        return $self->oauth2->ua->request(
+            $request
+        );
+    }
 }
 
 =head3 put_request
@@ -827,9 +830,15 @@ sub put_request {
             'Content-Type'  => "application/json",
             'Content'       => encode_json( $args->{data} )
         );
-    return $self->oauth2->ua->request(
-        $request
-    );
+
+    if ( $self->config->{debug_mode} ) {
+        warn p( $request );
+    }
+    else {
+        return $self->oauth2->ua->request(
+            $request
+        );
+    }
 }
 
 =head3 get_request
@@ -841,15 +850,23 @@ Generic request for GET
 sub get_request {
     my ($self, $args) = @_;
 
-    return $self->oauth2->ua->request(
+    my $request =
         GET($self->config->{api_base_url} . '/' . $args->{endpoint},
             'Authorization' => "Bearer " . $self->token,
             'X-From-Code'   => $self->config->{localServerCode},
             'X-To-Code'     => $args->{centralCode},
             'Accept'        => "application/json",
             'Content-Type'  => "application/json"
-        )
-    );
+        );
+
+    if ( $self->config->{debug_mode} ) {
+        warn p( $request );
+    }
+    else {
+        return $self->oauth2->ua->request(
+            $request
+        );
+    }
 }
 
 =head3 delete_request
@@ -861,15 +878,23 @@ Generic request for DELETE
 sub delete_request {
     my ($self, $args) = @_;
 
-    return $self->oauth2->ua->request(
+    my $request =
         DELETE(
             $self->config->{api_base_url} . '/' . $args->{endpoint},
             'Authorization' => "Bearer " . $self->token,
             'X-From-Code'   => $self->config->{localServerCode},
             'X-To-Code'     => $args->{centralCode},
             'Accept'        => "application/json",
-        )
-    );
+        );
+
+    if ( $self->config->{debug_mode} ) {
+        warn p( $request );
+    }
+    else {
+        return $self->oauth2->ua->request(
+            $request
+        );
+    }
 }
 
 =head3 item_circ_status
