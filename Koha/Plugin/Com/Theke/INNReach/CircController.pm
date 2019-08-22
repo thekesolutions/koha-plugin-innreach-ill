@@ -23,12 +23,15 @@ use C4::Biblio qw(AddBiblio);
 use C4::Items qw(AddItem);
 use C4::Reserves;
 
+use Koha::Biblios;
+use Koha::Items;
+
+use Koha::Database;
 use Koha::DateUtils qw(dt_from_string);
 
 use Koha::Illbackends::INNReach::Base;
 use Koha::Illrequests;
 use Koha::Illrequestattributes;
-use Koha::Items;
 use Koha::Plugin::Com::Theke::INNReach;
 
 use Mojo::Base 'Mojolicious::Controller';
@@ -91,36 +94,41 @@ sub itemhold {
 
     return try {
 
-        # Create the request
-        my $req = Koha::Illrequest->new({
-            branchcode     => 'ILL',  # FIXME
-            borrowernumber => $user_id,
-            biblio_id      => $item->biblionumber,
-            updated        => dt_from_string(),
-            status         => 'O_ITEM_REQUESTED',
-            backend        => 'INNReach'
-        })->store;
+        my $schema = Koha::Database->new->schema;
+        $schema->txn_do(
+            sub {
+                # Create the request
+                my $req = Koha::Illrequest->new({
+                    branchcode     => 'ILL',  # FIXME
+                    borrowernumber => $user_id,
+                    biblio_id      => $item->biblionumber,
+                    updated        => dt_from_string(),
+                    status         => 'O_ITEM_REQUESTED',
+                    backend        => 'INNReach'
+                })->store;
 
-        # Add the custom attributes
-        while ( my ( $type, $value ) = each %{$attributes} ) {
-            if ($value && length $value > 0) {
-                Koha::Illrequestattribute->new(
-                    {
-                        illrequest_id => $req->illrequest_id,
-                        type          => $type,
-                        value         => $value,
-                        readonly      => 1
+                # Add the custom attributes
+                while ( my ( $type, $value ) = each %{$attributes} ) {
+                    if ($value && length $value > 0) {
+                        Koha::Illrequestattribute->new(
+                            {
+                                illrequest_id => $req->illrequest_id,
+                                type          => $type,
+                                value         => $value,
+                                readonly      => 1
+                            }
+                        )->store;
                     }
-                )->store;
-            }
-        }
+                }
 
-        return $c->render(
-            status  => 200,
-            openapi => {
-                status => 'ok',
-                reason => '',
-                errors => []
+                return $c->render(
+                    status  => 200,
+                    openapi => {
+                        status => 'ok',
+                        reason => '',
+                        errors => []
+                    }
+                );
             }
         );
     }
@@ -129,7 +137,7 @@ sub itemhold {
             status => 500,
             openapi => {
                 status => 'error',
-                reason => 'Unknown error',
+                reason => "Internal error ($_)",
                 errors => []
             }
         );
@@ -197,7 +205,7 @@ sub itemreceived {
             status => 500,
             openapi => {
                 status => 'error',
-                reason => 'Unknown error',
+                reason => "Internal error ($_)",
                 errors => []
             }
         );
@@ -265,7 +273,7 @@ sub intransit {
             status => 500,
             openapi => {
                 status => 'error',
-                reason => 'Unknown error',
+                reason => "Internal error ($_)",
                 errors => []
             }
         );
@@ -335,7 +343,7 @@ sub cancelitemhold {
             status => 500,
             openapi => {
                 status => 'error',
-                reason => 'Internal error',
+                reason => "Internal error ($_)",
                 errors => []
             }
         );
@@ -390,36 +398,41 @@ sub patronhold {
 
     return try {
 
-        # Create the request
-        my $req = Koha::Illrequest->new({
-            branchcode     => $patron->branchcode,
-            borrowernumber => $user_id,
-            biblio_id      => undef,
-            updated        => dt_from_string(),
-            status         => 'B_ITEM_REQUESTED',
-            backend        => 'INNReach'
-        })->store;
+        my $schema = Koha::Database->new->schema;
+        $schema->txn_do(
+            sub {
+                # Create the request
+                my $req = Koha::Illrequest->new({
+                    branchcode     => $patron->branchcode,
+                    borrowernumber => $user_id,
+                    biblio_id      => undef,
+                    updated        => dt_from_string(),
+                    status         => 'B_ITEM_REQUESTED',
+                    backend        => 'INNReach'
+                })->store;
 
-        # Add the custom attributes
-        while ( my ( $type, $value ) = each %{$attributes} ) {
-            if ($value && length $value > 0) {
-                Koha::Illrequestattribute->new(
-                    {
-                        illrequest_id => $req->illrequest_id,
-                        type          => $type,
-                        value         => $value,
-                        readonly      => 1
+                # Add the custom attributes
+                while ( my ( $type, $value ) = each %{$attributes} ) {
+                    if ($value && length $value > 0) {
+                        Koha::Illrequestattribute->new(
+                            {
+                                illrequest_id => $req->illrequest_id,
+                                type          => $type,
+                                value         => $value,
+                                readonly      => 1
+                            }
+                        )->store;
                     }
-                )->store;
-            }
-        }
+                }
 
-        return $c->render(
-            status  => 200,
-            openapi => {
-                status => 'ok',
-                reason => '',
-                errors => []
+                return $c->render(
+                    status  => 200,
+                    openapi => {
+                        status => 'ok',
+                        reason => '',
+                        errors => []
+                    }
+                );
             }
         );
     }
@@ -428,7 +441,7 @@ sub patronhold {
             status => 500,
             openapi => {
                 status => 'error',
-                reason => "$_",
+                reason => "Internal error ($_)",
                 errors => []
             }
         );
@@ -474,41 +487,46 @@ sub itemshipped {
 
         my $config = Koha::Plugin::Com::Theke::INNReach->new->configuration;
 
-        # Create the MARC record and item
-        my ($biblio_id, $item_id) = $c->add_virtual_record_and_item(
-            { req         => $req,
-              config      => $config,
-              call_number => $attributes->{callNumber},
-              barcode     => $attributes->{itemBarcode},
-            }
-        );
-        # FIXME: Place a hold
-
-        # Update request
-        $req->biblio_id($biblio_id)
-            ->status('B_ITEM_SHIPPED')
-            ->store;
-
-        # Add new attributes for tracking
-        while ( my ( $type, $value ) = each %{$attributes} ) {
-            if ($value && length $value > 0) {
-                Koha::Illrequestattribute->new(
-                    {
-                        illrequest_id => $req->illrequest_id,
-                        type          => $type,
-                        value         => $value,
-                        readonly      => 0
+        my $schema = Koha::Database->new->schema;
+        $schema->txn_do(
+            sub {
+                # Create the MARC record and item
+                my ($biblio_id, $item_id) = $c->add_virtual_record_and_item(
+                    { req         => $req,
+                      config      => $config,
+                      call_number => $attributes->{callNumber},
+                      barcode     => $attributes->{itemBarcode},
                     }
-                )->store;
-            }
-        }
+                );
+                # FIXME: Place a hold
 
-        return $c->render(
-            status  => 200,
-            openapi => {
-                status => 'ok',
-                reason => '',
-                errors => []
+                # Update request
+                $req->biblio_id($biblio_id)
+                    ->status('B_ITEM_SHIPPED')
+                    ->store;
+
+                # Add new attributes for tracking
+                while ( my ( $type, $value ) = each %{$attributes} ) {
+                    if ($value && length $value > 0) {
+                        Koha::Illrequestattribute->new(
+                            {
+                                illrequest_id => $req->illrequest_id,
+                                type          => $type,
+                                value         => $value,
+                                readonly      => 0
+                            }
+                        )->store;
+                    }
+                }
+
+                return $c->render(
+                    status  => 200,
+                    openapi => {
+                        status => 'ok',
+                        reason => '',
+                        errors => []
+                    }
+                );
             }
         );
     }
@@ -517,7 +535,7 @@ sub itemshipped {
             status => 500,
             openapi => {
                 status => 'error',
-                reason => "Unknown error ($_)",
+                reason => "Internal error ($_)",
                 errors => []
             }
         );
@@ -567,7 +585,7 @@ sub finalcheckin {
             status => 500,
             openapi => {
                 status => 'error',
-                reason => 'Unknown error',
+                reason => "Internal error ($_)",
                 errors => []
             }
         );
