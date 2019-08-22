@@ -36,6 +36,11 @@ use Koha::Plugin::Com::Theke::INNReach;
 
 use Mojo::Base 'Mojolicious::Controller';
 
+use Exception::Class (
+  'INNReach::Circ',
+  'INNReach::Circ::BadPickupLocation'  => { isa => 'INNReach::Circ', fields => ['value'] }
+);
+
 =head1 Koha::Plugin::Com::Theke::INNReach::PatronsController
 
 A class implementing the controller methods for the patron-related endpoints
@@ -383,7 +388,7 @@ sub patronhold {
     };
 
     my $user_id = $attributes->{patronId};
-    my $patron = Koha::Patrons->find( $user_id );
+    my $patron  = Koha::Patrons->find( $user_id );
 
     unless ($patron) {
         return $c->render(
@@ -401,9 +406,16 @@ sub patronhold {
         my $schema = Koha::Database->new->schema;
         $schema->txn_do(
             sub {
+                my $configuration   = Koha::Plugin::Com::Theke::INNReach->new->configuration;
+                my $pickup_location = $c->pickup_location_to_library_id(
+                    { pickupLocation => $attributes->{pickupLocation},
+                      configuration  => $configuration
+                    }
+                );
+
                 # Create the request
                 my $req = Koha::Illrequest->new({
-                    branchcode     => $patron->branchcode,
+                    branchcode     => $pickup_location,
                     borrowernumber => $user_id,
                     biblio_id      => undef,
                     updated        => dt_from_string(),
@@ -993,12 +1005,10 @@ sub add_virtual_record_and_item {
 
     my ( $biblio_id, $biblioitemnumber ) = AddBiblio( $record, $framework_code );
 
-    my $patron = Koha::Patrons->find( $req->borrowernumber );
-
     my $item = {
         barcode          => $barcode,
-        holdingbranch    => $patron->branchcode,
-        homebranch       => $patron->branchcode,
+        holdingbranch    => $req->branchcode,
+        homebranch       => $req->branchcode,
         itype            => $item_type,
         itemcallnumber   => $call_number,
         ccode            => $ccode,
@@ -1006,6 +1016,32 @@ sub add_virtual_record_and_item {
     };
     my ( undef, undef, $item_id ) = AddItem( $item, $biblio_id );
     return ( $biblio_id, $item_id );
+}
+
+=head3 pickup_location_to_library_id
+
+Given a I<pickupLocation> code as passed to /patronhold
+this method returns the local library_id that is mapped to the passed value
+
+=cut
+
+sub pickup_location_to_library_id {
+    my ( $c, $args ) = @_;
+
+    my $configuration = $args->{configuration};
+    my $pickup_location;
+    my $library_id;
+
+    if ( $args->{pickupLocation} =~ m/^(?<pickup_location>.*):.*:.*$/ ) {
+        $pickup_location = $+{pickup_location};
+    }
+    else {
+        INNReach::Circ::BadPickupLocation->throw( value => $args->{pickupLocation} );
+    }
+
+    $library_id = $configuration->{location_to_library}->{$pickup_location};
+
+    return $library_id;
 }
 
 
