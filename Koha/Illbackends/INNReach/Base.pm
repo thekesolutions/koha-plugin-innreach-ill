@@ -127,8 +127,8 @@ sub status_graph {
         O_ITEM_CANCELLED => {
             prev_actions => [ 'O_ITEM_REQUESTED' ],
             id             => 'O_ITEM_CANCELLED',
-            name           => 'Item request cancelled by requestor',
-            ui_method_name => 'Item request cancelled by requestor',
+            name           => 'Item request cancelled by requesting library',
+            ui_method_name => 'Item request cancelled by requesting library',
             method         => '',
             next_actions   => [ 'COMP' ],
             ui_method_icon => '',
@@ -145,7 +145,7 @@ sub status_graph {
         O_ITEM_SHIPPED => {
             prev_actions => [ 'O_ITEM_REQUESTED' ],
             id             => 'O_ITEM_SHIPPED',
-            name           => 'Item shipped to borrowing site',
+            name           => 'Item shipped to borrowing library',
             ui_method_name => 'Ship item',
             method         => 'item_shipped',
             next_actions   => [ ],
@@ -154,7 +154,7 @@ sub status_graph {
         O_ITEM_RECEIVED_DESTINATION => {
             prev_actions => [ 'O_ITEM_SHIPPED' ],
             id             => 'O_ITEM_RECEIVED_DESTINATION',
-            name           => 'Item received on borrowing site',
+            name           => 'Item received by borrowing library',
             ui_method_name => '',
             method         => '',
             next_actions   => [ ],
@@ -163,7 +163,7 @@ sub status_graph {
         O_ITEM_IN_TRANSIT => {
             prev_actions => [ 'O_ITEM_RECEIVED_DESTINATION' ],
             id             => 'O_ITEM_IN_TRANSIT',
-            name           => 'Item in transit from borrowing site',
+            name           => 'Item in transit from borrowing library',
             ui_method_name => '',
             method         => '',
             next_actions   => [ 'O_ITEM_CHECKED_IN' ],
@@ -172,7 +172,7 @@ sub status_graph {
         O_ITEM_CHECKED_IN => {
             prev_actions => [ 'O_ITEM_IN_TRANSIT' ],
             id             => 'O_ITEM_CHECKED_IN',
-            name           => 'Item checked-in at owning site',
+            name           => 'Item checked-in at owning library',
             ui_method_name => 'Check-in',
             method         => 'item_checkin',
             next_actions   => [ 'COMP' ],
@@ -183,8 +183,8 @@ sub status_graph {
         B_ITEM_REQUESTED => {
             prev_actions => [ ],
             id             => 'B_ITEM_REQUESTED',
-            name           => 'Item requested to owning site',
-            ui_method_name => 'Item requested to owning site',
+            name           => 'Item requested by owning library',
+            ui_method_name => 'Item requested by owning library',
             method         => '',
             next_actions   => [ 'B_ITEM_CANCELLED_BY_US' ],
             ui_method_icon => '',
@@ -192,8 +192,8 @@ sub status_graph {
         B_ITEM_CANCELLED => {
             prev_actions => [ ],
             id             => 'B_ITEM_CANCELLED',
-            name           => 'Item request cancelled by owning site',
-            ui_method_name => 'Item request cancelled by owning site',
+            name           => 'Item request cancelled by owning library',
+            ui_method_name => 'Item request cancelled by owning library',
             method         => '',
             next_actions   => [ 'COMP' ],
             ui_method_icon => '',
@@ -210,7 +210,7 @@ sub status_graph {
         B_ITEM_SHIPPED => {
             prev_actions => [ ],
             id             => 'B_ITEM_SHIPPED',
-            name           => 'Item shipped by owning site',
+            name           => 'Item shipped by owning library',
             ui_method_name => '',
             method         => '',
             next_actions   => [ 'B_ITEM_RECEIVED' ],
@@ -228,7 +228,7 @@ sub status_graph {
         B_ITEM_IN_TRANSIT => {
             prev_actions => [ 'B_ITEM_RECEIVED' ],
             id             => 'B_ITEM_IN_TRANSIT',
-            name           => 'Item in transit to owning site',
+            name           => 'Item in transit to owning library',
             ui_method_name => 'Item in transit',
             method         => 'item_in_transit',
             next_actions   => [ ],
@@ -237,7 +237,7 @@ sub status_graph {
         B_ITEM_CHECKED_IN => {
             prev_actions => [ 'B_ITEM_IN_TRANSIT' ],
             id             => 'B_ITEM_CHECKED_IN',
-            name           => 'Item checked-in at owning site',
+            name           => 'Item checked-in at owning library',
             ui_method_name => 'Check-in',
             method         => '',
             next_actions   => [ 'COMP' ],
