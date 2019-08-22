@@ -18,6 +18,9 @@ package Koha::Plugin::Com::Theke::INNReach::CircController;
 use Modern::Perl;
 
 use Try::Tiny;
+
+use C4::Biblio qw(AddBiblio);
+use C4::Items qw(AddItem);
 use C4::Reserves;
 
 use Koha::DateUtils qw(dt_from_string);
@@ -372,10 +375,20 @@ sub patronhold {
     };
 
     my $user_id = $attributes->{patronId};
+    my $patron = Koha::Patrons->find( $user_id );
+
+    unless ($patron) {
+        return $c->render(
+            status  => 400,
+            openapi => {
+                status => 'error',
+                reason => "No patron identified by the provided patronId ($user_id)",
+                errors => []
+            }
+        );
+    }
 
     return try {
-
-        my $patron = Koha::Patrons->find( $user_id );
 
         # Create the request
         my $req = Koha::Illrequest->new({
@@ -462,7 +475,7 @@ sub itemshipped {
         my $config = Koha::Plugin::Com::Theke::INNReach->new->configuration;
 
         # Create the MARC record and item
-        my ($biblio_id, $item_id) = $c->add_virtual_record(
+        my ($biblio_id, $item_id) = $c->add_virtual_record_and_item(
             { req         => $req,
               config      => $config,
               call_number => $attributes->{callNumber},
@@ -472,8 +485,8 @@ sub itemshipped {
         # FIXME: Place a hold
 
         # Update request
-        $req->biblio_id($biblio_d);
-            ->status('B_ITEM_SHIPPED');
+        $req->biblio_id($biblio_id)
+            ->status('B_ITEM_SHIPPED')
             ->store;
 
         # Add new attributes for tracking
@@ -504,7 +517,7 @@ sub itemshipped {
             status => 500,
             openapi => {
                 status => 'error',
-                reason => 'Unknown error',
+                reason => "Unknown error ($_)",
                 errors => []
             }
         );
@@ -973,7 +986,7 @@ sub add_virtual_record_and_item {
         ccode            => $ccode,
         location         => $location,
     };
-    my ( undef, undef, $item_id ) = AddItem( $item, $biblionumber );
+    my ( undef, undef, $item_id ) = AddItem( $item, $biblio_id );
     return ( $biblio_id, $item_id );
 }
 
