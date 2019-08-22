@@ -21,7 +21,7 @@ use Try::Tiny;
 
 use C4::Biblio qw(AddBiblio);
 use C4::Items qw(AddItem);
-use C4::Reserves;
+use C4::Reserves qw(AddReserve);
 
 use Koha::Biblios;
 use Koha::Items;
@@ -503,14 +503,29 @@ sub itemshipped {
         $schema->txn_do(
             sub {
                 # Create the MARC record and item
-                my ($biblio_id, $item_id) = $c->add_virtual_record_and_item(
+                my ($biblio_id, $item_id, $biblioitemnumber) = $c->add_virtual_record_and_item(
                     { req         => $req,
                       config      => $config,
                       call_number => $attributes->{callNumber},
                       barcode     => $attributes->{itemBarcode},
                     }
                 );
-                # FIXME: Place a hold
+
+                # Place a hold on the item
+                my $patron_id = $req->borrowernumber;
+                my $reserve_id = AddReserve(
+                    $req->branchcode,          # branch
+                    $patron_id,                # borrowernumber
+                    $biblio_id,                # biblionumber
+                    $biblioitemnumber,         # biblioitemnumber
+                    1,                         # priority
+                    undef,                     # resdate
+                    undef,                     # expdate
+                    'Placed By ILL',           # notes
+                    '',                        # title
+                    $item_id,                  # checkitem
+                    undef                      # found
+                );
 
                 # Update request
                 $req->biblio_id($biblio_id)
@@ -1014,8 +1029,8 @@ sub add_virtual_record_and_item {
         ccode            => $ccode,
         location         => $location,
     };
-    my ( undef, undef, $item_id ) = AddItem( $item, $biblio_id );
-    return ( $biblio_id, $item_id );
+    my ( undef, $biblioitemnumber, $item_id ) = AddItem( $item, $biblio_id );
+    return ( $biblio_id, $item_id, $biblioitemnumber );
 }
 
 =head3 pickup_location_to_library_id
@@ -1043,6 +1058,5 @@ sub pickup_location_to_library_id {
 
     return $library_id;
 }
-
 
 1;
