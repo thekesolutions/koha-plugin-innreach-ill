@@ -183,7 +183,7 @@ sub itemreceived {
     return try {
 
         # Get/validate the request
-        my $req = Koha::Plugin::Com::Theke::INNReach::CircController::get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
         return $c->render(
             status  => 400,
@@ -251,7 +251,7 @@ sub intransit {
     return try {
 
         # Get/validate the request
-        my $req = get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
         return $c->render(
             status  => 400,
@@ -312,7 +312,7 @@ sub cancelitemhold {
 
     return try {
 
-        my $req = Koha::Plugin::Com::Theke::INNReach::CircController::get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
         return $c->render(
             status  => 404,
@@ -486,7 +486,7 @@ sub itemshipped {
     return try {
 
         # Get/validate the request
-        my $req = Koha::Plugin::Com::Theke::INNReach::CircController::get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
         return $c->render(
             status  => 400,
@@ -570,7 +570,7 @@ sub finalcheckin {
     return try {
 
         # Get/validate the request
-        my $req = Koha::Plugin::Com::Theke::INNReach::CircController::get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
         return $c->render(
             status  => 400,
@@ -671,7 +671,7 @@ sub cancelrequest {
 
     return try {
 
-        my $req = Koha::Plugin::Com::Theke::INNReach::CircController::get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
         return $c->render(
             status  => 404,
@@ -908,7 +908,7 @@ This method retrieves the Koha::ILLRequest using trackingId and centralCode
 =cut
 
 sub get_ill_request {
-    my ( $args ) = @_;
+    my ( $c, $args ) = @_;
 
     my $trackingId  = $args->{trackingId};
     my $centralCode = $args->{centralCode};
