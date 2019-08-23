@@ -20,6 +20,9 @@ package Koha::Illbackends::INNReach::Base;
 use Modern::Perl;
 use DateTime;
 
+use Koha::Database;
+
+use Koha::Biblios;
 use Koha::Illrequests;
 use Koha::Illrequestattributes;
 
@@ -419,6 +422,18 @@ sub item_in_transit {
     my $response = $innreach->post_request(
         {   endpoint    => "/innreach/v2/circ/intransit/$trackingId/$centralCode",
             centralCode => $centralCode,
+        }
+    );
+
+    Koha::Database->new->schema->txn_do(
+        sub {
+            # Is there a hold still?
+            # Should we? There's no ON DELETE NULL...
+            # $req->biblio_id(undef)->store;
+            my $biblio = Koha::Biblios->find( $req->biblio_id );
+            # Remove the virtual item
+            $biblio->items->delete;
+            $biblio->delete;
         }
     );
 

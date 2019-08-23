@@ -1029,7 +1029,7 @@ sub add_virtual_record_and_item {
         ccode            => $ccode,
         location         => $location,
     };
-    my ( undef, $biblioitemnumber, $item_id ) = AddItem( $item, $biblio_id );
+    my ( undef, undef, $item_id ) = AddItem( $item, $biblio_id );
     return ( $biblio_id, $item_id, $biblioitemnumber );
 }
 
