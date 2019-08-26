@@ -62,6 +62,17 @@ sub itemhold {
     my $trackingId  = $c->validation->param('trackingId');
     my $centralCode = $c->validation->param('centralCode');
 
+    my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+
+    return $c->render(
+        status  => 400,
+        openapi => {
+            status => 'error',
+            reason => 'Invalid trackingId/centralCode combination',
+            errors => []
+        }
+    ) if $req;
+
     # TODO: check why we cannot use the stashed patron
     #my $user_id = $c->stash('koha.user')->borrowernumber;
     my $user_id = Koha::Plugin::Com::Theke::INNReach->new->configuration->{local_patron_id};
@@ -369,6 +380,17 @@ sub patronhold {
 
     my $trackingId  = $c->validation->param('trackingId');
     my $centralCode = $c->validation->param('centralCode');
+
+    my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+
+    return $c->render(
+        status  => 400,
+        openapi => {
+            status => 'error',
+            reason => 'Invalid trackingId/centralCode combination',
+            errors => []
+        }
+    ) if $req;
 
     my $body = $c->validation->param('body');
 
