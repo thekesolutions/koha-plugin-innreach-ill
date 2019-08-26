@@ -1323,5 +1323,49 @@
         }
       }
     }
+  },
+  "/v2/koha/checkin/{barcode}": {
+    "post": {
+      "x-mojo-to": "Com::Theke::INNReach::CircController#local_checkin",
+      "operationId": "checkin",
+      "description": "Endpoint used by the plugin to trigger actions related to the checkin of the item",
+      "tags": [
+        "circulation"
+      ],
+      "parameters": [
+        {
+          "name": "barcode",
+          "in": "path",
+          "description": "Scanned barcode",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "produces": [
+        "application/json"
+      ],
+      "responses": {
+        "200": {
+          "description": "The ILL backend got notified"
+        },
+        "400": {
+          "description": "Bad request"
+        },
+        "403": {
+          "description": "Forbidden"
+        },
+        "404": {
+          "description": "Object not found"
+        },
+        "500": {
+          "description": "Internal server error"
+        }
+      },
+      "x-koha-authorization": {
+        "permissions": {
+          "circulate": "1"
+        }
+      }
+    }
   }
 }

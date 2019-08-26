@@ -38,7 +38,8 @@ use Mojo::Base 'Mojolicious::Controller';
 
 use Exception::Class (
   'INNReach::Circ',
-  'INNReach::Circ::BadPickupLocation'  => { isa => 'INNReach::Circ', fields => ['value'] }
+  'INNReach::Circ::BadPickupLocation'  => { isa => 'INNReach::Circ', fields => ['value'] },
+  'INNReach::Circ::UnkownBarcode'      => { isa => 'INNReach::Circ', fields => ['barcode'] }
 );
 
 =head1 Koha::Plugin::Com::Theke::INNReach::PatronsController
@@ -619,6 +620,44 @@ sub finalcheckin {
     };
 }
 
+=head2 Endpoints for general use
+
+=head3 local_checkin
+
+This method handles requests to the /koha/checkin/{barcode} endpoint.
+It is designed to be used from the checkin form to produce the relevant
+actions.
+
+=cut
+
+sub local_checkin {
+    my $c = shift->openapi->valid_input or return;
+
+    my $barcode = $c->validation->param('barcode');
+
+    return try {
+        my $req = $c->get_ill_request_from_barcode({ barcode => $barcode });
+
+        if ( $req->status eq 'B_ITEM_SHIPPED' ) {
+            # We were waiting for this! Notify them we got the item!
+            my $ill = Koha::Illbackends::INNReach::Base->new;
+            $ill->item_received({ request => $req });
+        }
+        return $c->render(
+            status  => 200,
+            openapi => {}
+        );
+    }
+    catch {
+        return $c->render(
+            status  => 500,
+            openapi => {
+                error => "Internal server error ($_)"
+            }
+        );
+    };
+}
+
 =head2 TODO AREA
 
 =head3 borrowerrenew
@@ -916,7 +955,7 @@ sub transferrequest {
 
 =head2 Internal methods
 
-=head3 Koha::Plugin::Com::Theke::INNReach::CircController::get_ill_request
+=head3 get_ill_request
 
 This method retrieves the Koha::ILLRequest using trackingId and centralCode
 
@@ -945,6 +984,48 @@ sub get_ill_request {
 
     $req = Koha::Illrequests->find( $result->{illrequest_id} )
         if $result->{illrequest_id};
+
+    return $req;
+}
+
+=head3 get_ill_request_from_barcode
+
+This method retrieves the Koha::ILLRequest using a barcode, scanned
+at check-in.
+
+=cut
+
+sub get_ill_request_from_barcode {
+    my ( $c, $args ) = @_;
+
+    my $barcode = $args->{barcode};
+
+    my $item = Koha::Items->find({ barcode => $barcode });
+
+    unless ( $item ) {
+        INNReach::Circ::UnkownBarcode->throw( barcode => $barcode );
+    }
+
+    my $biblio_id = $item->biblionumber;
+
+    my $reqs = Koha::Illrequests->search(
+        {
+            biblio_id => $biblio_id,
+            status    => [
+                'B_ITEM_SHIPPED', # borrowing site, item shipped, receiving
+            ]
+        }
+    );
+
+    if ( $reqs->count > 1 ) {
+        warn "More than one ILL request for barcode ($barcode). Beware!";
+    }
+
+    return unless $reqs->count > 0;
+
+    my $req = $reqs->next;
+    # TODO: what about other stages? testing valid statuses?
+    # TODO: Owning site use case?
 
     return $req;
 }
