@@ -217,10 +217,16 @@
       ],
       "responses": {
         "200": {
-          "description": "Successful item hold"
+          "description": "Request successfully cancelled"
         },
         "404": {
           "description": "An error occured"
+        },
+        "409": {
+          "description": "Conflicting request"
+        },
+        "500": {
+          "description": "Internal server error"
         }
       },
       "x-koha-authorization": {
