@@ -183,8 +183,8 @@ sub status_graph {
         B_ITEM_REQUESTED => {
             prev_actions => [ ],
             id             => 'B_ITEM_REQUESTED',
-            name           => 'Item requested by owning library',
-            ui_method_name => 'Item requested by owning library',
+            name           => 'Item requested to owning library',
+            ui_method_name => 'Item requested to owning library',
             method         => '',
             next_actions   => [ 'B_ITEM_CANCELLED_BY_US' ],
             ui_method_icon => '',
