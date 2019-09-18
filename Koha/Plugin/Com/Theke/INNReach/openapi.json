@@ -290,10 +290,16 @@
       ],
       "responses": {
         "200": {
-          "description": "Successful item hold"
+          "description": "Final item check-in notified correctly"
+        },
+        "400": {
+          "description": "Bad request"
         },
         "404": {
           "description": "An error occured"
+        },
+        "500": {
+          "description": "Internal error"
         }
       },
       "x-koha-authorization": {
