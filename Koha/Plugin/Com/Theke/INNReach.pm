@@ -209,7 +209,7 @@ sub after_item_action {
         INSERT INTO $task_queue
             ( object_type, object_id, action, status, attempts )
         VALUES
-            ( 'item', $item_id, $action, 'queued', 0 )
+            ( 'item', $item_id, '$action', 'queued', 0 )
     });
 }
 
