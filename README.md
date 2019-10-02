@@ -139,7 +139,6 @@ The plugin configuration is an HTML text area in which a _YAML_ structure is pas
 are maintained on this document.
 
 ```
-debug_mode: false
 centralServers:
     - d2ir
 api_base_url: https://rssandbox-api.iii.com
@@ -178,6 +177,8 @@ default_item_type: ILL
 default_item_ccode: null
 default_location: null
 default_checkin_note: Additional processing required (ILL)
+# Debugging
+debug_mode: false
 ```
 
 ### Options

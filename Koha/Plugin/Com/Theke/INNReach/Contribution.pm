@@ -716,15 +716,14 @@ sub get_locations_list {
     my $response;
 
     try {
-
         my $centralServer = $args->{centralServer};
         $response = $self->get_request(
             {   endpoint    => '/innreach/v2/contribution/locations',
                 centralCode => $centralServer
             }
         );
-        warn p( $response )
-            if $response->is_error or $ENV{DEBUG};
+        warn p($response)
+          if $response->is_error or $ENV{DEBUG};
     }
     catch {
         die "Problem fetching the locations list";
@@ -805,11 +804,10 @@ sub post_request {
     if ( $self->config->{debug_mode} ) {
         warn p( $request );
     }
-    else {
-        return $self->oauth2->ua->request(
-            $request
-        );
-    }
+
+    return $self->oauth2->ua->request(
+        $request
+    );
 }
 
 =head3 put_request
@@ -834,11 +832,10 @@ sub put_request {
     if ( $self->config->{debug_mode} ) {
         warn p( $request );
     }
-    else {
-        return $self->oauth2->ua->request(
-            $request
-        );
-    }
+
+    return $self->oauth2->ua->request(
+        $request
+    );
 }
 
 =head3 get_request
@@ -862,11 +859,10 @@ sub get_request {
     if ( $self->config->{debug_mode} ) {
         warn p( $request );
     }
-    else {
-        return $self->oauth2->ua->request(
-            $request
-        );
-    }
+
+    return $self->oauth2->ua->request(
+        $request
+    );
 }
 
 =head3 delete_request
@@ -890,11 +886,10 @@ sub delete_request {
     if ( $self->config->{debug_mode} ) {
         warn p( $request );
     }
-    else {
-        return $self->oauth2->ua->request(
-            $request
-        );
-    }
+
+    return $self->oauth2->ua->request(
+        $request
+    );
 }
 
 =head3 item_circ_status

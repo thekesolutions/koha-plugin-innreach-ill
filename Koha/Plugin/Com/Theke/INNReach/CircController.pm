@@ -48,7 +48,7 @@ A class implementing the controller methods for the patron-related endpoints
 
 =head1 Class methods
 
-=head2 Endpoints for the owning site flow
+=head2 Endpoints for the B<owning site flow>
 
 =head3 itemhold
 
@@ -367,7 +367,7 @@ sub cancelitemhold {
     };
 }
 
-=head2 Endpoints for the requesting site flow
+=head2 Endpoints for the B<requesting site flow>
 
 =head3 patronhold
 

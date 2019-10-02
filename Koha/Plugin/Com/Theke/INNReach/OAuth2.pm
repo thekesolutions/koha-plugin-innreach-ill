@@ -31,6 +31,7 @@ use Exception::Class (
   'INNReach::OAuth2Error',
   'INNReach::OAuth2Error::MissingClientID'  => { isa => 'INNReach::OAuth2Error' },
   'INNReach::OAuth2Error::MissingClientCredentials'  => { isa => 'INNReach::OAuth2Error' },
+  'INNReach::OAuth2Error::AuthError' => { isa => 'INNReach::OAuth2Error' },
 );
 
 sub new {
@@ -86,9 +87,15 @@ sub refresh_token {
     my $ua      = $self->{ua};
     my $request = $self->{request};
 
-    my $response = decode_json( $ua->request($request)->decoded_content );
-    $self->{access_token} = $response->{access_token};
-    $self->{expiration}   = DateTime->now()->add( seconds => $response->{expires_in} );
+    my $response = $ua->request($request);
+    my $response_content = decode_json( $response->decoded_content );
+
+    unless ( $response->code eq '200' ) {
+        INNReach::OAuth2Error::AuthError->throw( "Authentication error: " . $response_content->{error_description} );
+    }
+
+    $self->{access_token} = $response_content->{access_token};
+    $self->{expiration}   = DateTime->now()->add( seconds => $response_content->{expires_in} );
 
     return $self;
 }
