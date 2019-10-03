@@ -22,7 +22,7 @@ use base qw(Class::Accessor);
 __PACKAGE__->mk_accessors(qw( ua access_token ));
 
 use DateTime;
-use HTTP::Request::Common qw{ POST };
+use HTTP::Request::Common qw{ DELETE GET POST PUT };
 use JSON;
 use LWP::UserAgent;
 use MIME::Base64 qw{ decode_base64url encode_base64url };
@@ -35,10 +35,9 @@ use Exception::Class (
   'INNReach::OAuth2Error::AuthError' => { isa => 'INNReach::OAuth2Error' },
 );
 
-=head1 Koha::Plugin::Com::Theke::INNReach::Contribution
+=head1 Koha::Plugin::Com::Theke::INNReach::OAuth2
 
-A class implementing required methods for data contribution to the 
-configured D2IR Central server.
+A class implementing the OAuth2 authentication with INN-Reach central servers.
 
 =head2 Class methods
 
