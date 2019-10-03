@@ -60,9 +60,10 @@ sub new {
     try {
         $args->{config} = Koha::Plugin::Com::Theke::INNReach->new()->configuration;
         $args->{oauth2} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new(
-            {   client_id     => $args->{config}->{client_id},
-                client_secret => $args->{config}->{client_secret},
-                api_base_url  => $args->{config}->{api_base_url}
+            {   client_id         => $args->{config}->{client_id},
+                client_secret     => $args->{config}->{client_secret},
+                api_base_url      => $args->{config}->{api_base_url},
+                local_server_code => $args->{config}->{localServerCode}
             }
         );
     }
