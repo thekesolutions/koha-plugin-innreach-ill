@@ -212,7 +212,7 @@ sub contribute_batch_items {
 
         my $itemInfo = {
             itemId            => $item->itemnumber,
-            agencyCode        => $self->config->{mainAgency},
+            agencyCode        => $self->config->{library_to_location}->{$item->homebranch},
             centralItemType   => $self->config->{local_to_central_itype}->{$item->effective_itemtype},
             locationKey       => lc( $item->homebranch ),
             itemCircStatus    => $self->item_circ_status({ item => $item }),
