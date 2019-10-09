@@ -146,7 +146,7 @@ sub contribute_bib {
     my @errors;
 
     for my $central_server (@central_servers) {
-        my $response = $self->post_request(
+        my $response = $self->oauth2->post_request(
             {   endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
                 centralCode => $central_server,
                 data        => $data
@@ -241,7 +241,7 @@ sub contribute_batch_items {
     my @errors;
 
     for my $central_server (@central_servers) {
-        my $response = $self->post_request(
+        my $response = $self->oauth2->post_request(
             {   endpoint    => '/innreach/v2/contribution/items/' . $bibId,
                 centralCode => $central_server,
                 data        => { itemInfo => \@itemInfo }
@@ -297,7 +297,7 @@ sub update_item_status {
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->post_request(
+            my $response = $self->oauth2->post_request(
                 {   endpoint    => '/innreach/v2/contribution/itemstatus/' . $itemId,
                     centralCode => $central_server,
                     data        => $data
@@ -349,7 +349,7 @@ sub decontribute_bib {
     my @errors;
 
     for my $central_server (@central_servers) {
-        my $response = $self->delete_request(
+        my $response = $self->oauth2->delete_request(
             {   endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
                 centralCode => $central_server
             }
@@ -396,7 +396,7 @@ sub decontribute_item {
     my @errors;
 
     for my $central_server (@central_servers) {
-        my $response = $self->delete_request(
+        my $response = $self->oauth2->delete_request(
             {   endpoint    => '/innreach/v2/contribution/item/' . $itemId,
                 centralCode => $central_server
             }
@@ -448,7 +448,7 @@ sub update_bib_status {
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->post_request(
+            my $response = $self->oauth2->post_request(
                 {   endpoint    => '/innreach/v2/contribution/bibstatus/' . $bibId,
                     centralCode => $central_server,
                     data        => $data
@@ -503,7 +503,7 @@ sub upload_locations_list {
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->post_request(
+            my $response = $self->oauth2->post_request(
                 {   endpoint    => '/innreach/v2/contribution/locations',
                     centralCode => $central_server,
                     data        => { locationList => \@locationList }
@@ -552,7 +552,7 @@ sub upload_single_location {
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->post_request(
+            my $response = $self->oauth2->post_request(
                 {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
                     centralCode => $central_server,
                     data        => { description => $library->branchname }
@@ -601,7 +601,7 @@ sub update_single_location {
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->put_request(
+            my $response = $self->oauth2->put_request(
                 {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
                     centralCode => $central_server,
                     data        => { description => $library->branchname }
@@ -650,7 +650,7 @@ sub delete_single_location {
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->delete_request(
+            my $response = $self->oauth2->delete_request(
                 {   endpoint    => '/innreach/v2/location/' . $locationKey,
                     centralCode => $central_server
                 }
@@ -684,7 +684,7 @@ sub get_central_item_types {
     try {
 
         my $centralServer = $args->{centralServer};
-        $response = $self->get_request(
+        $response = $self->oauth2->get_request(
             {   endpoint    => '/innreach/v2/contribution/itemtypes',
                 centralCode => $centralServer
             }
@@ -718,7 +718,7 @@ sub get_locations_list {
 
     try {
         my $centralServer = $args->{centralServer};
-        $response = $self->get_request(
+        $response = $self->oauth2->get_request(
             {   endpoint    => '/innreach/v2/contribution/locations',
                 centralCode => $centralServer
             }
@@ -753,7 +753,7 @@ sub get_central_patron_types_list {
     try {
 
         my $centralServer = $args->{centralServer};
-        $response = $self->get_request(
+        $response = $self->oauth2->get_request(
             {   endpoint    => '/innreach/v2/circ/patrontypes',
                 centralCode => $centralServer
             }
@@ -769,129 +769,6 @@ sub get_central_patron_types_list {
 }
 
 =head2 Internal methods
-
-=head3 token
-
-Method for retrieving a valid access token
-
-=cut
-
-sub token {
-    my ($self) = @_;
-
-    return $self->{oauth2}->get_token;
-}
-
-=head3 post_request
-
-Generic request for POST
-
-=cut
-
-sub post_request {
-    my ($self, $args) = @_;
-
-    my $request =
-        POST(
-            $self->config->{api_base_url} . '/' . $args->{endpoint},
-            'Authorization' => "Bearer " . $self->token,
-            'X-From-Code'   => $self->config->{localServerCode},
-            'X-To-Code'     => $args->{centralCode},
-            'Accept'        => "application/json",
-            'Content-Type'  => "application/json",
-            'Content'       => ( exists $args->{data} ) ? encode_json( $args->{data} ) : undef
-        );
-
-    if ( $self->config->{debug_mode} ) {
-        warn p( $request );
-    }
-
-    return $self->oauth2->ua->request(
-        $request
-    );
-}
-
-=head3 put_request
-
-Generic request for PUT
-
-=cut
-
-sub put_request {
-    my ($self, $args) = @_;
-
-    my $request =
-        PUT($self->config->{api_base_url} . '/' . $args->{endpoint},
-            'Authorization' => "Bearer " . $self->token,
-            'X-From-Code'   => $self->config->{localServerCode},
-            'X-To-Code'     => $args->{centralCode},
-            'Accept'        => "application/json",
-            'Content-Type'  => "application/json",
-            'Content'       => encode_json( $args->{data} )
-        );
-
-    if ( $self->config->{debug_mode} ) {
-        warn p( $request );
-    }
-
-    return $self->oauth2->ua->request(
-        $request
-    );
-}
-
-=head3 get_request
-
-Generic request for GET
-
-=cut
-
-sub get_request {
-    my ($self, $args) = @_;
-
-    my $request =
-        GET($self->config->{api_base_url} . '/' . $args->{endpoint},
-            'Authorization' => "Bearer " . $self->token,
-            'X-From-Code'   => $self->config->{localServerCode},
-            'X-To-Code'     => $args->{centralCode},
-            'Accept'        => "application/json",
-            'Content-Type'  => "application/json"
-        );
-
-    if ( $self->config->{debug_mode} ) {
-        warn p( $request );
-    }
-
-    return $self->oauth2->ua->request(
-        $request
-    );
-}
-
-=head3 delete_request
-
-Generic request for DELETE
-
-=cut
-
-sub delete_request {
-    my ($self, $args) = @_;
-
-    my $request =
-        DELETE(
-            $self->config->{api_base_url} . '/' . $args->{endpoint},
-            'Authorization' => "Bearer " . $self->token,
-            'X-From-Code'   => $self->config->{localServerCode},
-            'X-To-Code'     => $args->{centralCode},
-            'Accept'        => "application/json",
-        );
-
-    if ( $self->config->{debug_mode} ) {
-        warn p( $request );
-    }
-
-    return $self->oauth2->ua->request(
-        $request
-    );
-}
 
 =head3 item_circ_status
 

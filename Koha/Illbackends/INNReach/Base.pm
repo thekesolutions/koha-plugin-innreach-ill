@@ -26,7 +26,8 @@ use Koha::Biblios;
 use Koha::Illrequests;
 use Koha::Illrequestattributes;
 
-use Koha::Plugin::Com::Theke::INNReach::Contribution;
+use Koha::Plugin::Com::Theke::INNReach;
+use Koha::Plugin::Com::Theke::INNReach::OAuth2;
 
 =head1 NAME
 
@@ -65,7 +66,17 @@ sub new {
 
     # -> instantiate the backend
     my ($class) = @_;
-    my $self = {};
+    my $configuration = Koha::Plugin::Com::Theke::INNReach->new->configuration;
+    my $oauth2 = Koha::Plugin::Com::Theke::INNReach::OAuth2->new({
+        client_id         => $configuration->{client_id},
+        client_secret     => $configuration->{client_secret},
+        api_base_url      => $configuration->{api_base_url},
+        local_server_code => $configuration->{localServerCode}
+    });
+    my $self = {
+        configuration => $configuration,
+        oauth2        => $oauth2
+    };
     bless( $self, $class );
     return $self;
 }
@@ -265,8 +276,7 @@ sub item_shipped {
     my $itemId      = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemId' })->value;
     my $item = Koha::Items->find( $itemId );
 
-    my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
-    my $response = $innreach->post_request(
+    my $response = $self->oauth2->post_request(
         {   endpoint    => "/innreach/v2/circ/itemshipped/$trackingId/$centralCode",
             centralCode => $centralCode,
             data        => {
@@ -304,8 +314,7 @@ sub item_checkin {
     my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId' })->value;
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
 
-    my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
-    my $response = $innreach->post_request(
+    my $response = $self->oauth2->post_request(
         {   endpoint    => "/innreach/v2/circ/finalcheckin/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
@@ -340,8 +349,7 @@ sub cancel_request {
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
     my $patronName  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'patronName'  })->value;
 
-    my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
-    my $response = $innreach->post_request(
+    my $response = $self->oauth2->post_request(
         {   endpoint    => "/innreach/v2/circ/owningsitecancel/$trackingId/$centralCode",
             centralCode => $centralCode,
             data        => {
@@ -383,8 +391,7 @@ sub item_received {
     my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
 
-    my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
-    my $response = $innreach->post_request(
+    my $response = $self->oauth2->post_request(
         {   endpoint    => "/innreach/v2/circ/itemreceived/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
@@ -418,8 +425,7 @@ sub item_in_transit {
     my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
 
-    my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
-    my $response = $innreach->post_request(
+    my $response = $self->oauth2->post_request(
         {   endpoint    => "/innreach/v2/circ/intransit/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
@@ -465,8 +471,7 @@ sub cancel_request_by_us {
     my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
 
-    my $innreach = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
-    my $response = $innreach->post_request(
+    my $response = $self->oauth2->post_request(
         {   endpoint    => "/innreach/v2/circ/cancelitemhold/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
