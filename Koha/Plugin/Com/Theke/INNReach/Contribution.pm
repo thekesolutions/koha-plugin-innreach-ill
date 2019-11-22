@@ -733,6 +733,40 @@ sub get_locations_list {
     return decode_json(encode('UTF-8',$response->content))->{locationList};
 }
 
+=head3 get_agencies_list
+
+    my $res = $contribution->get_agencies_list(
+        { centralServer => $centralServer }
+    );
+
+Sends a a request for defined agencies to a central server.
+
+GET /innreach/v2/contribution/agencies
+
+=cut
+
+sub get_agencies_list {
+    my ($self, $args) = @_;
+
+    my $response;
+
+    try {
+        my $centralServer = $args->{centralServer};
+        $response = $self->oauth2->get_request(
+            {   endpoint    => '/innreach/v2/contribution/agencies',
+                centralCode => $centralServer
+            }
+        );
+        warn p($response)
+          if $response->is_error or $ENV{DEBUG};
+    }
+    catch {
+        die "Problem fetching the agencies list";
+    };
+
+    return decode_json(encode('UTF-8',$response->content))->{agencyList};
+}
+
 =head3 get_central_patron_types_list
 
     my $res = $contribution->get_central_patron_types_list(

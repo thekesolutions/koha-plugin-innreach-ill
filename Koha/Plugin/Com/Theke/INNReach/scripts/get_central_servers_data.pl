@@ -26,12 +26,14 @@ use Koha::Plugin::Com::Theke::INNReach::Contribution;
 
 binmode(STDOUT,':encoding(utf8)');
 
+my $agencies;
 my $locations;
 my $item_types;
 my $patron_types;
 my $all;
 
 my $result = GetOptions(
+    'agencies'     => \$agencies,
     'locations'    => \$locations,
     'item_types'   => \$item_types,
     'patron_types' => \$patron_types,
@@ -43,7 +45,7 @@ unless ($result) {
     die "Not sure what wen't wrong";
 }
 
-unless ( $locations or $item_types or $patron_types or $all ) {
+unless ( $agencies or $locations or $item_types or $patron_types or $all ) {
     print_usage();
     exit 0;
 }
@@ -53,6 +55,7 @@ sub print_usage {
 
     C'mon! Valid options are
 
+    --agencies         Fetch agencies data
     --locations        Fetch locations data
     --item_types       Fetch central item types
     --patron_types     Fetch central patron types
@@ -62,6 +65,7 @@ _USAGE_
 }
 
 if ( $all ) {
+    $agencies     = 1;
     $locations    = 1;
     $item_types   = 1;
     $patron_types = 1;
@@ -71,6 +75,17 @@ my $response;
 my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
 
 my @central_servers = @{ $contribution->config->{centralServers} };
+
+if ( $agencies ) {
+    print STDOUT "# Agencies:\n";
+    foreach my $central_server (@central_servers) {
+        print STDOUT "## $central_server:\n";
+        $response = $contribution->get_agencies_list({ centralServer => $central_server });
+        foreach my $agency ( @{ $response } ) {
+            print STDOUT p( $agency );
+        }
+    }
+}
 
 if ( $locations ) {
     print STDOUT "# Locations:\n";
