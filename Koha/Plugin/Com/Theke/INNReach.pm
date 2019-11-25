@@ -121,6 +121,19 @@ sub install {
         });
     }
 
+    my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
+
+    unless ( $self->_table_exists( $agency_to_patron ) ) {
+        C4::Context->dbh->do(qq{
+            CREATE TABLE $agency_to_patron (
+                `agency_id` VARCHAR(191) NOT NULL,
+                `patron_id` INT(11) NOT NULL,
+                `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`agency_id`,`patron_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        });
+    }
+
     return 1;
 }
 
@@ -165,6 +178,24 @@ sub upgrade {
         }
 
         $self->store_data({ '__INSTALLED_VERSION__' => "1.1.18" });
+    }
+
+    if ( Koha::Plugins::Base::_version_compare( $database_version, "2.1.3" ) == -1 ) {
+
+        my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
+
+        unless ( $self->_table_exists( $agency_to_patron ) ) {
+            C4::Context->dbh->do(qq{
+                CREATE TABLE $agency_to_patron (
+                    `agency_id` VARCHAR(191) NOT NULL,
+                    `patron_id` INT(11) NOT NULL,
+                    `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`agency_id`,`patron_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            });
+        }
+
+        $self->store_data({ '__INSTALLED_VERSION__' => "2.1.4" });
     }
 
     return 1;
