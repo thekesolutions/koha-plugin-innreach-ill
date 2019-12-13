@@ -1,20 +1,8 @@
 # koha-plugin-innreach
 
-This project implements a plugin integrating Koha with the INN-Reach ILL service.
-
-## WIP
-This project is work-in-progress
-
-## Goal
-When finished, this plugin will implement:
-* The required endpoints for INN-Reach -> Koha communication
-* Implement a [Koha ILL backend](https://wiki.koha-community.org/wiki/ILL_backends) that does the required Koha -> INNReach communication too
-
-## Problems to solve
-* We need to hook all biblio and items CRUD operations to report back to the INNReach Central Server (contributing records).
-This could be easily done in rebuild_zebra.pl, but we might need a separate server.
-
-# Implemented
+INN-Reach inter-library loan service integration plugin for Koha.
+This plugin implements the required API, ILL backend and tools to make
+Koha able to be part of ILL networks using the INN-Reach service.
 
 ## Record/data contribution
 
