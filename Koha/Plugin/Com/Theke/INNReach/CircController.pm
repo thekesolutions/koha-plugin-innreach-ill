@@ -113,17 +113,17 @@ sub itemhold {
         my $schema = Koha::Database->new->schema;
         $schema->txn_do(
             sub {
-                # calculate the borrowernumber for the agency
+                my $agency_id = $attributes->{patronAgencyCode};
                 my $user_id = $plugin->get_patron_id_from_agency({
-                    agency_id    => $attributes->{patronAgencyCode},
-                    central_code => $centralCode
+                    agency_id      => $agency_id,
+                    central_server => $centralCode
                 });
                 unless ( $user_id ) {
                     return $c->render(
                         status  => 200,
                         openapi => {
                             status => 'error',
-                            reason => 'ILL library not loaded in the system. Try again later or contact the administrator.',
+                            reason => "ILL library not loaded in the system. Try again later or contact the administrator ($agency_id).",
                             errors => []
                         }
                     );
