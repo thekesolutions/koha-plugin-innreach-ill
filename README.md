@@ -147,7 +147,7 @@ client_secret: a_client_secret
 localServerCode: koha1
 mainAgency: code2
 require_patron_auth: true
-local_patron_id: 93
+partners_library_id: ILL
 library_to_location:
     CPL: code1
     MPL: code2

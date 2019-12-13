@@ -25,6 +25,7 @@ use C4::Reserves qw(AddReserve);
 
 use Koha::Biblios;
 use Koha::Items;
+use Koha::Patrons;
 
 use Koha::Database;
 use Koha::DateUtils qw(dt_from_string);
@@ -59,6 +60,8 @@ This method creates an ILLRequest and sets its status to O_ITEM_REQUESTED
 sub itemhold {
     my $c = shift->openapi->valid_input or return;
 
+    my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
     my $trackingId  = $c->validation->param('trackingId');
     my $centralCode = $c->validation->param('centralCode');
 
@@ -72,10 +75,6 @@ sub itemhold {
             errors => []
         }
     ) if $req;
-
-    # TODO: check why we cannot use the stashed patron
-    #my $user_id = $c->stash('koha.user')->borrowernumber;
-    my $user_id = Koha::Plugin::Com::Theke::INNReach->new->configuration->{local_patron_id};
 
     my $body = $c->validation->param('body');
 
@@ -114,6 +113,15 @@ sub itemhold {
         my $schema = Koha::Database->new->schema;
         $schema->txn_do(
             sub {
+                # calculate the borrowernumber for the agency
+                my $user_id = $c->get_patron_id_from_agency({
+                    patronAgencyCode => $attributes->{patronAgencyCode},
+                    plugin           => $plugin
+                });
+                unless ( $user_id ) {
+                    $user_id = $c->generate_patron_for_agency()->borrowernumber;
+                }
+
                 # Create the request
                 my $req = Koha::Illrequest->new({
                     branchcode     => 'ILL',  # FIXME
@@ -1162,6 +1170,75 @@ sub pickup_location_to_library_id {
     $library_id = $configuration->{location_to_library}->{$pickup_location};
 
     return $library_id;
+}
+
+=head3 get_patron_id_from_agency
+
+=cut
+
+sub get_patron_id_from_agency {
+    my ( $c, $args ) = @_;
+
+    my $patronAgencyCode = $args->{patronAgencyCode};
+    my $plugin           = $args->{plugin};
+
+    my $agency_to_patron = $plugin->get_qualified_table_name('agency_to_patron');
+    my $dbh = C4::Context->dbh;
+    my $sth = $dbh->prepare(qq{
+        SELECT patron_id
+        FROM   $agency_to_patron
+        WHERE  agency_id='$patronAgencyCode'
+    });
+
+    $sth->execute();
+    my $result = $sth->fetchrow_hashref;
+
+    unless ($result) {
+        return;
+    }
+
+    return $result->{patron_id};
+}
+
+=head3 generate_patron_for_agency
+
+=cut
+
+sub generate_patron_for_agency {
+    my ( $c, $args ) = @_;
+
+    my $plugin    = $args->{plugin};
+    my $agency_id = $args->{patronAgencyCode};
+
+    my $agency_to_patron = $plugin->get_qualified_table_name('agency_to_patron');
+
+    my $library_id    = $plugin->configuration->{partners_library_id};
+    my $category_code = C4::Context->config("interlibrary_loans")->{partner_code};
+
+    my $patron;
+
+    Koha::Database->schema->txn_do( sub {
+        $patron = Koha::Patron->new({
+            branchcode   => $library_id,
+            categorycode => $category_code,
+            surname      => $agency_id,
+            cardnumber   => 'ILL_' . $agency_id
+        })->store;
+
+        my $patron_id = $patron->borrowernumber;
+
+        my $dbh = C4::Context->dbh;
+        my $sth = $dbh->prepare(qq{
+            INSERT INTO $agency_to_patron
+              ( agency_id, patron_id )
+            VALUES
+              ( '$agency_id', '$patron_id' );
+        });
+
+        $sth->execute();
+    });
+
+    return $patron;
 }
 
 1;
