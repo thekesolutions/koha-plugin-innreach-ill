@@ -114,17 +114,24 @@ sub itemhold {
         $schema->txn_do(
             sub {
                 # calculate the borrowernumber for the agency
-                my $user_id = $c->get_patron_id_from_agency({
-                    patronAgencyCode => $attributes->{patronAgencyCode},
-                    plugin           => $plugin
+                my $user_id = $plugin->get_patron_id_from_agency({
+                    agency_id    => $attributes->{patronAgencyCode},
+                    central_code => $centralCode
                 });
                 unless ( $user_id ) {
-                    $user_id = $c->generate_patron_for_agency()->borrowernumber;
+                    return $c->render(
+                        status  => 200,
+                        openapi => {
+                            status => 'error',
+                            reason => 'ILL library not loaded in the system. Try again later or contact the administrator.',
+                            errors => []
+                        }
+                    );
                 }
 
                 # Create the request
                 my $req = Koha::Illrequest->new({
-                    branchcode     => 'ILL',  # FIXME
+                    branchcode     => $item->holdingbranch,
                     borrowernumber => $user_id,
                     biblio_id      => $item->biblionumber,
                     updated        => dt_from_string(),
@@ -1170,75 +1177,6 @@ sub pickup_location_to_library_id {
     $library_id = $configuration->{location_to_library}->{$pickup_location};
 
     return $library_id;
-}
-
-=head3 get_patron_id_from_agency
-
-=cut
-
-sub get_patron_id_from_agency {
-    my ( $c, $args ) = @_;
-
-    my $patronAgencyCode = $args->{patronAgencyCode};
-    my $plugin           = $args->{plugin};
-
-    my $agency_to_patron = $plugin->get_qualified_table_name('agency_to_patron');
-    my $dbh = C4::Context->dbh;
-    my $sth = $dbh->prepare(qq{
-        SELECT patron_id
-        FROM   $agency_to_patron
-        WHERE  agency_id='$patronAgencyCode'
-    });
-
-    $sth->execute();
-    my $result = $sth->fetchrow_hashref;
-
-    unless ($result) {
-        return;
-    }
-
-    return $result->{patron_id};
-}
-
-=head3 generate_patron_for_agency
-
-=cut
-
-sub generate_patron_for_agency {
-    my ( $c, $args ) = @_;
-
-    my $plugin    = $args->{plugin};
-    my $agency_id = $args->{patronAgencyCode};
-
-    my $agency_to_patron = $plugin->get_qualified_table_name('agency_to_patron');
-
-    my $library_id    = $plugin->configuration->{partners_library_id};
-    my $category_code = C4::Context->config("interlibrary_loans")->{partner_code};
-
-    my $patron;
-
-    Koha::Database->schema->txn_do( sub {
-        $patron = Koha::Patron->new({
-            branchcode   => $library_id,
-            categorycode => $category_code,
-            surname      => $agency_id,
-            cardnumber   => 'ILL_' . $agency_id
-        })->store;
-
-        my $patron_id = $patron->borrowernumber;
-
-        my $dbh = C4::Context->dbh;
-        my $sth = $dbh->prepare(qq{
-            INSERT INTO $agency_to_patron
-              ( agency_id, patron_id )
-            VALUES
-              ( '$agency_id', '$patron_id' );
-        });
-
-        $sth->execute();
-    });
-
-    return $patron;
 }
 
 1;

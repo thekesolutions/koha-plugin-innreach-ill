@@ -35,6 +35,20 @@ our $metadata = {
     description     => 'INN-Reach ILL integration module.'
 };
 
+=head1 Koha::Plugin::Com::Theke::INNReach
+
+INN-Reach connector plugin for Koha
+
+=head2 Plugin methods
+
+=head3 new
+
+Constructor:
+
+    $my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
+=cut
+
 sub new {
     my ( $class, $args ) = @_;
 
@@ -45,6 +59,12 @@ sub new {
 
     return $self;
 }
+
+=head3 configure
+
+Plugin configuration method
+
+=cut
 
 sub configure {
     my ( $self, $args ) = @_;
@@ -74,6 +94,12 @@ sub configure {
     }
 }
 
+=head3 configuration
+
+Accessor for the de-serialized plugin configuration
+
+=cut
+
 sub configuration {
     my ($self) = @_;
 
@@ -98,6 +124,12 @@ sub configuration {
 
     return $configuration;
 }
+
+=head3 install
+
+Install method. Takes care of table creation and initialization if required
+
+=cut
 
 sub install {
     my ( $self, $args ) = @_;
@@ -126,10 +158,12 @@ sub install {
     unless ( $self->_table_exists( $agency_to_patron ) ) {
         C4::Context->dbh->do(qq{
             CREATE TABLE $agency_to_patron (
-                `agency_id` VARCHAR(191) NOT NULL,
-                `patron_id` INT(11) NOT NULL,
-                `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (`agency_id`,`patron_id`)
+                `central_server` VARCHAR(191) NOT NULL,
+                `local_server`   VARCHAR(191) NULL DEFAULT NULL,
+                `agency_id`      VARCHAR(191) NOT NULL,
+                `patron_id`      INT(11) NOT NULL,
+                `timestamp`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`central_server`,`agency_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         });
     }
@@ -137,6 +171,11 @@ sub install {
     return 1;
 }
 
+=head3 upgrade
+
+Takes care of upgrading whatever is needed (table structure, new tables, information on those)
+
+=cut
 
 sub upgrade {
     my ( $self, $args ) = @_;
@@ -187,10 +226,12 @@ sub upgrade {
         unless ( $self->_table_exists( $agency_to_patron ) ) {
             C4::Context->dbh->do(qq{
                 CREATE TABLE $agency_to_patron (
-                    `agency_id` VARCHAR(191) NOT NULL,
-                    `patron_id` INT(11) NOT NULL,
-                    `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (`agency_id`,`patron_id`)
+                    `central_server` VARCHAR(191) NOT NULL,
+                    `local_server`   VARCHAR(191) NULL DEFAULT NULL,
+                    `agency_id`      VARCHAR(191) NOT NULL,
+                    `patron_id`      INT(11) NOT NULL,
+                    `timestamp`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`central_server`,`agency_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             });
         }
@@ -200,6 +241,14 @@ sub upgrade {
 
     return 1;
 }
+
+=head3 _table_exists (helper)
+
+Method to check if a table exists in Koha.
+
+FIXME: Should be made available to plugins in core
+
+=cut
 
 sub _table_exists {
     my $table = shift;
@@ -211,6 +260,12 @@ sub _table_exists {
     return 1 unless $@;
     return 0;
 }
+
+=head3 after_biblio_action
+
+Hook that is called on biblio modification
+
+=cut
 
 sub after_biblio_action {
     my ( $self, $args ) = @_;
@@ -228,6 +283,12 @@ sub after_biblio_action {
     });
 }
 
+=head3 after_item_action
+
+Hool that is caled on item modification
+
+=cut
+
 sub after_item_action {
     my ( $self, $args ) = @_;
 
@@ -244,6 +305,12 @@ sub after_item_action {
     });
 }
 
+=head3 api_routes
+
+Method that returns the API routes to be merged into Koha's
+
+=cut
+
 sub api_routes {
     my ( $self, $args ) = @_;
 
@@ -253,10 +320,251 @@ sub api_routes {
     return $spec;
 }
 
+=head3 api_namespace
+
+Method that returns the namespace for the plugin API to be put on
+
+=cut
+
 sub api_namespace {
     my ( $self ) = @_;
     
     return 'innreach';
 }
+
+=head2 Business methods
+
+=head3 generate_patron_for_agency
+
+    my $patron = $plugin->generate_patron_for_agency(
+        {
+            central_server => $central_server,
+            local_server   => $local_server,
+            agency_id      => $agency_id,
+            description    => $description
+        }
+    );
+
+Generates a patron representing a library in the consortia that might make
+material requests (borrowing site). It is used on the circulation workflow to
+place a hold on the requested items.
+
+=cut
+
+sub generate_patron_for_agency {
+    my ( $self, $args ) = @_;
+
+    my $central_server = $args->{central_server};
+    my $local_server   = $args->{local_server};
+    my $description    = $args->{description};
+    my $agency_id      = $args->{agency_id};
+
+    my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
+
+    my $library_id    = $self->configuration->{partners_library_id};
+    my $category_code = C4::Context->config("interlibrary_loans")->{partner_code};
+
+    my $patron;
+
+    Koha::Database->schema->txn_do( sub {
+        $patron = Koha::Patron->new(
+            {
+                branchcode   => $library_id,
+                categorycode => $category_code,
+                surname      => $self->gen_patron_description(
+                    {
+                        central_server => $central_server,
+                        local_server   => $local_server,
+                        description    => $description,
+                        agency_id      => $agency_id
+                    }
+                ),
+                cardnumber => $self->gen_cardnumber(
+                    {
+                        central_server => $central_server,
+                        local_server   => $local_server,
+                        description    => $description,
+                        agency_id      => $agency_id
+                    }
+                )
+            }
+        )->store;
+
+        my $patron_id = $patron->borrowernumber;
+
+        my $dbh = C4::Context->dbh;
+        my $sth = $dbh->prepare(qq{
+            INSERT INTO $agency_to_patron
+              ( central_server, local_server, agency_id, patron_id )
+            VALUES
+              ( '$central_server', '$local_server', '$agency_id', '$patron_id' );
+        });
+
+        $sth->execute();
+    });
+
+    return $patron;
+}
+
+=head3 update_patron_for_agency
+
+    my $patron = $plugin->update_patron_for_agency(
+        {
+            central_server => $central_server,
+            local_server   => $local_server,
+            agency_id      => $agency_id,
+            description    => $description
+        }
+    );
+
+Updates a patron representing a library in the consortia that might make
+material requests (borrowing site). It is used by cronjobs to keep things up
+to date if there are changes on the central server info.
+
+See: scripts/sync_agencies.pl
+
+=cut
+
+sub update_patron_for_agency {
+    my ( $self, $args ) = @_;
+
+    my $central_server = $args->{central_server};
+    my $local_server   = $args->{local_server};
+    my $description    = $args->{description};
+    my $agency_id      = $args->{agency_id};
+
+    my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
+
+    my $library_id    = $self->configuration->{partners_library_id};
+    my $category_code = C4::Context->config("interlibrary_loans")->{partner_code};
+
+    my $patron;
+
+    Koha::Database->schema->txn_do( sub {
+
+        my $patron_id = $self->get_patron_id_from_agency({
+            central_server => $central_server,
+            agency_id      => $agency_id
+        });
+
+        $patron = Koha::Patrons->find( $patron_id );
+        $patron->set(
+            {
+                surname => $self->gen_patron_description(
+                    {
+                        central_server => $central_server,
+                        local_server   => $local_server,
+                        description    => $description,
+                        agency_id      => $agency_id
+                    }
+                ),
+                cardnumber => $self->gen_cardnumber(
+                    {
+                        central_server => $central_server,
+                        local_server   => $local_server,
+                        description    => $description,
+                        agency_id      => $agency_id
+                    }
+                )
+            }
+        )->store;
+    });
+
+    return $patron;
+}
+
+=head3 get_patron_id_from_agency
+
+    my $patron_id = $plugin->get_patron_id_from_agency(
+        {
+            central_server => $central_server,
+            agency_id      => $agency_id
+        }
+    );
+
+Given an agency_id (which usually comes in the patronAgencyCode attribute on the itemhold request)
+and a central_server code, it returns Koha's patron id so the hold request can be correctly assigned.
+
+=cut
+
+sub get_patron_id_from_agency {
+    my ( $self, $args ) = @_;
+
+    my $central_server = $args->{central_server};
+    my $agency_id      = $args->{agency_id};
+
+    my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
+    my $dbh = C4::Context->dbh;
+    my $sth = $dbh->prepare(qq{
+        SELECT patron_id
+        FROM   $agency_to_patron
+        WHERE  agency_id='$agency_id' AND central_server='$central_server'
+    });
+
+    $sth->execute();
+    my $result = $sth->fetchrow_hashref;
+
+    unless ($result) {
+        return;
+    }
+
+    return $result->{patron_id};
+}
+
+=head3 gen_patron_description
+
+    my $patron_description = $plugin->gen_patron_description(
+        {
+            central_server => $central_server,
+            local_server   => $local_server,
+            description    => $description,
+            agency_id      => $agency_id
+        }
+    );
+
+This method encapsulates patron description generation based on the provided information.
+The idea is that any change on this regard should happen on a single place.
+
+=cut
+
+sub gen_patron_description {
+    my ( $self, $args ) = @_;
+
+    my $central_server = $args->{central_server};
+    my $local_server   = $args->{local_server};
+    my $description    = $args->{description};
+    my $agency_id      = $args->{agency_id};
+
+    return "$description ($agency_id)";
+}
+
+=head3 gen_cardnumber
+
+    my $cardnumber = $plugin->gen_cardnumber(
+        {
+            central_server => $central_server,
+            local_server   => $local_server,
+            description    => $description,
+            agency_id      => $agency_id
+        }
+    );
+
+This method encapsulates patron description generation based on the provided information.
+The idea is that any change on this regard should happen on a single place.
+
+=cut
+
+sub gen_cardnumber {
+    my ( $self, $args ) = @_;
+
+    my $central_server = $args->{central_server};
+    my $local_server   = $args->{local_server};
+    my $description    = $args->{description};
+    my $agency_id      = $args->{agency_id};
+
+    return 'ILL_' . $central_server . '_' . $agency_id;
+}
+
+
 
 1;
