@@ -753,7 +753,7 @@ sub get_agencies_list {
     try {
         my $centralServer = $args->{centralServer};
         $response = $self->oauth2->get_request(
-            {   endpoint    => '/innreach/v2/contribution/agencies',
+            {   endpoint    => '/innreach/v2/contribution/localservers',
                 centralCode => $centralServer
             }
         );
@@ -764,7 +764,7 @@ sub get_agencies_list {
         die "Problem fetching the agencies list";
     };
 
-    return decode_json(encode('UTF-8',$response->content))->{agencyList};
+    return decode_json(encode('UTF-8',$response->content))->{localServerList};
 }
 
 =head3 get_central_patron_types_list
