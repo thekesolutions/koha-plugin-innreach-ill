@@ -75,7 +75,7 @@ sub new {
     });
     my $self = {
         configuration => $configuration,
-        oauth2        => $oauth2
+        _oauth2       => $oauth2
     };
     bless( $self, $class );
     return $self;
@@ -529,6 +529,18 @@ sub _get_core_fields {
         article_author  => 'Part Author',
         article_pages   => 'Part Pages',
     };
+}
+
+=head3 oauth2
+
+Return the initialized OAuth2 object
+
+=cut
+
+sub oauth2 {
+    my ( $self ) = @_;
+
+    return $self->{_oauth2};
 }
 
 =head1 AUTHORS
