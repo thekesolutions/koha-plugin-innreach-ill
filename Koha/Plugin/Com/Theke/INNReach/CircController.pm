@@ -21,7 +21,7 @@ use Try::Tiny;
 
 use C4::Biblio qw(AddBiblio);
 use C4::Items qw(AddItem);
-use C4::Reserves qw(AddReserve);
+use C4::Reserves qw(AddReserve CanItemBeReserved);
 
 use Koha::Biblios;
 use Koha::Items;
@@ -113,12 +113,14 @@ sub itemhold {
         my $schema = Koha::Database->new->schema;
         $schema->txn_do(
             sub {
-                my $agency_id = $attributes->{patronAgencyCode};
-                my $user_id = $plugin->get_patron_id_from_agency({
+                my $agency_id  = $attributes->{patronAgencyCode};
+                my $library_id = $plugin->configuration->{partners_library_id};
+                my $patron_id  = $plugin->get_patron_id_from_agency({
                     agency_id      => $agency_id,
                     central_server => $centralCode
                 });
-                unless ( $user_id ) {
+
+                unless ( $patron_id ) {
                     return $c->render(
                         status  => 200,
                         openapi => {
@@ -131,8 +133,8 @@ sub itemhold {
 
                 # Create the request
                 my $req = Koha::Illrequest->new({
-                    branchcode     => $item->holdingbranch,
-                    borrowernumber => $user_id,
+                    branchcode     => $library_id,
+                    borrowernumber => $patron_id,
                     biblio_id      => $item->biblionumber,
                     updated        => dt_from_string(),
                     status         => 'O_ITEM_REQUESTED',
@@ -153,12 +155,39 @@ sub itemhold {
                     }
                 }
 
-                return $c->render(
+                $c->render(
                     status  => 200,
                     openapi => {
                         status => 'ok',
                         reason => '',
                         errors => []
+                    }
+                );
+
+                $c->tx->on(
+                    finish => sub {
+                        my $can_item_be_reserved = CanItemBeReserved( $patron_id, $item->itemnumber, $library_id )->{status};
+                        if ( $can_item_be_reserved eq 'OK' ) {
+                            # hold can be placed, just do it
+                            my $reserve_id = AddReserve(
+                                $req->branchcode,          # branch
+                                $patron_id,                # borrowernumber
+                                $biblio->biblionumber,     # biblionumber
+                                undef,                     # biblioitemnumber
+                                1,                         # priority
+                                undef,                     # resdate
+                                undef,                     # expdate
+                                'Placed by ILL',           # notes
+                                '',                        # title
+                                $item->itemnumber,         # checkitem
+                                undef                      # found
+                            );
+                        }
+                        else {
+                            # hold cannot be placed, notify them
+                            my $ill = Koha::Illbackends::INNReach::Base->new;
+                            $ill->cancel_request({ request => $req });
+                        }
                     }
                 );
             }
