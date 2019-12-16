@@ -353,7 +353,7 @@ sub cancel_request {
         {   endpoint    => "/innreach/v2/circ/owningsitecancel/$trackingId/$centralCode",
             centralCode => $centralCode,
             data        => {
-                localBibId => undef,
+                localBibId => $req->biblio_id,
                 reason     => '',
                 reasonCode => '7',
                 patronName => $patronName
