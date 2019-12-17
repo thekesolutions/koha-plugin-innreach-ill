@@ -361,6 +361,18 @@ sub cancel_request {
         }
     );
 
+    my $item_id = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemId' })->value;
+    my $patron_id = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'patronId' })->value;
+
+    my $holds = Koha::Holds->search({
+        borrowernumber => $patron_id,
+        itemnumber     => $item_id
+    });
+
+    while ( my $hold = $holds->next ) {
+        $hold->cancel;
+    }
+
     $req->status('O_ITEM_CANCELLED_BY_US')->store;
 
     return {
@@ -478,6 +490,18 @@ sub cancel_request_by_us {
     );
 
     $req->status('B_ITEM_CANCELLED_BY_US')->store;
+
+    my $item_id = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemId' })->value;
+    my $patron_id = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'patronId' })->value;
+
+    my $holds = Koha::Holds->search({
+        borrowernumber => $patron_id,
+        itemnumber     => $item_id
+    });
+
+    while ( my $hold = $holds->next ) {
+        $hold->cancel;
+    }
 
     return {
         error   => 0,
