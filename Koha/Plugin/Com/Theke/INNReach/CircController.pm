@@ -588,7 +588,7 @@ sub itemshipped {
                     1,                         # priority
                     undef,                     # resdate
                     undef,                     # expdate
-                    'Placed By ILL',           # notes
+                    'Placed by ILL',           # notes
                     '',                        # title
                     $item_id,                  # checkitem
                     undef                      # found
@@ -602,6 +602,15 @@ sub itemshipped {
                 # Add new attributes for tracking
                 while ( my ( $type, $value ) = each %{$attributes} ) {
                     if ($value && length $value > 0) {
+                        my $attribute = Koha::Illrequestattributes->find(
+                            {
+                                illrequest_id => $req->illrequest_id,
+                                type          => $type
+                            }
+                        );
+                        # If already exists, overwrite
+                        $attribute->delete if $attribute;
+
                         Koha::Illrequestattribute->new(
                             {
                                 illrequest_id => $req->illrequest_id,
