@@ -917,7 +917,7 @@
     "put": {
       "x-mojo-to": "Com::Theke::INNReach::CircController#transferrequest",
       "operationId": "transferrequest",
-      "description": "Owner renew.",
+      "description": "Owning site notifies the request has been transfered to another item",
       "tags": [
         "circulation"
       ],
@@ -937,7 +937,7 @@
           "type": "string"
         },
         {
-          "description": "Receive unshipped item data",
+          "description": "Information about the new item to be sent",
           "in": "body",
           "name": "body",
           "required": true,
@@ -977,7 +977,7 @@
       ],
       "responses": {
         "200": {
-          "description": "Successful item hold"
+          "description": "Transfer request processed correctly"
         },
         "404": {
           "description": "An error occured"

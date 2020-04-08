@@ -993,7 +993,11 @@ sub returnuncirculated {
 
 =head3 transferrequest
 
-TODO: this method is a stub
+This method handles a transfer request from central server to the borrowing
+site. It happens when the owning site notifies the central server they picked
+a new item to fulfill the original request.
+
+This request can only happen when the ILL request status is B_ITEM_REQUESTED.
 
 =cut
 
@@ -1005,15 +1009,25 @@ sub transferrequest {
 
     my $body = $c->validation->param('body');
 
-    my $transactionTime  = $body->{transactionTime};
-    my $patronId         = $body->{patronId};
-    my $patronAgencyCode = $body->{patronAgencyCode};
-    my $itemAgencyCode   = $body->{itemAgencyCode};
-    my $itemId           = $body->{itemId};
     my $newItemId        = $body->{newItemId};
 
+    my $attributes = {
+        transactionTime  => $body->{transactionTime},
+        patronId         => $body->{patronId},
+        patronAgencyCode => $body->{patronAgencyCode},
+        itemAgencyCode   => $body->{itemAgencyCode},
+        itemId           => $newItemId
+    };
+
     return try {
-        # do your stuff
+        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+
+        while ( my ($type, $value) = each %{$attributes} ) {
+            # Update all attributes
+            my $attr = $req->illrequestattributes->find({ type => $type });
+            $attr->set({ value => $value })->store;
+        }
+
         return $c->render(
             status  => 200,
             openapi => {
