@@ -31,11 +31,13 @@ binmode(STDOUT,':encoding(utf8)');
 my $verbose;
 my $local_server;
 my $central_server;
+my $dry_run = 0;
 
 my $result = GetOptions(
     'v|verbose'        => \$verbose,
     'local_server=s'   => \$local_server,
-    'central_server=s' => \$central_server
+    'central_server=s' => \$central_server,
+    'dry_run'          => \$dry_run
 );
 
 unless ($result) {
@@ -50,6 +52,7 @@ Valid options are:
 
     --local_server      Only sync specified local_server
     --central_server    Only sync the specified central server agencies
+    --dry_run           Don't make any changes
     -v | --verbose      Verbose output
 
 _USAGE_
@@ -74,6 +77,8 @@ print STDOUT "Central servers:\n"
 foreach my $central_server (@central_servers) {
     $response = $contribution->get_agencies_list({ centralServer => $central_server });
 
+    print STDOUT "$central_server\n"
+        if $verbose;
     print STDOUT "\tLocal servers:\n"
         if $verbose and scalar @{ $response } > 0;
     foreach my $server ( @{ $response } ) {
@@ -104,25 +109,27 @@ foreach my $central_server (@central_servers) {
 
             my $patron;
 
-            if ( $patron_id ) {
-                # Update description
-                $plugin->update_patron_for_agency({
-                    plugin         => $plugin,
-                    agency_id      => $agency_id,
-                    description    => $description,
-                    local_server   => $local_server,
-                    central_server => $central_server
-                });
-            }
-            else {
-                # Create it
-                $plugin->generate_patron_for_agency({
-                    plugin         => $plugin,
-                    agency_id      => $agency_id,
-                    description    => $description,
-                    local_server   => $local_server,
-                    central_server => $central_server
-                });
+            unless ($dry_run) {
+                if ( $patron_id ) {
+                    # Update description
+                    $plugin->update_patron_for_agency({
+                        plugin         => $plugin,
+                        agency_id      => $agency_id,
+                        description    => $description,
+                        local_server   => $local_server,
+                        central_server => $central_server
+                    });
+                }
+                else {
+                    # Create it
+                    $plugin->generate_patron_for_agency({
+                        plugin         => $plugin,
+                        agency_id      => $agency_id,
+                        description    => $description,
+                        local_server   => $local_server,
+                        central_server => $central_server
+                    });
+                }
             }
         }
     }
