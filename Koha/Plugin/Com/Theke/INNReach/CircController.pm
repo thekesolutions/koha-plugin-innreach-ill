@@ -43,9 +43,9 @@ use Exception::Class (
   'INNReach::Circ::UnkownBarcode'      => { isa => 'INNReach::Circ', fields => ['barcode'] }
 );
 
-=head1 Koha::Plugin::Com::Theke::INNReach::PatronsController
+=head1 Koha::Plugin::Com::Theke::INNReach::CircController
 
-A class implementing the controller methods for the patron-related endpoints
+A class implementing the controller methods for the circulation-related endpoints
 
 =head1 Class methods
 
@@ -122,7 +122,7 @@ sub itemhold {
 
                 unless ( $patron_id ) {
                     return $c->render(
-                        status  => 200,
+                        status  => 500,
                         openapi => {
                             status => 'error',
                             reason => "ILL library not loaded in the system. Try again later or contact the administrator ($agency_id).",
