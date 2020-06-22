@@ -179,7 +179,7 @@ sub itemhold {
                                 undef,                     # expdate
                                 'Placed by ILL',           # notes
                                 '',                        # title
-                                $item->itemnumber,         # checkitem
+                                undef,                     # checkitem / force biblio-level to match itemtransfer workflow
                                 undef                      # found
                             );
                         }
