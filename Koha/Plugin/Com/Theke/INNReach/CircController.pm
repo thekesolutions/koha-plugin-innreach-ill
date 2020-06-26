@@ -1088,6 +1088,7 @@ sub get_ill_request_from_barcode {
     my ( $c, $args ) = @_;
 
     my $barcode = $args->{barcode};
+    my $status  = $args->{status} // 'B_ITEM_SHIPPED'; # borrowing site, item shipped, receiving
 
     my $item = Koha::Items->find({ barcode => $barcode });
 
@@ -1101,7 +1102,7 @@ sub get_ill_request_from_barcode {
         {
             biblio_id => $biblio_id,
             status    => [
-                'B_ITEM_SHIPPED', # borrowing site, item shipped, receiving
+                $status
             ]
         }
     );
