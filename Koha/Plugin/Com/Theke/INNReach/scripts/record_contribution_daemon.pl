@@ -77,6 +77,7 @@ sub run_queued_tasks {
             id,
             object_type,
             object_id,
+            payload,
             action,
             attempts,
             timestamp
@@ -128,6 +129,9 @@ sub do_task {
         }
         elsif ( $action eq 'delete' ) {
             do_item_delete({ item_id => $object_id, contribution => $contribution, task => $task });
+        }
+        elsif ( $action eq 'renew' ) {
+            handle_item_renew({ item_id => $object_id, contribution => $contribution, task => $task });
         }
     }
     else {
@@ -333,12 +337,45 @@ sub do_item_delete {
     return 1;
 }
 
+sub handle_item_renew {
+    my ($args) = @_;
+
+    my $item_id      = $args->{item_id};
+    my $contribution = $args->{contribution};
+    my $task         = $args->{task};
+    my $payload      = decode_json($task->{payload});
+
+    try {
+        my @result = $contribution->notify_borrower_renew(
+            {
+                item_id  => $item_id,
+                date_due => $payload->{date_due}
+            }
+        );
+        if ( @result ) {
+            if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
+                mark_task({ task => $task, status => 'retry' });
+            }
+            else {
+                mark_task({ task => $task, status => 'error' });
+            }
+        }
+        else {
+            mark_task({ task => $task, status => 'success' });
+        }
+    }
+    catch {
+        mark_task({ task => $task, status => 'error', error => "$_" });
+    };
+}
+
 sub mark_task {
     my ($args)   = @_;
     my $task     = $args->{task};
     my $status   = $args->{status};
     my $task_id  = $task->{id};
     my $attempts = $task->{attempts};
+    my $error    = $task->{error};
 
     my $dbh = C4::Context->dbh;
 
@@ -352,7 +389,8 @@ sub mark_task {
             $table
         SET
             status='$status',
-            attempts=$attempts
+            attempts=$attempts,
+            last_error='$error'
         WHERE
             id=$task_id
     });

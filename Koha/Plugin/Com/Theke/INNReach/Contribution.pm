@@ -19,7 +19,7 @@ use Modern::Perl;
 
 use Encode qw{ encode decode };
 use HTTP::Request::Common qw{ DELETE GET POST PUT };
-use JSON qw{ encode_json decode_json };
+use Mojo::JSON qw(decode_json encode_json);
 use MARC::Record;
 use MARC::File::XML;
 use MIME::Base64 qw{ encode_base64 };
@@ -27,9 +27,12 @@ use Try::Tiny;
 
 use Koha::Biblios;
 use Koha::Biblio::Metadatas;
+use Koha::DateUtils qw(dt_from_string);
+use Koha::Items;
 use Koha::Libraries;
 
 use Koha::Plugin::Com::Theke::INNReach;
+use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 use Koha::Plugin::Com::Theke::INNReach::OAuth2;
 
 use Data::Printer colored => 1;
@@ -802,6 +805,65 @@ sub get_central_patron_types_list {
     return decode_json(encode('UTF-8',$response->content))->{patronTypeList};
 }
 
+=head3 notify_borrower_renew
+
+    my $res = $contribution->notify_borrower_renew(
+        {
+            item_id => $item_id,
+            payload => $payload,
+        }
+    );
+
+Notifies the relevant central server that a renewal took place.
+
+POST /innreach/v2/circ/borrowerrenew/$trackingId/$centralCode"
+{
+    "dueDateTime": "2020-06-26 18:03:20+00:00"
+}
+
+=cut
+
+sub notify_borrower_renew {
+    my ($self, $args) = @_;
+
+    my $item_id  = $args->{item_id};
+    my $date_due = $args->{date_due};
+
+    my $req = $self->get_ill_request_from_item_id(
+        {
+            item_id => 'item_id',
+            status  => 'B_ITEM_RECEIVED',
+        }
+    );
+
+    INNReach::Ill::InconsistentStatus->throw(
+        expected_status => 'B_ITEM_RECEIVED'
+    ) unless $req;
+
+    my $response;
+
+    try {
+
+        my $trackingId  = $req->illrequestattributes->search({ type => 'trackingId'  })->next->value;
+        my $centralCode = $req->illrequestattributes->search({ type => 'centralCode' })->next->value;
+
+        $response = $self->oauth2->post_request(
+            {
+                endpoint    => "/innreach/v2/circ/borrowerrenew/$trackingId/$centralCode",
+                centralCode => $centralCode,
+                data        => {
+                    dueDateTime => dt_from_string( $date_due )->epoch
+                }
+            }
+        );
+        warn p( $response )
+            if $response->is_error or $ENV{DEBUG};
+    }
+    catch {
+        INNReach::Ill->throw( "Unhandled exception: $_" );
+    };
+}
+
 =head2 Internal methods
 
 =head3 item_circ_status
@@ -832,6 +894,48 @@ sub item_circ_status {
     }
 
     return $status;
+}
+
+=head3 get_ill_request_from_item_id
+
+This method retrieves the Koha::ILLRequest using a item_id.
+
+=cut
+
+sub get_ill_request_from_item_id {
+    my ( $self, $args ) = @_;
+
+    my $item_id = $args->{item_id};
+    my $status  = $args->{status} // 'B_ITEM_SHIPPED'; # borrowing site, item shipped, receiving
+
+    my $item = Koha::Items->find( $item_id );
+
+    unless ( $item ) {
+        INNReach::Ill::UnknownItemId->throw( item_id => $item_id );
+    }
+
+    my $biblio_id = $item->biblionumber;
+
+    my $reqs = Koha::Illrequests->search(
+        {
+            biblio_id => $biblio_id,
+            status    => [
+                $status
+            ]
+        }
+    );
+
+    if ( $reqs->count > 1 ) {
+        warn "More than one ILL request for item_id ($item_id). Beware!";
+    }
+
+    return unless $reqs->count > 0;
+
+    my $req = $reqs->next;
+    # TODO: what about other stages? testing valid statuses?
+    # TODO: Owning site use case?
+
+    return $req;
 }
 
 1;
