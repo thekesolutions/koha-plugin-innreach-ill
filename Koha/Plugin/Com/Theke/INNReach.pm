@@ -136,13 +136,13 @@ sub install {
 
     my $task_queue = $self->get_qualified_table_name('task_queue');
 
-    unless ( $self->_table_exists( $task_queue ) ) {
+    unless ( !$self->_table_exists( $task_queue ) ) {
         C4::Context->dbh->do(qq{
             CREATE TABLE $task_queue (
                 `id`           INT(11) NOT NULL AUTO_INCREMENT,
                 `object_type`  ENUM('biblio', 'item') NOT NULL DEFAULT 'biblio',
                 `object_id`    INT(11) NOT NULL DEFAULT 0,
-                `payload`      TEXT DEFAULT NULL AFTER `object_id`,
+                `payload`      TEXT DEFAULT NULL,
                 `action`       ENUM('create', 'modify', 'delete', 'renew') NOT NULL DEFAULT 'modify',
                 `status`       ENUM('queued', 'retry', 'success', 'error') NOT NULL DEFAULT 'queued',
                 `attempts`     INT(11) NOT NULL DEFAULT 0,
@@ -156,7 +156,7 @@ sub install {
 
     my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
 
-    unless ( $self->_table_exists( $agency_to_patron ) ) {
+    unless ( !$self->_table_exists( $agency_to_patron ) ) {
         C4::Context->dbh->do(qq{
             CREATE TABLE $agency_to_patron (
                 `central_server` VARCHAR(191) NOT NULL,
