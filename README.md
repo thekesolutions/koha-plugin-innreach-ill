@@ -81,6 +81,7 @@ Install the missing deps:
 The following patches need to be backported for this plugin to work:
 * [Bug 22280 - The ILL module assumes every status needs a next/previous status](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=22280) (Required for the ILL module to work).
 * [Bug 22709 - Add hooks to notify plugins of biblio and item changes](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=22709) (Required by the contribution daemon).
+* [Bug 25855 - Add post_renewal_hook in circulation](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=25855) (Required for renewal actions)
 
 ###  Settings
 
