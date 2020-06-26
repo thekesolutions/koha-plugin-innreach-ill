@@ -19,7 +19,7 @@ use Modern::Perl;
 
 use base qw(Koha::Plugins::Base);
 
-use Mojo::JSON qw(decode_json);
+use Mojo::JSON qw(decode_json encode_json);
 use YAML;
 
 our $VERSION = "{VERSION}";
@@ -142,7 +142,8 @@ sub install {
                 `id`           INT(11) NOT NULL AUTO_INCREMENT,
                 `object_type`  ENUM('biblio', 'item') NOT NULL DEFAULT 'biblio',
                 `object_id`    INT(11) NOT NULL DEFAULT 0,
-                `action`       ENUM('create', 'modify', 'delete') NOT NULL DEFAULT 'modify',
+                `payload`      TEXT DEFAULT NULL AFTER `object_id`,
+                `action`       ENUM('create', 'modify', 'delete', 'renew') NOT NULL DEFAULT 'modify',
                 `status`       ENUM('queued', 'retry', 'success', 'error') NOT NULL DEFAULT 'queued',
                 `attempts`     INT(11) NOT NULL DEFAULT 0,
                 `last_error`   VARCHAR(191) DEFAULT NULL,
@@ -239,6 +240,21 @@ sub upgrade {
         $self->store_data({ '__INSTALLED_VERSION__' => "2.1.4" });
     }
 
+    if ( Koha::Plugins::Base::_version_compare( $database_version, "2.2.6" ) == -1 ) {
+
+        my $task_queue = $self->get_qualified_table_name('task_queue');
+
+        unless ($self->_table_exists( $task_queue )) {
+            C4::Context->dbh->do(qq{
+                ALTER TABLE $task_queue
+                    ADD COLUMN    `payload` TEXT DEFAULT NULL AFTER `object_id`,
+                    MODIFY COLUMN `action`  ENUM('create', 'modify', 'delete', 'renew') NOT NULL DEFAULT 'modify',;
+            });
+        }
+
+        $self->store_data({ '__INSTALLED_VERSION__' => "2.2.6" });
+    }
+
     return 1;
 }
 
@@ -302,6 +318,28 @@ sub after_item_action {
             ( object_type, object_id, action, status, attempts )
         VALUES
             ( 'item', $item_id, '$action', 'queued', 0 )
+    });
+}
+
+=head3 post_renewal_action
+
+Hool that is caled on item modification
+
+=cut
+
+sub post_renewal_action {
+    my ( $self, $params ) = @_;
+
+    my $item_id = $params->{item_id};
+    my $payload = encode_json( $params );
+
+    my $task_queue = $self->get_qualified_table_name('task_queue');
+
+    return C4::Context->dbh->do(qq{
+        INSERT INTO $task_queue
+            ( object_type, object_id, payload, action, status, attempts )
+        VALUES
+            ( 'item', $item_id, $payload,'renew', 'queued', 0 )
     });
 }
 
