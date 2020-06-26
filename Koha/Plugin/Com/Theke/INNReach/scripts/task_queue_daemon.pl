@@ -400,11 +400,11 @@ sub mark_task {
 
 =head1 NAME
 
-record_contribution_daemon.pl
+task_queue_daemon.pl
 
 =head1 SYNOPSIS
 
-record_contribution_daemon.pl -s 5
+task_queue_daemon.pl -s 5
 
  Options:
    -?|--help        brief help message
@@ -432,6 +432,7 @@ Use I<N> as the database polling frecquency.
 =head1 DESCRIPTION
 
 A task queue processor daemon that takes care of updating INN-Reach central's server information
-on catalog changes (both bibliographic records and holdings information).
+on catalog changes (both bibliographic records and holdings information) as well as relevant circulation
+events.
 
 =cut
