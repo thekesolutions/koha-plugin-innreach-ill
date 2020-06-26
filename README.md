@@ -232,3 +232,14 @@ You can retrieve the central server locations (e.g. to check things went corretl
                 Koha/Plugin/Com/Theke/INNReach/scripts/get_central_servers_data.pl --locations
 ```
 
+## Setting the task queue daemon
+The task queue daemon will process any actions that are scheduled to be run. This are usually biblio/items
+updates to be notified to central servers, but also some other circulation notifications like 'borrowerrenew'.
+
+To run it:
+```
+  $ sudo koha-shell <instance>
+  $ cd /var/lib/koha/<instance>/plugins
+  $ PERL5LIB=/usr/share/koha/lib:. perl \
+                Koha/Plugin/Com/Theke/INNReach/scripts/task_queue_daemon.pl --sleep 5
+```
