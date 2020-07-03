@@ -321,17 +321,20 @@ sub after_item_action {
     });
 }
 
-=head3 post_renewal_action
+=head3 after_circ_action
 
 Hool that is caled on item modification
 
 =cut
 
-sub post_renewal_action {
+sub after_circ_action {
     my ( $self, $params ) = @_;
 
-    my $item_id = $params->{item_id};
-    my $payload = encode_json( $params );
+    my $action = $params->{action};
+    my $hook_payload = $params->{payload};
+
+    my $item_id = $hook_payload->{item_id};
+    my $payload = encode_json( $hook_payload );
 
     my $task_queue = $self->get_qualified_table_name('task_queue');
 
@@ -339,7 +342,7 @@ sub post_renewal_action {
         INSERT INTO $task_queue
             ( object_type, object_id, payload, action, status, attempts )
         VALUES
-            ( 'item', $item_id, $payload,'renew', 'queued', 0 )
+            ( 'item', $item_id, $payload, $action, 'queued', 0 )
     });
 }
 
