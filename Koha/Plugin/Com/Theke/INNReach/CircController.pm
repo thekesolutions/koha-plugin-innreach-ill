@@ -17,6 +17,7 @@ package Koha::Plugin::Com::Theke::INNReach::CircController;
 
 use Modern::Perl;
 
+use DateTime;
 use Try::Tiny;
 
 use C4::Biblio qw(AddBiblio);
@@ -24,6 +25,7 @@ use C4::Items;
 use C4::Reserves qw(AddReserve CanItemBeReserved);
 
 use Koha::Biblios;
+use Koha::Checkouts;
 use Koha::Items;
 use Koha::Patrons;
 
@@ -67,14 +69,8 @@ sub itemhold {
 
     my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
-    return $c->render(
-        status  => 400,
-        openapi => {
-            status => 'error',
-            reason => 'Invalid trackingId/centralCode combination',
-            errors => []
-        }
-    ) if $req;
+    return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+        if $req;
 
     my $body = $c->validation->param('body');
 
@@ -241,14 +237,8 @@ sub itemreceived {
         # Get/validate the request
         my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
-        return $c->render(
-            status  => 400,
-            openapi => {
-                status => 'error',
-                reason => 'Invalid trackingId/centralCode combination',
-                errors => []
-            }
-        ) unless $req;
+        return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+            unless $req;
 
         $req->status('O_ITEM_RECEIVED_DESTINATION')->store;
 
@@ -309,14 +299,8 @@ sub intransit {
         # Get/validate the request
         my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
-        return $c->render(
-            status  => 400,
-            openapi => {
-                status => 'error',
-                reason => 'Invalid trackingId/centralCode combination',
-                errors => []
-            }
-        ) unless $req;
+        return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+            unless $req;
 
         $req->status('O_ITEM_IN_TRANSIT')->store;
 
@@ -370,14 +354,8 @@ sub cancelitemhold {
 
         my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
-        return $c->render(
-            status  => 404,
-            openapi => {
-                status => 'error',
-                reason => 'Invalid trackingId/centralCode combination',
-                errors => []
-            }
-        ) unless $req;
+        return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+          unless $req;
 
         return $c->render(
             status  => 409,
@@ -411,6 +389,67 @@ sub cancelitemhold {
     };
 }
 
+=head3 ownerrenew
+
+This method updates the due date for the request as notified by the central
+server.
+
+=cut
+
+sub ownerrenew {
+    my $c = shift->openapi->valid_input or return;
+
+    my $trackingId  = $c->validation->param('trackingId');
+    my $centralCode = $c->validation->param('centralCode');
+
+    my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+
+    return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+        unless $req;
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime   = $body->{transactionTime};
+    my $dueDateTime       = $body->{dueDateTime};
+    my $patronId          = $body->{patronId};
+    my $patronAgencyCode  = $body->{patronAgencyCode};
+    my $itemAgencyCode    = $body->{itemAgencyCode};
+    my $itemId            = $body->{itemId};
+
+    return try {
+
+        my $item = Koha::Items->find( $itemId );
+        # We are not processing this through AddRenewal
+        my $checkout = Koha::Checkouts->search({ itemnumber => $item->itemnumber })->next;
+        $checkout->set(
+            {
+                date_due        => DateTime->from_epoch( epoch => $dueDateTime ),
+                renewals        => $checkout->renewals + 1,
+                lastreneweddate => dt_from_string
+            }
+        )->store;
+
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render(
+            status  => 500,
+            openapi => {
+                status => 'failed',
+                reason => "Unknown error: $_",
+                errors => []
+            }
+        );
+    };
+}
+
 =head2 Endpoints for the B<requesting site flow>
 
 =head3 patronhold
@@ -427,14 +466,8 @@ sub patronhold {
 
     my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
-    return $c->render(
-        status  => 400,
-        openapi => {
-            status => 'error',
-            reason => 'Invalid trackingId/centralCode combination',
-            errors => []
-        }
-    ) if $req;
+    return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+        if $req;
 
     my $body = $c->validation->param('body');
 
@@ -555,14 +588,8 @@ sub itemshipped {
         # Get/validate the request
         my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
-        return $c->render(
-            status  => 400,
-            openapi => {
-                status => 'error',
-                reason => 'Invalid trackingId/centralCode combination',
-                errors => []
-            }
-        ) unless $req;
+        return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+            unless $req;
 
         my $config = Koha::Plugin::Com::Theke::INNReach->new->configuration;
 
@@ -663,14 +690,8 @@ sub finalcheckin {
         # Get/validate the request
         my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
-        return $c->render(
-            status  => 400,
-            openapi => {
-                status => 'error',
-                reason => 'Invalid trackingId/centralCode combination',
-                errors => []
-            }
-        ) unless $req;
+        return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+            unless $req;
 
         $req->status('B_ITEM_CHECKED_IN')->store;
 
@@ -840,43 +861,6 @@ sub cancelrequest {
                 errors => []
             }
         );
-    };
-}
-
-=head3 ownerrenew
-
-TODO: this method is a stub
-
-=cut
-
-sub ownerrenew {
-    my $c = shift->openapi->valid_input or return;
-
-    my $trackingId = $c->validation->param('trackingId');
-    my $centralCode   = $c->validation->param('centralCode');
-
-    my $body = $c->validation->param('body');
-
-    my $transactionTime   = $body->{transactionTime};
-    my $dueDateTime       = $body->{dueDateTime};
-    my $patronId          = $body->{patronId};
-    my $patronAgencyCode  = $body->{patronAgencyCode};
-    my $itemAgencyCode    = $body->{itemAgencyCode};
-    my $itemId            = $body->{itemId};
-
-    return try {
-        # do your stuff
-        return $c->render(
-            status  => 200,
-            openapi => {
-                status => 'ok',
-                reason => '',
-                errors => []
-            }
-        );
-    }
-    catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
     };
 }
 
@@ -1238,6 +1222,39 @@ sub pickup_location_to_library_id {
     $library_id = $configuration->{location_to_library}->{$pickup_location};
 
     return $library_id;
+}
+
+=head3 invalid_request_id
+
+Helper method for rendering invalid centralCode+transactionId combination
+errors.
+
+=cut
+
+sub invalid_request_id {
+    my ($self, $args) = @_;
+
+    return $self->render(
+        status  => 400,
+        openapi => {
+            status => 'failed',
+            reason => 'Unknown centralCode and trackingId combination',
+            errors => [
+                {
+                    type          => "FieldError",
+                    reason        => "Invalid record key",
+                    name          => "centralCode",
+                    rejectedValue => $args->{centralCode}
+                },
+                {
+                    type          => "FieldError",
+                    reason        => "Invalid record key",
+                    name          => "trackingId",
+                    rejectedValue => $args->{trackingId}
+                }
+            ]
+        }
+    );
 }
 
 1;
