@@ -20,7 +20,7 @@ use Modern::Perl;
 use Try::Tiny;
 
 use C4::Biblio qw(AddBiblio);
-use C4::Items qw(AddItem);
+use C4::Items;
 use C4::Reserves qw(AddReserve CanItemBeReserved);
 
 use Koha::Biblios;
@@ -1202,7 +1202,15 @@ sub add_virtual_record_and_item {
         location         => $location,
         itemnotes_nonpublic => $checkin_note,
     };
-    my ( undef, undef, $item_id ) = AddItem( $item, $biblio_id );
+    my $item_id;
+    if ( C4::Context->preference('Version') ge '20.050000' ) {
+        my $item_obj = Koha::Item->new( $item );
+        $item_obj->store;
+        $item_id = $item_obj->itemnumber;
+    }
+    else {
+        ( undef, undef, $item_id ) = C4::Items::AddItem( $item, $biblio_id );
+    }
     return ( $biblio_id, $item_id, $biblioitemnumber );
 }
 
