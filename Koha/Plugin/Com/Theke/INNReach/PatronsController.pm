@@ -47,8 +47,9 @@ sub verifypatron {
     my $patron_agency_code = $body->{patronAgencyCode};
     my $patronName         = $body->{patronName};
     my $passcode           = $body->{passcode} // undef;
+    my $centralCode        = $c->req->headers->header('X-From-Code');
 
-    my $configuration = Koha::Plugin::Com::Theke::INNReach->new->configuration;
+    my $configuration = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
     my $require_patron_auth = $configuration->{require_patron_auth} // 'false';
     $require_patron_auth = ( $require_patron_auth eq 'true' ) ? 1 : 0;
 

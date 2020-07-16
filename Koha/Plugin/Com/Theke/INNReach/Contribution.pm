@@ -40,7 +40,7 @@ binmode STDOUT, ':encoding(UTF-8)';
 
 use base qw(Class::Accessor);
 
-__PACKAGE__->mk_accessors(qw( oauth2 config ));
+__PACKAGE__->mk_accessors(qw( oauth2 config centralServers ));
 
 =head1 Koha::Plugin::Com::Theke::INNReach::Contribution
 
@@ -62,13 +62,16 @@ sub new {
 
     try {
         $args->{config} = Koha::Plugin::Com::Theke::INNReach->new()->configuration;
-        $args->{oauth2} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new(
-            {   client_id         => $args->{config}->{client_id},
-                client_secret     => $args->{config}->{client_secret},
-                api_base_url      => $args->{config}->{api_base_url},
-                local_server_code => $args->{config}->{localServerCode}
-            }
-        );
+        $args->{centralServers} = keys %{$args->{config}};
+        foreach my $centralCode ( keys %{$args->{config}} ) {
+            $args->{oauth2}->{$centralCode} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new(
+                {   client_id         => $args->{config}->{$centralCode}->{client_id},
+                    client_secret     => $args->{config}->{$centralCode}->{client_secret},
+                    api_base_url      => $args->{config}->{$centralCode}->{api_base_url},
+                    local_server_code => $args->{config}->{$centralCode}->{localServerCode}
+                }
+            );
+        }
     }
     catch {
         die "$_";
@@ -143,13 +146,13 @@ sub contribute_bib {
         push @central_servers, $args->{centralServer};
     }
     else {
-        @central_servers = @{ $self->config->{centralServers} };
+        @central_servers = @{ $self->{centralServers} };
     }
 
     my @errors;
 
     for my $central_server (@central_servers) {
-        my $response = $self->oauth2->post_request(
+        my $response = $self->oauth2->{$central_server}->post_request(
             {   endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
                 centralCode => $central_server,
                 data        => $data
@@ -206,45 +209,46 @@ sub contribute_batch_items {
         @items = $biblio->items->as_list;
     }
 
-    my @itemInfo;
-
-    foreach my $item ( @items ) {
-        unless ( $item->biblionumber == $bibId ) {
-            die "Item (" . $item->itemnumber . ") doesn't belong to bib record ($bibId)";
-        }
-
-        my $itemInfo = {
-            itemId            => $item->itemnumber,
-            agencyCode        => $self->config->{library_to_location}->{$item->homebranch},
-            centralItemType   => $self->config->{local_to_central_itype}->{$item->effective_itemtype},
-            locationKey       => lc( $item->homebranch ),
-            itemCircStatus    => $self->item_circ_status({ item => $item }),
-            holdCount         => $item->current_holds->count + 0,
-            dueDateTime       => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
-            callNumber        => $item->itemcallnumber,
-            volumeDesignation => undef, # TODO
-            copyNumber        => $item->copynumber, # TODO
-          # marc856URI        => undef, # We really don't have this concept in Koha
-          # marc856PublicNote => undef, # We really don't have this concept in Koha
-            itemNote          => $item->itemnotes,
-            suppress          => 'n' # TODO: revisit
-        };
-
-        push @itemInfo, $itemInfo;
-    }
-
     my @central_servers;
     if ( $args->{centralServer} ) {
         push @central_servers, $args->{centralServer};
     }
     else {
-        @central_servers = @{ $self->config->{centralServers} };
+        @central_servers = @{ $self->{centralServers} };
     }
 
     my @errors;
 
     for my $central_server (@central_servers) {
-        my $response = $self->oauth2->post_request(
+
+        my @itemInfo;
+
+        foreach my $item ( @items ) {
+            unless ( $item->biblionumber == $bibId ) {
+                die "Item (" . $item->itemnumber . ") doesn't belong to bib record ($bibId)";
+            }
+
+            my $itemInfo = {
+                itemId            => $item->itemnumber,
+                agencyCode        => $self->config->{$central_server}->{library_to_location}->{$item->homebranch},
+                centralItemType   => $self->config->{$central_server}->{local_to_central_itype}->{$item->effective_itemtype},
+                locationKey       => lc( $item->homebranch ),
+                itemCircStatus    => $self->item_circ_status({ item => $item }),
+                holdCount         => $item->current_holds->count + 0,
+                dueDateTime       => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
+                callNumber        => $item->itemcallnumber,
+                volumeDesignation => undef, # TODO
+                copyNumber        => $item->copynumber, # TODO
+            # marc856URI        => undef, # We really don't have this concept in Koha
+            # marc856PublicNote => undef, # We really don't have this concept in Koha
+                itemNote          => $item->itemnotes,
+                suppress          => 'n' # TODO: revisit
+            };
+
+            push @itemInfo, $itemInfo;
+        }
+
+        my $response = $self->oauth2->{$central_server}->post_request(
             {   endpoint    => '/innreach/v2/contribution/items/' . $bibId,
                 centralCode => $central_server,
                 data        => { itemInfo => \@itemInfo }
@@ -296,11 +300,11 @@ sub update_item_status {
             push @central_servers, $args->{centralServer};
         }
         else {
-            @central_servers = @{ $self->config->{centralServers} };
+            @central_servers = @{ $self->{centralServers} };
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->oauth2->post_request(
+            my $response = $self->oauth2->{$central_server}->post_request(
                 {   endpoint    => '/innreach/v2/contribution/itemstatus/' . $itemId,
                     centralCode => $central_server,
                     data        => $data
@@ -346,13 +350,13 @@ sub decontribute_bib {
         push @central_servers, $args->{centralServer};
     }
     else {
-        @central_servers = @{ $self->config->{centralServers} };
+        @central_servers = @{ $self->{centralServers} };
     }
 
     my @errors;
 
     for my $central_server (@central_servers) {
-        my $response = $self->oauth2->delete_request(
+        my $response = $self->oauth2->{$central_server}->delete_request(
             {   endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
                 centralCode => $central_server
             }
@@ -393,13 +397,13 @@ sub decontribute_item {
         push @central_servers, $args->{centralServer};
     }
     else {
-        @central_servers = @{ $self->config->{centralServers} };
+        @central_servers = @{ $self->{centralServers} };
     }
 
     my @errors;
 
     for my $central_server (@central_servers) {
-        my $response = $self->oauth2->delete_request(
+        my $response = $self->oauth2->{$central_server}->delete_request(
             {   endpoint    => '/innreach/v2/contribution/item/' . $itemId,
                 centralCode => $central_server
             }
@@ -447,11 +451,11 @@ sub update_bib_status {
             push @central_servers, $args->{centralServer};
         }
         else {
-            @central_servers = @{ $self->config->{centralServers} };
+            @central_servers = @{ $self->{centralServers} };
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->oauth2->post_request(
+            my $response = $self->oauth2->{$central_server}->post_request(
                 {   endpoint    => '/innreach/v2/contribution/bibstatus/' . $bibId,
                     centralCode => $central_server,
                     data        => $data
@@ -502,11 +506,11 @@ sub upload_locations_list {
             push @central_servers, $args->{centralServer};
         }
         else {
-            @central_servers = @{ $self->config->{centralServers} };
+            @central_servers = @{ $self->{centralServers} };
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->oauth2->post_request(
+            my $response = $self->oauth2->{$central_server}->post_request(
                 {   endpoint    => '/innreach/v2/contribution/locations',
                     centralCode => $central_server,
                     data        => { locationList => \@locationList }
@@ -551,11 +555,11 @@ sub upload_single_location {
             push @central_servers, $args->{centralServer};
         }
         else {
-            @central_servers = @{ $self->config->{centralServers} };
+            @central_servers = @{ $self->{centralServers} };
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->oauth2->post_request(
+            my $response = $self->oauth2->{$central_server}->post_request(
                 {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
                     centralCode => $central_server,
                     data        => { description => $library->branchname }
@@ -600,11 +604,11 @@ sub update_single_location {
             push @central_servers, $args->{centralServer};
         }
         else {
-            @central_servers = @{ $self->config->{centralServers} };
+            @central_servers = @{ $self->{centralServers} };
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->oauth2->put_request(
+            my $response = $self->oauth2->{$central_server}->put_request(
                 {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
                     centralCode => $central_server,
                     data        => { description => $library->branchname }
@@ -649,11 +653,11 @@ sub delete_single_location {
             push @central_servers, $args->{centralServer};
         }
         else {
-            @central_servers = @{ $self->config->{centralServers} };
+            @central_servers = @{ $self->{centralServers} };
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->oauth2->delete_request(
+            my $response = $self->oauth2->{$central_server}->delete_request(
                 {   endpoint    => '/innreach/v2/location/' . $locationKey,
                     centralCode => $central_server
                 }
@@ -687,7 +691,7 @@ sub get_central_item_types {
     try {
 
         my $centralServer = $args->{centralServer};
-        $response = $self->oauth2->get_request(
+        $response = $self->oauth2->{$centralServer}->get_request(
             {   endpoint    => '/innreach/v2/contribution/itemtypes',
                 centralCode => $centralServer
             }
@@ -721,7 +725,7 @@ sub get_locations_list {
 
     try {
         my $centralServer = $args->{centralServer};
-        $response = $self->oauth2->get_request(
+        $response = $self->oauth2->{$centralServer}->get_request(
             {   endpoint    => '/innreach/v2/contribution/locations',
                 centralCode => $centralServer
             }
@@ -755,7 +759,7 @@ sub get_agencies_list {
 
     try {
         my $centralServer = $args->{centralServer};
-        $response = $self->oauth2->get_request(
+        $response = $self->oauth2->{$centralServer}->get_request(
             {   endpoint    => '/innreach/v2/contribution/localservers',
                 centralCode => $centralServer
             }
@@ -790,7 +794,7 @@ sub get_central_patron_types_list {
     try {
 
         my $centralServer = $args->{centralServer};
-        $response = $self->oauth2->get_request(
+        $response = $self->oauth2->{$centralServer}->get_request(
             {   endpoint    => '/innreach/v2/circ/patrontypes',
                 centralCode => $centralServer
             }
@@ -847,7 +851,7 @@ sub notify_borrower_renew {
         my $trackingId  = $req->illrequestattributes->search({ type => 'trackingId'  })->next->value;
         my $centralCode = $req->illrequestattributes->search({ type => 'centralCode' })->next->value;
 
-        $response = $self->oauth2->post_request(
+        $response = $self->oauth2->{$centralCode}->post_request(
             {
                 endpoint    => "/innreach/v2/circ/borrowerrenew/$trackingId/$centralCode",
                 centralCode => $centralCode,

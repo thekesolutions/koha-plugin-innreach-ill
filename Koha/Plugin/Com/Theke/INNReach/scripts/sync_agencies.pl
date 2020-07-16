@@ -62,7 +62,7 @@ my $response;
 my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
 my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
 
-my @central_servers = @{ $plugin->configuration->{centralServers} };
+my @central_servers = @{ keys %{ $plugin->configuration } };
 @central_servers = grep { $_ eq $central_server } @central_servers
     if $central_server;
 

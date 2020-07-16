@@ -110,7 +110,7 @@ sub itemhold {
         $schema->txn_do(
             sub {
                 my $agency_id  = $attributes->{patronAgencyCode};
-                my $library_id = $plugin->configuration->{partners_library_id};
+                my $library_id = $plugin->configuration->{$centralCode}->{partners_library_id};
                 my $patron_id  = $plugin->get_patron_id_from_agency({
                     agency_id      => $agency_id,
                     central_server => $centralCode
@@ -506,7 +506,7 @@ sub patronhold {
         my $schema = Koha::Database->new->schema;
         $schema->txn_do(
             sub {
-                my $configuration   = Koha::Plugin::Com::Theke::INNReach->new->configuration;
+                my $configuration   = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
                 my $pickup_location = $c->pickup_location_to_library_id(
                     { pickupLocation => $attributes->{pickupLocation},
                       configuration  => $configuration
@@ -591,7 +591,7 @@ sub itemshipped {
         return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
             unless $req;
 
-        my $config = Koha::Plugin::Com::Theke::INNReach->new->configuration;
+        my $config = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
 
         my $schema = Koha::Database->new->schema;
         $schema->txn_do(

@@ -74,7 +74,7 @@ if ( $all ) {
 my $response;
 my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
 
-my @central_servers = @{ $contribution->config->{centralServers} };
+my @central_servers = @{ $contribution->centralServers };
 
 if ( $agencies ) {
     print STDOUT "# Agencies:\n";

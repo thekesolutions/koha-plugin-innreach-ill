@@ -148,8 +148,10 @@ sub install {
                 `attempts`     INT(11) NOT NULL DEFAULT 0,
                 `last_error`   VARCHAR(191) DEFAULT NULL,
                 `timestamp`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `central_server` VARCHAR(10) NOT NULL,
                 PRIMARY KEY (`id`),
-                KEY `status` (`status`)
+                KEY `status` (`status`),
+                KEY `central_server` (`central_server`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         });
     }
@@ -248,11 +250,29 @@ sub upgrade {
             C4::Context->dbh->do(qq{
                 ALTER TABLE $task_queue
                     ADD COLUMN    `payload` TEXT DEFAULT NULL AFTER `object_id`,
-                    MODIFY COLUMN `action`  ENUM('create', 'modify', 'delete', 'renew') NOT NULL DEFAULT 'modify',;
+                    MODIFY COLUMN `action`  ENUM('create', 'modify', 'delete', 'renew') NOT NULL DEFAULT 'modify';
             });
         }
 
         $self->store_data({ '__INSTALLED_VERSION__' => "2.2.6" });
+    }
+
+    if ( Koha::Plugins::Base::_version_compare( $database_version, "2.3.0" ) == -1 ) {
+
+        my $task_queue = $self->get_qualified_table_name('task_queue');
+
+        unless ($self->_table_exists( $task_queue )) {
+            C4::Context->dbh->do(qq{
+                ALTER TABLE $task_queue
+                    ADD COLUMN `central_server` VARCHAR(10) NOT NULL AFTER `timestamp`;
+            });
+            C4::Context->dbh->do(qq{
+                ALTER TABLE $task_queue
+                    ADD KEY `central_server` (`central_server`);
+            });
+        }
+
+        $self->store_data({ '__INSTALLED_VERSION__' => "2.3.0" });
     }
 
     return 1;
@@ -342,7 +362,7 @@ sub after_circ_action {
         INSERT INTO $task_queue
             ( object_type, object_id, payload, action, status, attempts )
         VALUES
-            ( 'item', $item_id, $payload, $action, 'queued', 0 )
+            ( 'item', $item_id, $payload, '$action', 'queued', 0 )
     });
 }
 

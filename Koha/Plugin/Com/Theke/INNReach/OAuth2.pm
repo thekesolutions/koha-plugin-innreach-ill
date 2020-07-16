@@ -62,7 +62,7 @@ sub new {
 
     my $local_server_code = $args->{local_server_code};
     unless ($local_server_code) {
-        INNReach->OAuth2Error::MissingLocalServerCode->throw("Missing local_server_code");
+        INNReach::OAuth2Error::MissingLocalServerCode->throw("Missing local_server_code");
     }
 
     my $client_id     = $args->{client_id};

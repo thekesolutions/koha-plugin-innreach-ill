@@ -67,12 +67,15 @@ sub new {
     # -> instantiate the backend
     my ($class) = @_;
     my $configuration = Koha::Plugin::Com::Theke::INNReach->new->configuration;
-    my $oauth2 = Koha::Plugin::Com::Theke::INNReach::OAuth2->new({
-        client_id         => $configuration->{client_id},
-        client_secret     => $configuration->{client_secret},
-        api_base_url      => $configuration->{api_base_url},
-        local_server_code => $configuration->{localServerCode}
-    });
+    my $oauth2;
+    foreach my $centralServer ( keys %{$configuration} ) {
+        $oauth2->{$centralServer} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new({
+            client_id         => $configuration->{$centralServer}->{client_id},
+            client_secret     => $configuration->{$centralServer}->{client_secret},
+            api_base_url      => $configuration->{$centralServer}->{api_base_url},
+            local_server_code => $configuration->{$centralServer}->{localServerCode}
+        });
+    }
     my $self = {
         configuration => $configuration,
         _oauth2       => $oauth2
@@ -562,9 +565,9 @@ Return the initialized OAuth2 object
 =cut
 
 sub oauth2 {
-    my ( $self ) = @_;
+    my ( $self, $centralServer ) = @_;
 
-    return $self->{_oauth2};
+    return $self->{_oauth2}->{$centralServer};
 }
 
 =head1 AUTHORS

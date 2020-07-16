@@ -82,6 +82,7 @@ The following patches need to be backported for this plugin to work:
 * [Bug 22280 - The ILL module assumes every status needs a next/previous status](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=22280) (Required for the ILL module to work).
 * [Bug 22709 - Add hooks to notify plugins of biblio and item changes](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=22709) (Required by the contribution daemon).
 * [Bug 25855 - Add post_renewal_hook in circulation](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=25855) (Required for renewal actions)
+* [Bug 21468 - Plugins need hooks for checkin and checkout actions](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=21468) (Required for item update actions)
 
 ###  Settings
 
@@ -128,46 +129,46 @@ The plugin configuration is an HTML text area in which a _YAML_ structure is pas
 are maintained on this document.
 
 ```
-centralServers:
-    - d2ir
-api_base_url: https://rssandbox-api.iii.com
-client_id: a_client_id
-client_secret: a_client_secret
-localServerCode: koha1
-mainAgency: code2
-require_patron_auth: true
-partners_library_id: ILL
-library_to_location:
-    CPL: code1
-    MPL: code2
-local_to_central_itype:
-    BK: 200
-    CF: 201
-    CR: 200
-    MP: 200
-    MU: 201
-    MX: 201
-    REF: 202
-    VM: 201
-local_to_central_patron_type:
-    AP: 200
-    CH: 200
-    DR: 200
-    DR2: 200
-    ILL: 202
-    LIBSTAFF: 201
-    NR: 200
-    SR: 202
-contribution:
-    max_retries: 10
-# Default values for biblios/items configuration
-default_marc_framework: FA
-default_item_type: ILL
-default_item_ccode: null
-default_location: null
-default_checkin_note: Additional processing required (ILL)
-# Debugging
-debug_mode: false
+---
+d2ir:
+    api_base_url: https://rssandbox-api.iii.com
+    client_id: a_client_id
+    client_secret: a_client_secret
+    localServerCode: koha1
+    mainAgency: code2
+    require_patron_auth: true
+    partners_library_id: ILL
+    library_to_location:
+        CPL: code1
+        MPL: code2
+    local_to_central_itype:
+        BK: 200
+        CF: 201
+        CR: 200
+        MP: 200
+        MU: 201
+        MX: 201
+        REF: 202
+        VM: 201
+    local_to_central_patron_type:
+        AP: 200
+        CH: 200
+        DR: 200
+        DR2: 200
+        ILL: 202
+        LIBSTAFF: 201
+        NR: 200
+        SR: 202
+    contribution:
+        max_retries: 10
+    # Default values for biblios/items configuration
+    default_marc_framework: FA
+    default_item_type: ILL
+    default_item_ccode: null
+    default_location: null
+    default_checkin_note: Additional processing required (ILL)
+    # Debugging
+    debug_mode: false
 ```
 
 ### Options
