@@ -62,7 +62,8 @@ sub new {
 
     try {
         $args->{config} = Koha::Plugin::Com::Theke::INNReach->new()->configuration;
-        $args->{centralServers} = keys %{$args->{config}};
+        my @centralServers = keys %{$args->{config}};
+        $args->{centralServers} = \@centralServers;
         foreach my $centralCode ( keys %{$args->{config}} ) {
             $args->{oauth2}->{$centralCode} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new(
                 {   client_id         => $args->{config}->{$centralCode}->{client_id},
