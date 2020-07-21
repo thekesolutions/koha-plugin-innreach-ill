@@ -107,20 +107,22 @@ sub configuration {
     eval { $configuration = YAML::Load( $self->retrieve_data('configuration') . "\n\n" ); };
     die($@) if $@;
 
-    # Reverse the library_to_location key
-    my $library_to_location = $configuration->{library_to_location};
-    my %location_to_library = reverse %{ $library_to_location };
-    $configuration->{location_to_library} = \%location_to_library;
+    foreach my $centralServer ( keys %{ $configuration } ) {
+        # Reverse the library_to_location key
+        my $library_to_location = $configuration->{$centralServer}->{library_to_location};
+        my %location_to_library = reverse %{ $library_to_location };
+        $configuration->{$centralServer}->{location_to_library} = \%location_to_library;
 
-    # Reverse the local_to_central_itype key
-    my $local_to_central_itype = $configuration->{local_to_central_itype};
-    my %central_to_local_itype = reverse %{ $local_to_central_itype };
-    $configuration->{central_to_local_itype} = \%central_to_local_itype;
+        # Reverse the local_to_central_itype key
+        my $local_to_central_itype = $configuration->{$centralServer}->{local_to_central_itype};
+        my %central_to_local_itype = reverse %{ $local_to_central_itype };
+        $configuration->{$centralServer}->{central_to_local_itype} = \%central_to_local_itype;
 
-    # Reverse the local_to_central_patron_type key
-    my $local_to_central_patron_type = $configuration->{local_to_central_patron_type};
-    my %central_to_local_patron_type = reverse %{ $local_to_central_patron_type };
-    $configuration->{central_to_local_patron_type} = \%central_to_local_patron_type;
+        # Reverse the local_to_central_patron_type key
+        my $local_to_central_patron_type = $configuration->{$centralServer}->{local_to_central_patron_type};
+        my %central_to_local_patron_type = reverse %{ $local_to_central_patron_type };
+        $configuration->{$centralServer}->{central_to_local_patron_type} = \%central_to_local_patron_type;
+    }
 
     return $configuration;
 }
