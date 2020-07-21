@@ -109,7 +109,7 @@ sub contribute_bib {
         $metadata = Koha::Biblio::Metadatas->find(
             { biblionumber => $bibId,
               format       => 'marcxml',
-              marcflavour  => 'marc21'
+              schema       => 'marc21'
             }
         );
         $record = eval {
