@@ -102,19 +102,11 @@ sub contribute_bib {
     my $bibId = $args->{bibId};
     die "bibId is mandatory" unless $bibId;
 
-    my ( $biblio, $metadata, $record );
+    my ( $biblio, $record );
 
     try {
-        $biblio   = Koha::Biblios->find( $bibId );
-        $metadata = Koha::Biblio::Metadatas->find(
-            { biblionumber => $bibId,
-              format       => 'marcxml',
-              schema       => 'marc21'
-            }
-        );
-        $record = eval {
-            MARC::Record::new_from_xml( $metadata->metadata, 'utf-8', $metadata->marcflavour );
-        };
+        $biblio = Koha::Biblios->find({ biblionumber => $bibId });
+        $record = $biblio->metadata->record;
     }
     catch {
         die "Problem with requested biblio ($bibId)";
