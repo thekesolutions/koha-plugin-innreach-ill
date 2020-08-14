@@ -282,11 +282,6 @@ sub update_item_status {
 
     try {
         $item = Koha::Items->find( $itemId );
-        my $data = {
-            itemCircStatus => $self->item_circ_status({ item => $item }),
-            holdCount      => $self->config->{$central_server}->{default_item_hold_count} // 99,
-            dueDateTime    => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
-        };
 
         my @central_servers;
         if ( $args->{centralServer} ) {
@@ -297,6 +292,12 @@ sub update_item_status {
         }
 
         for my $central_server (@central_servers) {
+            my $data = {
+                itemCircStatus => $self->item_circ_status({ item => $item }),
+                holdCount      => $self->config->{$central_server}->{default_item_hold_count} // 99,
+                dueDateTime    => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
+            };
+
             my $response = $self->oauth2->{$central_server}->post_request(
                 {   endpoint    => '/innreach/v2/contribution/itemstatus/' . $itemId,
                     centralCode => $central_server,
