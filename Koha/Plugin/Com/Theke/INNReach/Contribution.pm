@@ -227,7 +227,7 @@ sub contribute_batch_items {
                 centralItemType   => $self->config->{$central_server}->{local_to_central_itype}->{$item->effective_itemtype},
                 locationKey       => lc( $item->homebranch ),
                 itemCircStatus    => $self->item_circ_status({ item => $item }),
-                holdCount         => $item->current_holds->count + 0,
+                holdCount         => $self->config->{$central_server}->{default_item_hold_count} // 99,
                 dueDateTime       => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
                 callNumber        => $item->itemcallnumber,
                 volumeDesignation => undef, # TODO
@@ -284,7 +284,7 @@ sub update_item_status {
         $item = Koha::Items->find( $itemId );
         my $data = {
             itemCircStatus => $self->item_circ_status({ item => $item }),
-            holdCount      => $item->current_holds->count,
+            holdCount      => $self->config->{$central_server}->{default_item_hold_count} // 99,
             dueDateTime    => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
         };
 
