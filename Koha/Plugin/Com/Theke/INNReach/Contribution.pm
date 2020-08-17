@@ -227,7 +227,7 @@ sub contribute_batch_items {
                 centralItemType   => $self->config->{$central_server}->{local_to_central_itype}->{$item->effective_itemtype},
                 locationKey       => lc( $item->homebranch ),
                 itemCircStatus    => $self->item_circ_status({ item => $item }),
-                holdCount         => $self->config->{$central_server}->{default_item_hold_count} // 99,
+                holdCount         => 0,
                 dueDateTime       => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
                 callNumber        => $item->itemcallnumber,
                 volumeDesignation => undef, # TODO
@@ -294,7 +294,7 @@ sub update_item_status {
         for my $central_server (@central_servers) {
             my $data = {
                 itemCircStatus => $self->item_circ_status({ item => $item }),
-                holdCount      => $self->config->{$central_server}->{default_item_hold_count} // 99,
+                holdCount      => 0,
                 dueDateTime    => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
             };
 

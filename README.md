@@ -162,7 +162,6 @@ d2ir:
     contribution:
         max_retries: 10
     # Default values for biblios/items configuration
-    default_item_hold_count: 99
     default_marc_framework: FA
     default_item_type: ILL
     default_item_ccode: null
