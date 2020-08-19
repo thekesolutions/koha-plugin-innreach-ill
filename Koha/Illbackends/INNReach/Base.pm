@@ -279,7 +279,7 @@ sub item_shipped {
     my $itemId      = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemId' })->value;
     my $item = Koha::Items->find( $itemId );
 
-    my $response = $self->oauth2->post_request(
+    my $response = $self->oauth2( $centralCode )->post_request(
         {   endpoint    => "/innreach/v2/circ/itemshipped/$trackingId/$centralCode",
             centralCode => $centralCode,
             data        => {
@@ -317,7 +317,7 @@ sub item_checkin {
     my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId' })->value;
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
 
-    my $response = $self->oauth2->post_request(
+    my $response = $self->oauth2( $centralCode )->post_request(
         {   endpoint    => "/innreach/v2/circ/finalcheckin/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
@@ -352,7 +352,7 @@ sub cancel_request {
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
     my $patronName  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'patronName'  })->value;
 
-    my $response = $self->oauth2->post_request(
+    my $response = $self->oauth2( $centralCode )->post_request(
         {   endpoint    => "/innreach/v2/circ/owningsitecancel/$trackingId/$centralCode",
             centralCode => $centralCode,
             data        => {
@@ -406,7 +406,7 @@ sub item_received {
     my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
 
-    my $response = $self->oauth2->post_request(
+    my $response = $self->oauth2( $centralCode )->post_request(
         {   endpoint    => "/innreach/v2/circ/itemreceived/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
@@ -440,7 +440,7 @@ sub item_in_transit {
     my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
 
-    my $response = $self->oauth2->post_request(
+    my $response = $self->oauth2( $centralCode )->post_request(
         {   endpoint    => "/innreach/v2/circ/intransit/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
@@ -486,7 +486,7 @@ sub cancel_request_by_us {
     my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
 
-    my $response = $self->oauth2->post_request(
+    my $response = $self->oauth2( $centralCode )->post_request(
         {   endpoint    => "/innreach/v2/circ/cancelitemhold/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
