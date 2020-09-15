@@ -313,12 +313,16 @@ sub after_biblio_action {
 
     my $task_queue = $self->get_qualified_table_name('task_queue');
 
-    return C4::Context->dbh->do(qq{
-        INSERT INTO $task_queue
-            ( object_type, object_id, action, status, attempts )
-        VALUES
-            ( 'biblio', $biblio_id, '$action', 'queued', 0 )
-    });
+    my @central_servers = $self->central_servers;
+
+    foreach my $central_server ( @central_servers ) {
+        C4::Context->dbh->do(qq{
+            INSERT INTO $task_queue
+                ( central_server, object_type, object_id, action, status, attempts )
+            VALUES
+                ( '$central_server', 'biblio', $biblio_id, '$action', 'queued', 0 )
+        });
+    }
 }
 
 =head3 after_item_action
@@ -335,12 +339,16 @@ sub after_item_action {
 
     my $task_queue = $self->get_qualified_table_name('task_queue');
 
-    return C4::Context->dbh->do(qq{
-        INSERT INTO $task_queue
-            ( object_type, object_id, action, status, attempts )
-        VALUES
-            ( 'item', $item_id, '$action', 'queued', 0 )
-    });
+    my @central_servers = $self->central_servers;
+
+    foreach my $central_server ( @central_servers ) {
+        C4::Context->dbh->do(qq{
+            INSERT INTO $task_queue
+                ( central_server, object_type, object_id, action, status, attempts )
+            VALUES
+                ( '$central_server', 'item', $item_id, '$action', 'queued', 0 )
+        });
+    }
 }
 
 =head3 after_circ_action
@@ -424,7 +432,7 @@ sub generate_patron_for_agency {
 
     my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
 
-    my $library_id    = $self->configuration->{partners_library_id};
+    my $library_id    = $self->configuration->{$central_server}->{partners_library_id};
     my $category_code = C4::Context->config("interlibrary_loans")->{partner_code};
 
     my $patron;
@@ -498,7 +506,7 @@ sub update_patron_for_agency {
 
     my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
 
-    my $library_id    = $self->configuration->{partners_library_id};
+    my $library_id    = $self->configuration->{$central_server}->{partners_library_id};
     my $category_code = C4::Context->config("interlibrary_loans")->{partner_code};
 
     my $patron;
@@ -628,6 +636,22 @@ sub gen_cardnumber {
     return 'ILL_' . $central_server . '_' . $agency_id;
 }
 
+=head3 central_servers
 
+    my @central_servers = $self->central_servers;
+
+=cut
+
+sub central_servers {
+    my ( $self ) = @_;
+
+    my $configuration = $self->configuration;
+
+    if ( defined $configuration ) {
+        return keys %{ $configuration };
+    }
+
+    return ();
+}
 
 1;
