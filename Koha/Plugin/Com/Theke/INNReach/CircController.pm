@@ -173,7 +173,7 @@ sub itemhold {
                                 1,                         # priority
                                 undef,                     # resdate
                                 undef,                     # expdate
-                                'Placed by ILL',           # notes
+                                $config->{default_hold_note} // 'Placed by ILL', # notes
                                 '',                        # title
                                 undef,                     # checkitem / force biblio-level to match itemtransfer workflow
                                 undef                      # found
@@ -700,7 +700,7 @@ sub itemshipped {
                             priority         => 1,
                             reservation_date => undef,
                             expiration_date  => undef,
-                            notes            => 'Placed by ILL',
+                            notes            => $config->{default_hold_note} // 'Placed by ILL',
                             title            => '',
                             itemnumber       => $item_id,
                             found            => undef,
@@ -717,7 +717,7 @@ sub itemshipped {
                         1,                         # priority
                         undef,                     # resdate
                         undef,                     # expdate
-                        'Placed by ILL',           # notes
+                        $config->{default_hold_note} // 'Placed by ILL', # notes
                         '',                        # title
                         $item_id,                  # checkitem
                         undef                      # found

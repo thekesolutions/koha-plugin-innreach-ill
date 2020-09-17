@@ -166,6 +166,7 @@ d2ir:
     default_item_ccode: null
     default_location: null
     default_checkin_note: Additional processing required (ILL)
+    default_hold_note: Placed by ILL
     # Debugging
     debug_mode: false
 ```
