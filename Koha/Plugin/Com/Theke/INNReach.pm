@@ -248,7 +248,7 @@ sub upgrade {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
-        unless ($self->_table_exists( $task_queue )) {
+        if ($self->_table_exists( $task_queue )) {
             C4::Context->dbh->do(qq{
                 ALTER TABLE $task_queue
                     ADD COLUMN    `payload` TEXT DEFAULT NULL AFTER `object_id`,
@@ -263,7 +263,7 @@ sub upgrade {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
-        unless ($self->_table_exists( $task_queue )) {
+        if ($self->_table_exists( $task_queue )) {
             C4::Context->dbh->do(qq{
                 ALTER TABLE $task_queue
                     ADD COLUMN `central_server` VARCHAR(10) NOT NULL AFTER `timestamp`;
@@ -275,6 +275,20 @@ sub upgrade {
         }
 
         $self->store_data({ '__INSTALLED_VERSION__' => "2.3.0" });
+    }
+
+    if ( Koha::Plugins::Base::_version_compare( $database_version, "2.4.0" ) == -1 ) {
+
+        my $task_queue = $self->get_qualified_table_name('task_queue');
+
+        if ($self->_table_exists( $task_queue )) {
+            C4::Context->dbh->do(qq{
+                ALTER TABLE $task_queue
+                    MODIFY COLUMN `action` ENUM('create', 'modify', 'delete', 'renewal', 'checkin', 'checkout') NOT NULL DEFAULT 'modify';
+            });
+        }
+
+        $self->store_data({ '__INSTALLED_VERSION__' => "2.4.0" });
     }
 
     return 1;
@@ -362,18 +376,23 @@ sub after_circ_action {
 
     my $action = $params->{action};
     my $hook_payload = $params->{payload};
+    my $checkout = $hook_payload->{checkout};
 
-    my $item_id = $hook_payload->{item_id};
+    my $item_id = $checkout->itemnumber;
     my $payload = encode_json( $hook_payload );
 
     my $task_queue = $self->get_qualified_table_name('task_queue');
 
-    return C4::Context->dbh->do(qq{
-        INSERT INTO $task_queue
-            ( object_type, object_id, payload, action, status, attempts )
-        VALUES
-            ( 'item', $item_id, $payload, '$action', 'queued', 0 )
-    });
+    my @central_servers = $self->central_servers;
+
+    foreach my $central_server ( @central_servers ) {
+        C4::Context->dbh->do(qq{
+            INSERT INTO $task_queue
+                ( central_server, object_type, object_id, payload, action, status, attempts )
+            VALUES
+                ( '$central_server', 'item', $item_id, '$payload', '$action', 'queued', 0 )
+        });
+    }
 }
 
 =head3 api_routes
