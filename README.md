@@ -28,10 +28,12 @@ by API interactions.
 ### Implemented required endpoints
 
 ```
+    PUT  /api/v1/contrib/innreach/v2/circ/cancelitemhold/{trackingId}/{centralCode}
+    PUT  /api/v1/contrib/innreach/v2/circ/claimsreturned/{trackingId}/{centralCode}
+    PUT  /api/v1/contrib/innreach/v2/circ/intransit/{trackingId}/{centralCode}
     POST /api/v1/contrib/innreach/v2/circ/itemhold/{trackingId}/{centralCode}
     PUT  /api/v1/contrib/innreach/v2/circ/itemreceived/{trackingId}/{centralCode}
-    PUT  /api/v1/contrib/innreach/v2/circ/intransit/{trackingId}/{centralCode}
-    PUT  /api/v1/contrib/innreach/v2/circ/cancelitemhold/{trackingId}/{centralCode}
+    PUT  /api/v1/contrib/innreach/v2/circ/ownerrenew/{trackingId}/{centralCode}
 ```
 
 ## Borrowing site
@@ -58,9 +60,7 @@ by API interactions.
 The following endpoints have no clear fit in the documented flows and require further conversations to get implemented properly.
 
 ```
-    PUT  /api/v1/contrib/innreach/v2/circ/ownerrenew/{trackingId}/{centralCode}
     PUT  /api/v1/contrib/innreach/v2/circ/borrowerrenew/{trackingId}/{centralCode}
-    PUT  /api/v1/contrib/innreach/v2/circ/claimsreturned/{trackingId}/{centralCode}
     PUT  /api/v1/contrib/innreach/v2/circ/receiveunshipped/{trackingId}/{centralCode}
     PUT  /api/v1/contrib/innreach/v2/circ/returnuncirculated/{trackingId}/{centralCode} 
 ```

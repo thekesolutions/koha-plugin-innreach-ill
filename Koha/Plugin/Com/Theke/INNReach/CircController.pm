@@ -495,14 +495,27 @@ sub claimsreturned {
             }
         ) unless $req->status eq 'O_ITEM_RECEIVED_DESTINATION';
 
-        $req->status('O_ITEM_CLAIMED_RETURNED')->store;
+        my $schema = Koha::Database->new->schema;
+        $schema->txn_do(
+            sub {
+                $req->status('O_ITEM_CLAIMED_RETURNED')->store;
+                Koha::Illrequestattribute->new(
+                    {
+                        illrequest_id => $req->illrequest_id,
+                        type          => 'claimsReturnedDate',
+                        value         => $claimsReturnedDate,
+                        readonly      => 1
+                    }
+                )->store;
 
-        return $c->render(
-            status  => 200,
-            openapi => {
-                status => 'ok',
-                reason => '',
-                errors => []
+                return $c->render(
+                    status  => 200,
+                    openapi => {
+                        status => 'ok',
+                        reason => '',
+                        errors => []
+                    }
+                );
             }
         );
     }
