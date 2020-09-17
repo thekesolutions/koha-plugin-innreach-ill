@@ -19,8 +19,12 @@ use Modern::Perl;
 
 use base qw(Koha::Plugins::Base);
 
+use List::MoreUtils qw(any);
 use Mojo::JSON qw(decode_json encode_json);
 use YAML;
+
+use Koha::Biblioitems;
+use Koha::Items;
 
 our $VERSION = "{VERSION}";
 
@@ -107,6 +111,8 @@ sub configuration {
     eval { $configuration = YAML::Load( $self->retrieve_data('configuration') . "\n\n" ); };
     die($@) if $@;
 
+    my @default_item_types;
+
     foreach my $centralServer ( keys %{ $configuration } ) {
         # Reverse the library_to_location key
         my $library_to_location = $configuration->{$centralServer}->{library_to_location};
@@ -122,7 +128,12 @@ sub configuration {
         my $local_to_central_patron_type = $configuration->{$centralServer}->{local_to_central_patron_type};
         my %central_to_local_patron_type = reverse %{ $local_to_central_patron_type };
         $configuration->{$centralServer}->{central_to_local_patron_type} = \%central_to_local_patron_type;
+
+        push @default_item_types, $configuration->{$centralServer}->{default_item_type}
+            if exists $configuration->{$centralServer}->{default_item_type};
     }
+
+    $configuration->{default_item_types} = \@default_item_types;
 
     return $configuration;
 }
@@ -325,7 +336,18 @@ sub after_biblio_action {
     my $action    = $args->{action};
     my $biblio_id = $args->{biblio_id};
 
-    my $task_queue = $self->get_qualified_table_name('task_queue');
+    my $task_queue    = $self->get_qualified_table_name('task_queue');
+    my $configuration = $self->configuration;
+
+    my $biblioitem = Koha::Biblioitems->find({ biblionumber => $biblio_id });
+    if ( $biblioitem ) {
+        return
+            unless any { $biblioitem->itemtype eq $_ } @{ $configuration->{default_item_types} };
+    }
+    else {
+        # FIXME: This is due to the fact that we lack information on delete. Koha bug
+        warn "Cannot find the requested biblio ($biblio_id). Deleted?";
+    }
 
     my @central_servers = $self->central_servers;
 
@@ -351,7 +373,19 @@ sub after_item_action {
     my $action  = $args->{action};
     my $item_id = $args->{item_id};
 
-    my $task_queue = $self->get_qualified_table_name('task_queue');
+    my $task_queue    = $self->get_qualified_table_name('task_queue');
+    my $configuration = $self->configuration;
+
+    my $item = Koha::Items->find( $item_id );
+
+    if ( $item ) {
+        return
+            unless any { $item->itype eq $_ } @{ $configuration->{default_item_types} };
+    }
+    else {
+        # FIXME: This is due to the fact that we lack information on delete. Koha bug
+        warn "Cannot find the requested item ($item_id). Deleted?";
+    }
 
     my @central_servers = $self->central_servers;
 
@@ -667,7 +701,7 @@ sub central_servers {
     my $configuration = $self->configuration;
 
     if ( defined $configuration ) {
-        return keys %{ $configuration };
+        return grep { $_ ne 'default_item_types' } keys %{ $configuration };
     }
 
     return ();
