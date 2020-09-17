@@ -23,6 +23,7 @@ use DateTime;
 use Koha::Database;
 
 use Koha::Biblios;
+use Koha::DateUtils qw(dt_from_string);
 use Koha::Illrequests;
 use Koha::Illrequestattributes;
 
@@ -236,11 +237,20 @@ sub status_graph {
             name           => 'Item received',
             ui_method_name => 'Receive item',
             method         => 'item_received',
-            next_actions   => [ 'B_ITEM_IN_TRANSIT' ],
+            next_actions   => [ 'B_ITEM_IN_TRANSIT', 'B_CLAIMS_RETURNED' ],
             ui_method_icon => 'fa-inbox',
         },
-        B_ITEM_IN_TRANSIT => {
+        B_CLAIMS_RETURNED => {
             prev_actions => [ 'B_ITEM_RECEIVED' ],
+            id             => 'B_CLAIMS_RETURNED',
+            name           => 'Claimed as returned',
+            ui_method_name => 'Claim returned',
+            method         => 'claims_returned',
+            next_actions   => [ 'B_ITEM_IN_TRANSIT' ],
+            ui_method_icon => 'fa-exclamation-triangle',
+        },
+        B_ITEM_IN_TRANSIT => {
+            prev_actions => [ 'B_ITEM_RECEIVED', 'B_CLAIMS_RETURNED' ],
             id             => 'B_ITEM_IN_TRANSIT',
             name           => 'Item in transit to owning library',
             ui_method_name => 'Item in transit',
@@ -511,6 +521,43 @@ sub cancel_request_by_us {
         status  => '',
         message => '',
         method  => 'cancel_request_by_us',
+        stage   => 'commit',
+        next    => 'illview',
+        value   => '',
+    };
+}
+
+=head3 claims_returned
+
+Method triggered by the UI, to notify the owning site that the item has been
+claimed returned.
+
+=cut
+
+sub claims_returned {
+    my ( $self, $params ) = @_;
+
+    my $req = $params->{request};
+
+    my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
+    my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
+
+    my $response = $self->oauth2( $centralCode )->post_request(
+        {   endpoint    => "/innreach/v2/circ/claimsreturned/$trackingId/$centralCode",
+            centralCode => $centralCode,
+            data        => {
+                claimsReturnedDate => dt_from_string->epoch
+            }
+        }
+    );
+
+    $req->status('B_CLAIMS_RETURNED')->store;
+
+    return {
+        error   => 0,
+        status  => '',
+        message => '',
+        method  => 'claims_returned',
         stage   => 'commit',
         next    => 'illview',
         value   => '',
