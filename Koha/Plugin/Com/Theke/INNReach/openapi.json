@@ -583,7 +583,7 @@
     "put": {
       "x-mojo-to": "Com::Theke::INNReach::CircController#claimsreturned",
       "operationId": "claimsreturned",
-      "description": "Owner renew.",
+      "description": "Borrowing site reports item claimed as returned",
       "tags": [
         "circulation"
       ],

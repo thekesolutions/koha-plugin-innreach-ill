@@ -450,6 +450,74 @@ sub ownerrenew {
     };
 }
 
+=head3 claimsreturned
+
+This method handles a I<claims returned> notification from central server
+
+This can only happen when the ILL request status is O_ITEM_RECEIVED_DESTINATION.
+
+=cut
+
+sub claimsreturned {
+    my $c = shift->openapi->valid_input or return;
+
+    my $trackingId = $c->validation->param('trackingId');
+    my $centralCode   = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime    = $body->{transactionTime};
+    my $claimsReturnedDate = $body->{claimsReturnedDate};
+    my $patronId           = $body->{patronId};
+    my $patronAgencyCode   = $body->{patronAgencyCode};
+    my $itemAgencyCode     = $body->{itemAgencyCode};
+    my $itemId             = $body->{itemId};
+
+    return try {
+
+        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+
+        return $c->render(
+            status  => 404,
+            openapi => {
+                status => 'error',
+                reason => 'Invalid trackingId/centralCode combination',
+                errors => []
+            }
+        ) unless $req;
+
+        return $c->render(
+            status  => 409,
+            openapi => {
+                status => 'error',
+                reason => 'The request cannot be claimed returned at this stage',
+                errors => []
+            }
+        ) unless $req->status eq 'O_ITEM_RECEIVED_DESTINATION';
+
+        $req->status('O_ITEM_CLAIMED_RETURNED')->store;
+
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render(
+            status => 500,
+            openapi => {
+                status => 'error',
+                reason => 'Internal error',
+                errors => []
+            }
+        );
+    };
+}
+
 =head2 Endpoints for the B<requesting site flow>
 
 =head3 patronhold
@@ -883,43 +951,6 @@ sub cancelrequest {
                 errors => []
             }
         );
-    };
-}
-
-=head3 claimsreturned
-
-TODO: this method is a stub
-
-=cut
-
-sub claimsreturned {
-    my $c = shift->openapi->valid_input or return;
-
-    my $trackingId = $c->validation->param('trackingId');
-    my $centralCode   = $c->validation->param('centralCode');
-
-    my $body = $c->validation->param('body');
-
-    my $transactionTime    = $body->{transactionTime};
-    my $claimsReturnedDate = $body->{claimsReturnedDate};
-    my $patronId           = $body->{patronId};
-    my $patronAgencyCode   = $body->{patronAgencyCode};
-    my $itemAgencyCode     = $body->{itemAgencyCode};
-    my $itemId             = $body->{itemId};
-
-    return try {
-        # do your stuff
-        return $c->render(
-            status  => 200,
-            openapi => {
-                status => 'ok',
-                reason => '',
-                errors => []
-            }
-        );
-    }
-    catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
     };
 }
 

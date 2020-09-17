@@ -175,8 +175,17 @@ sub status_graph {
             next_actions   => [ ],
             ui_method_icon => '',
         },
-        O_ITEM_IN_TRANSIT => {
+        O_ITEM_CLAIMED_RETURNED => {
             prev_actions => [ 'O_ITEM_RECEIVED_DESTINATION' ],
+            id             => 'O_ITEM_CLAIMED_RETURNED',
+            name           => 'Item claimed returned at borrowing library',
+            ui_method_name => '',
+            method         => '',
+            next_actions   => [ ],
+            ui_method_icon => '',
+        },
+        O_ITEM_IN_TRANSIT => {
+            prev_actions => [ 'O_ITEM_RECEIVED_DESTINATION', 'O_ITEM_CLAIMED_RETURNED' ],
             id             => 'O_ITEM_IN_TRANSIT',
             name           => 'Item in transit from borrowing library',
             ui_method_name => '',
@@ -237,12 +246,12 @@ sub status_graph {
             name           => 'Item received',
             ui_method_name => 'Receive item',
             method         => 'item_received',
-            next_actions   => [ 'B_ITEM_IN_TRANSIT', 'B_CLAIMS_RETURNED' ],
+            next_actions   => [ 'B_ITEM_IN_TRANSIT', 'B_ITEM_CLAIMED_RETURNED' ],
             ui_method_icon => 'fa-inbox',
         },
-        B_CLAIMS_RETURNED => {
+        B_ITEM_CLAIMED_RETURNED => {
             prev_actions => [ 'B_ITEM_RECEIVED' ],
-            id             => 'B_CLAIMS_RETURNED',
+            id             => 'B_ITEM_CLAIMED_RETURNED',
             name           => 'Claimed as returned',
             ui_method_name => 'Claim returned',
             method         => 'claims_returned',
@@ -250,7 +259,7 @@ sub status_graph {
             ui_method_icon => 'fa-exclamation-triangle',
         },
         B_ITEM_IN_TRANSIT => {
-            prev_actions => [ 'B_ITEM_RECEIVED', 'B_CLAIMS_RETURNED' ],
+            prev_actions => [ 'B_ITEM_RECEIVED', 'B_ITEM_CLAIMED_RETURNED' ],
             id             => 'B_ITEM_IN_TRANSIT',
             name           => 'Item in transit to owning library',
             ui_method_name => 'Item in transit',
@@ -551,7 +560,7 @@ sub claims_returned {
         }
     );
 
-    $req->status('B_CLAIMS_RETURNED')->store;
+    $req->status('B_ITEM_CLAIMED_RETURNED')->store;
 
     return {
         error   => 0,
