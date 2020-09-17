@@ -607,19 +607,41 @@ sub itemshipped {
 
                 # Place a hold on the item
                 my $patron_id = $req->borrowernumber;
-                my $reserve_id = AddReserve(
-                    $req->branchcode,          # branch
-                    $patron_id,                # borrowernumber
-                    $biblio_id,                # biblionumber
-                    $biblioitemnumber,         # biblioitemnumber
-                    1,                         # priority
-                    undef,                     # resdate
-                    undef,                     # expdate
-                    'Placed by ILL',           # notes
-                    '',                        # title
-                    $item_id,                  # checkitem
-                    undef                      # found
-                );
+                my $item      = Koha::Items->find( $item_id );
+                my $reserve_id;
+
+                if ( C4::Context->preference('Version') ge '20.050000' ) {
+                    $reserve_id = AddReserve(
+                        {
+                            branchcode       => $req->branchcode,
+                            borrowernumber   => $patron_id,
+                            biblionumber     => $biblio_id,
+                            priority         => 1,
+                            reservation_date => undef,
+                            expiration_date  => undef,
+                            notes            => 'Placed by ILL',
+                            title            => '',
+                            itemnumber       => $item_id,
+                            found            => undef,
+                            itemtype         => $item->effective_itemtype
+                        }
+                    );
+                }
+                else {
+                    $reserve_id = AddReserve(
+                        $req->branchcode,          # branch
+                        $patron_id,                # borrowernumber
+                        $biblio_id,                # biblionumber
+                        $biblioitemnumber,         # biblioitemnumber
+                        1,                         # priority
+                        undef,                     # resdate
+                        undef,                     # expdate
+                        'Placed by ILL',           # notes
+                        '',                        # title
+                        $item_id,                  # checkitem
+                        undef                      # found
+                    );
+                }
 
                 # Update request
                 $req->biblio_id($biblio_id)
@@ -1188,8 +1210,10 @@ sub add_virtual_record_and_item {
     };
     my $item_id;
     if ( C4::Context->preference('Version') ge '20.050000' ) {
+        $item->{biblionumber} = $biblio_id;
+        $item->{biblioitemnumber} = $biblioitemnumber;
         my $item_obj = Koha::Item->new( $item );
-        $item_obj->store;
+        $item_obj->store->discard_changes;
         $item_id = $item_obj->itemnumber;
     }
     else {
