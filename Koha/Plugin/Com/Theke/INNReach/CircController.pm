@@ -165,19 +165,39 @@ sub itemhold {
                         my $can_item_be_reserved = CanItemBeReserved( $patron_id, $item->itemnumber, $library_id )->{status};
                         if ( $can_item_be_reserved eq 'OK' ) {
                             # hold can be placed, just do it
-                            my $reserve_id = AddReserve(
-                                $req->branchcode,          # branch
-                                $patron_id,                # borrowernumber
-                                $biblio->biblionumber,     # biblionumber
-                                undef,                     # biblioitemnumber
-                                1,                         # priority
-                                undef,                     # resdate
-                                undef,                     # expdate
-                                $config->{default_hold_note} // 'Placed by ILL', # notes
-                                '',                        # title
-                                undef,                     # checkitem / force biblio-level to match itemtransfer workflow
-                                undef                      # found
-                            );
+                            my $hold_id;
+                            if ( C4::Context->preference('Version') ge '20.050000' ) {
+                                $hold_id = AddReserve(
+                                    {
+                                        branchcode       => $req->branchcode,
+                                        borrowernumber   => $patron_id,
+                                        biblionumber     => $biblio->biblionumber,
+                                        priority         => 1,
+                                        reservation_date => undef,
+                                        expiration_date  => undef,
+                                        notes            => $config->{default_hold_note} // 'Placed by ILL',
+                                        title            => '',
+                                        itemnumber       => undef,
+                                        found            => undef,
+                                        itemtype         => undef
+                                    }
+                                );
+                            }
+                            else {
+                                $hold_id = AddReserve(
+                                    $req->branchcode,          # branch
+                                    $patron_id,                # borrowernumber
+                                    $biblio->biblionumber,     # biblionumber
+                                    undef,                     # biblioitemnumber
+                                    1,                         # priority
+                                    undef,                     # resdate
+                                    undef,                     # expdate
+                                    $config->{default_hold_note} // 'Placed by ILL', # notes
+                                    '',                        # title
+                                    undef,                     # checkitem
+                                    undef                      # found
+                                );
+                            }
                         }
                         else {
                             # hold cannot be placed, notify them
