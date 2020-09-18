@@ -110,7 +110,8 @@ sub itemhold {
         $schema->txn_do(
             sub {
                 my $agency_id  = $attributes->{patronAgencyCode};
-                my $library_id = $plugin->configuration->{$centralCode}->{partners_library_id};
+                my $config     = $plugin->configuration->{$centralCode};
+                my $library_id = $config->{partners_library_id};
                 my $patron_id  = $plugin->get_patron_id_from_agency({
                     agency_id      => $agency_id,
                     central_server => $centralCode
