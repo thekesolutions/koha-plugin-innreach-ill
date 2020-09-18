@@ -130,8 +130,8 @@ sub do_task {
         elsif ( $action eq 'delete' ) {
             do_item_delete({ item_id => $object_id, contribution => $contribution, task => $task });
         }
-        elsif ( $action eq 'renew' ) {
-            handle_item_renew({ item_id => $object_id, contribution => $contribution, task => $task });
+        elsif ( $action eq 'renewal' ) {
+            handle_item_renewal({ item_id => $object_id, contribution => $contribution, task => $task });
         }
     }
     else {
@@ -337,7 +337,7 @@ sub do_item_delete {
     return 1;
 }
 
-sub handle_item_renew {
+sub handle_item_renewal {
     my ($args) = @_;
 
     my $item_id      = $args->{item_id};

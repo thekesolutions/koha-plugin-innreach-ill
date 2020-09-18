@@ -156,7 +156,7 @@ sub install {
                 `object_type`  ENUM('biblio', 'item') NOT NULL DEFAULT 'biblio',
                 `object_id`    INT(11) NOT NULL DEFAULT 0,
                 `payload`      TEXT DEFAULT NULL,
-                `action`       ENUM('create', 'modify', 'delete', 'renew') NOT NULL DEFAULT 'modify',
+                `action`       ENUM('create', 'modify', 'delete', 'renewal') NOT NULL DEFAULT 'modify',
                 `status`       ENUM('queued', 'retry', 'success', 'error') NOT NULL DEFAULT 'queued',
                 `attempts`     INT(11) NOT NULL DEFAULT 0,
                 `last_error`   VARCHAR(191) DEFAULT NULL,
@@ -401,7 +401,7 @@ sub after_item_action {
 
 =head3 after_circ_action
 
-Hool that is caled on item modification
+Hook that is caled on circulation actions
 
 =cut
 
