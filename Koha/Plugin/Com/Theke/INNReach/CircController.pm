@@ -222,6 +222,176 @@ sub itemhold {
     };
 }
 
+=head3 localhold
+
+This method creates an ILLRequest and sets its status to O_LOCAL_HOLD
+
+=cut
+
+sub localhold {
+    my $c = shift->openapi->valid_input or return;
+
+    my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
+    my $trackingId  = $c->validation->param('trackingId');
+    my $centralCode = $c->validation->param('centralCode');
+
+    my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+
+    return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+        if $req;
+
+    my $body = $c->validation->param('body');
+
+    my $attributes = {
+        transactionTime   => $body->{transactionTime},
+        pickupLocation    => $body->{pickupLocation},
+        patronId          => $body->{patronId},
+        patronAgencyCode  => $body->{patronAgencyCode},
+        itemAgencyCode    => $body->{itemAgencyCode},
+        itemId            => $body->{itemId},
+        needBefore        => $body->{needBefore},
+        centralPatronType => $body->{centralPatronType},
+        patronName        => $body->{patronName},
+        title             => $body->{title} // '',
+        author            => $body->{author},
+        trackingId        => $trackingId,
+        centralCode       => $centralCode
+    };
+
+    my $item = Koha::Items->find( $attributes->{itemId} );
+
+    return $c->render(
+        status   => 400,
+        openapi => {
+            status => 'error',
+            reason => 'Requested a non-existent item',
+            errors => []
+        }
+    ) unless $item;
+
+    my $biblio = $item->biblio;
+
+    my $user_id = $attributes->{patronId};
+    my $patron  = Koha::Patrons->find( $user_id );
+
+    unless ($patron) {
+        return $c->render(
+            status  => 400,
+            openapi => {
+                status => 'error',
+                reason => "No patron identified by the provided patronId ($user_id)",
+                errors => []
+            }
+        );
+    }
+
+    return try {
+
+        my $schema = Koha::Database->new->schema;
+        $schema->txn_do(
+            sub {
+                my $agency_id = $attributes->{patronAgencyCode};
+                my $patron_id = $attributes->{patronId};
+                my $config    = $plugin->configuration->{$centralCode};
+                # We make this kind of hold subject to ILL circulation rules, and thus
+                # use the configured 'partners_library_id' entry for placing the hold.
+                my $library_id = $config->{partners_library_id};
+
+                # Create the request
+                my $req = Koha::Illrequest->new({
+                    branchcode     => $library_id,
+                    borrowernumber => $patron_id,
+                    biblio_id      => $item->biblionumber,
+                    updated        => dt_from_string(),
+                    status         => 'O_LOCAL_HOLD',
+                    backend        => 'INNReach'
+                })->store;
+
+                # Add the custom attributes
+                while ( my ( $type, $value ) = each %{$attributes} ) {
+                    if ($value && length $value > 0) {
+                        Koha::Illrequestattribute->new(
+                            {
+                                illrequest_id => $req->illrequest_id,
+                                type          => $type,
+                                value         => $value,
+                                readonly      => 1
+                            }
+                        )->store;
+                    }
+                }
+
+                $c->render(
+                    status  => 200,
+                    openapi => {
+                        status => 'ok',
+                        reason => '',
+                        errors => []
+                    }
+                );
+
+                $c->tx->on(
+                    finish => sub {
+                        my $can_item_be_reserved = CanItemBeReserved( $patron->borrowernumber, $item->itemnumber, $library_id )->{status};
+                        if ( $can_item_be_reserved eq 'OK' ) {
+                            # hold can be placed, just do it
+                            my $hold_id;
+                            if ( C4::Context->preference('Version') ge '20.050000' ) {
+                                $hold_id = AddReserve(
+                                    {
+                                        branchcode       => $req->branchcode,
+                                        borrowernumber   => $patron->borrowernumber,
+                                        biblionumber     => $biblio->biblionumber,
+                                        priority         => 1,
+                                        reservation_date => undef,
+                                        expiration_date  => undef,
+                                        notes            => $config->{default_hold_note} // 'Placed by ILL',
+                                        title            => '',
+                                        itemnumber       => undef,
+                                        found            => undef,
+                                        itemtype         => undef
+                                    }
+                                );
+                            }
+                            else {
+                                $hold_id = AddReserve(
+                                    $req->branchcode,          # branch
+                                    $patron->borrowernumber,   # borrowernumber
+                                    $biblio->biblionumber,     # biblionumber
+                                    undef,                     # biblioitemnumber
+                                    1,                         # priority
+                                    undef,                     # resdate
+                                    undef,                     # expdate
+                                    $config->{default_hold_note} // 'Placed by ILL', # notes
+                                    '',                        # title
+                                    undef,                     # checkitem
+                                    undef                      # found
+                                );
+                            }
+                        }
+                        else {
+                            # hold cannot be placed, notify them
+                            my $ill = Koha::Illbackends::INNReach::Base->new;
+                            $ill->cancel_request({ request => $req });
+                        }
+                    }
+                );
+            }
+        );
+    }
+    catch {
+        return $c->render(
+            status => 500,
+            openapi => {
+                status => 'error',
+                reason => "Internal error ($_)",
+                errors => []
+            }
+        );
+    };
+}
+
 =head3 itemreceived
 
 This method changes the status of the ILL request to let the users

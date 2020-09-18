@@ -142,6 +142,15 @@ sub status_graph {
             next_actions   => [ 'O_ITEM_SHIPPED', 'O_ITEM_CANCELLED_BY_US' ],
             ui_method_icon => '',
         },
+        O_LOCAL_HOLD  => {
+            prev_actions => [ ],
+            id             => 'O_LOCAL_HOLD',
+            name           => 'Local hold requested',
+            ui_method_name => 'Local hold requested',
+            method         => '',
+            next_actions   => [ 'COMP' ],
+            ui_method_icon => '',
+        },
         O_ITEM_CANCELLED => {
             prev_actions => [ 'O_ITEM_REQUESTED' ],
             id             => 'O_ITEM_CANCELLED',
