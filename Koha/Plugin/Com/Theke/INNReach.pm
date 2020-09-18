@@ -26,6 +26,8 @@ use YAML;
 use Koha::Biblioitems;
 use Koha::Items;
 
+use Koha::Plugin::Com::Theke::INNReach::Exceptions;
+
 our $VERSION = "{VERSION}";
 
 our $metadata = {
@@ -403,29 +405,43 @@ sub after_item_action {
 
 Hook that is caled on circulation actions
 
+Note: Koha updates item statuses on circulation, so circulation updates on items
+are notified by the I<after_item_action> hook.
+
+So far, only renewals of ILL-linked items are taken care of here.
+
 =cut
 
 sub after_circ_action {
     my ( $self, $params ) = @_;
 
     my $action = $params->{action};
-    my $hook_payload = $params->{payload};
-    my $checkout = $hook_payload->{checkout};
 
-    my $item_id = $checkout->itemnumber;
-    my $payload = encode_json( $hook_payload );
+    if ( $action eq 'renewal' ) {
+        # We only care about renewals here
+        my $hook_payload = $params->{payload};
+        my $checkout = $hook_payload->{checkout};
 
-    my $task_queue = $self->get_qualified_table_name('task_queue');
+        my $item      = $checkout->item;
+        my $biblio_id = $item->biblionumber;
 
-    my @central_servers = $self->central_servers;
+        my $req = $self->get_ill_request_from_biblio_id({ biblio_id => $biblio_id });
 
-    foreach my $central_server ( @central_servers ) {
-        C4::Context->dbh->do(qq{
-            INSERT INTO $task_queue
-                ( central_server, object_type, object_id, payload, action, status, attempts )
-            VALUES
-                ( '$central_server', 'item', $item_id, '$payload', '$action', 'queued', 0 )
-        });
+        if ( $req ) {
+            # There's a request, and it is a renewal, notify!
+
+            my $payload = encode_json( $hook_payload );
+            my $task_queue = $self->get_qualified_table_name('task_queue');
+
+            my $central_server = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
+
+            C4::Context->dbh->do(qq{
+                INSERT INTO $task_queue
+                    ( central_server, object_type, object_id, payload, action, status, attempts )
+                VALUES
+                    ( '$central_server', 'item', $item_id, '$payload', '$action', 'queued', 0 )
+            });
+        }
     }
 }
 
@@ -705,6 +721,36 @@ sub central_servers {
     }
 
     return ();
+}
+
+=head3 get_ill_request_from_item_id
+
+This method retrieves the Koha::ILLRequest using a item_id.
+
+=cut
+
+sub get_ill_request_from_biblio_id {
+    my ( $self, $args ) = @_;
+
+    my $biblio_id = $args->{biblio_id};
+
+    unless ( $biblio_id ) {
+        INNReach::Ill::UnknownBiblioId->throw( biblio_id => $biblio_id );
+    }
+
+    my $biblio_id = $item->biblionumber;
+
+    my $reqs = Koha::Illrequests->search({ biblio_id => $biblio_id });
+
+    if ( $reqs->count > 1 ) {
+        warn "More than one ILL request for biblio_id ($biblio_id). Beware!";
+    }
+
+    return unless $reqs->count > 0;
+
+    my $req = $reqs->next;
+
+    return $req;
 }
 
 1;
