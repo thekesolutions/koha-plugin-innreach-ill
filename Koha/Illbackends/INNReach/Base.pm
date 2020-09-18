@@ -67,9 +67,11 @@ sub new {
 
     # -> instantiate the backend
     my ($class) = @_;
-    my $configuration = Koha::Plugin::Com::Theke::INNReach->new->configuration;
+    my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+    my $configuration = $plugin->configuration;
+
     my $oauth2;
-    foreach my $centralServer ( keys %{$configuration} ) {
+    foreach my $centralServer ( @{ $plugin->central_servers } ) {
         $oauth2->{$centralServer} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new({
             client_id         => $configuration->{$centralServer}->{client_id},
             client_secret     => $configuration->{$centralServer}->{client_secret},
