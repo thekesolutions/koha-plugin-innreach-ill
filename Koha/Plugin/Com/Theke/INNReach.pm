@@ -423,6 +423,7 @@ sub after_circ_action {
         my $checkout = $hook_payload->{checkout};
 
         my $item      = $checkout->item;
+        my $item_id   = $item->itemnumber;
         my $biblio_id = $item->biblionumber;
 
         my $req = $self->get_ill_request_from_biblio_id({ biblio_id => $biblio_id });
@@ -737,8 +738,6 @@ sub get_ill_request_from_biblio_id {
     unless ( $biblio_id ) {
         INNReach::Ill::UnknownBiblioId->throw( biblio_id => $biblio_id );
     }
-
-    my $biblio_id = $item->biblionumber;
 
     my $reqs = Koha::Illrequests->search({ biblio_id => $biblio_id });
 
