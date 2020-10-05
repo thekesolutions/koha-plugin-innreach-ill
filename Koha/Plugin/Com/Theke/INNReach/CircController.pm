@@ -1381,6 +1381,7 @@ sub add_virtual_record_and_item {
     my $item_type      = $config->{default_item_type};
     my $ccode          = $config->{default_item_ccode};
     my $location       = $config->{default_location};
+    my $materials      = $config->{default_materials_specified} || 'Additional processing required (ILL)';
     my $checkin_note   = $config->{default_checkin_note} || 'Additional processing required (ILL)';
 
     unless ( $item_type ) {
@@ -1441,6 +1442,7 @@ sub add_virtual_record_and_item {
         itemcallnumber   => $call_number,
         ccode            => $ccode,
         location         => $location,
+        materials        => $materials,
         itemnotes_nonpublic => $checkin_note,
     };
     my $item_id;

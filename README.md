@@ -164,6 +164,7 @@ d2ir:
     default_marc_framework: FA
     default_item_type: ILL
     default_item_ccode: null
+    default_materials_specified: Additional processing required (ILL)
     default_location: null
     default_checkin_note: Additional processing required (ILL)
     default_hold_note: Placed by ILL
