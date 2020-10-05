@@ -18,14 +18,19 @@ package Koha::Illbackends::INNReach::Base;
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 use Modern::Perl;
+
 use DateTime;
+use Try::Tiny;
 
 use Koha::Database;
+
+use C4::Circulation qw(AddIssue);
 
 use Koha::Biblios;
 use Koha::DateUtils qw(dt_from_string);
 use Koha::Illrequests;
 use Koha::Illrequestattributes;
+use Koha::Patron;
 
 use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::OAuth2;
@@ -310,26 +315,44 @@ sub item_shipped {
     my $itemId      = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemId' })->value;
     my $item = Koha::Items->find( $itemId );
 
-    my $response = $self->oauth2( $centralCode )->post_request(
-        {   endpoint    => "/innreach/v2/circ/itemshipped/$trackingId/$centralCode",
-            centralCode => $centralCode,
-            data        => {
-                callNumber  => $item->itemcallnumber // q{},
-                itemBarcode => $item->barcode // q{},
+    return try {
+        Koha::Database->schema->storage->txn_do(
+            sub {
+                my $patron = Koha::Patrons->find($req->borrowernumber);
+                AddIssue( $patron->unblessed, $item->barcode);
+                $req->status('O_ITEM_SHIPPED')->store;
             }
-        }
-    );
+        );
 
-    $req->status('O_ITEM_SHIPPED')->store;
+        my $response = $self->oauth2( $centralCode )->post_request(
+            {   endpoint    => "/innreach/v2/circ/itemshipped/$trackingId/$centralCode",
+                centralCode => $centralCode,
+                data        => {
+                    callNumber  => $item->itemcallnumber // q{},
+                    itemBarcode => $item->barcode // q{},
+                }
+            }
+        );
 
-    return {
-        error   => 0,
-        status  => '',
-        message => '',
-        method  => 'item_shipped',
-        stage   => 'commit',
-        next    => 'illview',
-        value   => '',
+        return {
+            error   => 0,
+            status  => '',
+            message => '',
+            method  => 'item_shipped',
+            stage   => 'commit',
+            next    => 'illview',
+            value   => '',
+        };
+    }
+    catch {
+        return {
+            error   => 1,
+            status  => 'error_on_checkout',
+            message => "$_",
+            method  => 'item_shipped',
+            stage   => 'commit',
+            value   => q{},
+        };
     };
 }
 
