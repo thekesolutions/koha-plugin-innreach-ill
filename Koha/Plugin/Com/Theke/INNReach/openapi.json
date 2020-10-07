@@ -836,7 +836,7 @@
     "put": {
       "x-mojo-to": "Com::Theke::INNReach::CircController#returnuncirculated",
       "operationId": "returnuncirculated",
-      "description": "Owner renew.",
+      "description": "Route to notify the owning site that the item is in transit, but also that it hasn't been circulated.",
       "tags": [
         "circulation"
       ],

@@ -516,6 +516,69 @@ sub intransit {
     };
 }
 
+=head3 returnuncirculated
+
+This method changes the status of the ILL request to let the users
+know the item has been sent back from requesting site. And that it was
+not circulated.
+
+=cut
+
+sub returnuncirculated {
+    my $c = shift->openapi->valid_input or return;
+
+    my $trackingId  = $c->validation->param('trackingId');
+    my $centralCode = $c->validation->param('centralCode');
+
+    my $body = $c->validation->param('body');
+
+    ## TODO: we are supposed to receive all this data, but: what for?
+    ## all we do here is changing the request status
+    # my $attributes = {
+    #     transactionTime   => $body->{transactionTime},
+    #     pickupLocation    => $body->{pickupLocation},
+    #     patronId          => $body->{patronId},
+    #     patronAgencyCode  => $body->{patronAgencyCode},
+    #     itemAgencyCode    => $body->{itemAgencyCode},
+    #     itemId            => $body->{itemId},
+    #     needBefore        => $body->{needBefore},
+    #     centralPatronType => $body->{centralPatronType},
+    #     patronName        => $body->{patronName},
+    #     trackingId        => $trackingId,
+    #     centralCode       => $centralCode
+    # };
+
+    return try {
+
+        # Get/validate the request
+        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+
+        return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+            unless $req;
+
+        $req->status('B_ITEM_RETURN_UNCIRCULATED')->store;
+
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render(
+            status => 500,
+            openapi => {
+                status => 'error',
+                reason => "Internal error ($_)",
+                errors => []
+            }
+        );
+    };
+}
+
 =head3 cancelitemhold
 
 This method changes the status of the ILL request to let the users
@@ -1177,44 +1240,6 @@ sub receiveunshipped {
     my $patronAgencyCode   = $body->{patronAgencyCode};
     my $itemAgencyCode     = $body->{itemAgencyCode};
     my $itemId             = $body->{itemId};
-
-    return try {
-        # do your stuff
-        return $c->render(
-            status  => 200,
-            openapi => {
-                status => 'ok',
-                reason => '',
-                errors => []
-            }
-        );
-    }
-    catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
-    };
-}
-
-=head3 returnuncirculated
-
-TODO: this method is a stub
-
-=cut
-
-sub returnuncirculated {
-    my $c = shift->openapi->valid_input or return;
-
-    my $trackingId = $c->validation->param('trackingId');
-    my $centralCode   = $c->validation->param('centralCode');
-
-    my $body = $c->validation->param('body');
-
-    my $transactionTime  = $body->{transactionTime};
-    my $patronId         = $body->{patronId};
-    my $patronAgencyCode = $body->{patronAgencyCode};
-    my $itemAgencyCode   = $body->{itemAgencyCode};
-    my $itemId           = $body->{itemId};
-    my $author           = $body->{author};
-    my $title            = $body->{title};
 
     return try {
         # do your stuff
