@@ -24,6 +24,7 @@ use Try::Tiny;
 
 use Koha::Database;
 
+use C4::Biblio qw(DelBiblio);
 use C4::Circulation qw(AddIssue);
 
 use Koha::Biblios;
@@ -263,7 +264,7 @@ sub status_graph {
             name           => 'Item received',
             ui_method_name => 'Receive item',
             method         => 'item_received',
-            next_actions   => [ 'B_ITEM_IN_TRANSIT', 'B_ITEM_CLAIMED_RETURNED' ],
+            next_actions   => [ 'B_ITEM_IN_TRANSIT', 'B_ITEM_CLAIMED_RETURNED', 'B_ITEM_RETURN_UNCIRCULATED' ],
             ui_method_icon => 'fa-inbox',
         },
         B_ITEM_CLAIMED_RETURNED => {
@@ -284,8 +285,17 @@ sub status_graph {
             next_actions   => [ ],
             ui_method_icon => 'fa-send-o',
         },
+        B_ITEM_RETURN_UNCIRCULATED => {
+            prev_actions => [ 'B_ITEM_RECEIVED' ],
+            id             => 'B_ITEM_RETURN_UNCIRCULATED',
+            name           => 'Item in transit to owning library (uncirculated)',
+            ui_method_name => 'Return uncirculated',
+            method         => 'return_uncirculated',
+            next_actions   => [ ],
+            ui_method_icon => 'fa-send-o',
+        },
         B_ITEM_CHECKED_IN => {
-            prev_actions => [ 'B_ITEM_IN_TRANSIT' ],
+            prev_actions => [ 'B_ITEM_IN_TRANSIT', 'B_ITEM_RETURN_UNCIRCULATED' ],
             id             => 'B_ITEM_CHECKED_IN',
             name           => 'Item checked-in at owning library',
             ui_method_name => 'Check-in',
@@ -519,6 +529,61 @@ sub item_in_transit {
         status  => '',
         message => '',
         method  => 'item_in_transit',
+        stage   => 'commit',
+        next    => 'illview',
+        value   => '',
+    };
+}
+
+=head3 return_uncirculated
+
+Method triggered by the UI, to notify the owning site the item has been
+sent back to them and is in transit.
+
+=cut
+
+sub return_uncirculated {
+    my ( $self, $params ) = @_;
+
+    my $req = $params->{request};
+
+    my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
+    my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
+
+    my $response = $self->oauth2( $centralCode )->post_request(
+        {   endpoint    => "/innreach/v2/circ/returnuncirculated$trackingId/$centralCode",
+            centralCode => $centralCode,
+        }
+    );
+
+    Koha::Database->new->schema->txn_do(
+        sub {
+            # Cleanup!
+            my $biblio = Koha::Biblios->find( $req->biblio_id );
+            my $holds  = $biblio->holds;
+
+            # Remove hold(s)
+            while ( my $hold = $holds->next ) {
+                $hold->cancel;
+            }
+
+            # Remove item(s)
+            my $items  = $biblio->items;
+            while ( my $item = $items->next ) {
+                $item->safe_delete;
+            }
+
+            DelBiblio( $req->biblio_id );
+        }
+    );
+
+    $req->status('B_ITEM_RETURN_UNCIRCULATED')->store;
+
+    return {
+        error   => 0,
+        status  => '',
+        message => '',
+        method  => 'return_uncirculated',
         stage   => 'commit',
         next    => 'illview',
         value   => '',
