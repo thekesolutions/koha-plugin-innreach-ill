@@ -556,7 +556,7 @@ sub returnuncirculated {
         return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
             unless $req;
 
-        $req->status('B_ITEM_RETURN_UNCIRCULATED')->store;
+        $req->status('O_ITEM_RETURN_UNCIRCULATED')->store;
 
         return $c->render(
             status  => 200,
