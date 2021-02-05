@@ -560,7 +560,7 @@ sub return_uncirculated {
     my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
 
     my $response = $self->oauth2( $centralCode )->post_request(
-        {   endpoint    => "/innreach/v2/circ/returnuncirculated$trackingId/$centralCode",
+        {   endpoint    => "/innreach/v2/circ/returnuncirculated/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
     );
