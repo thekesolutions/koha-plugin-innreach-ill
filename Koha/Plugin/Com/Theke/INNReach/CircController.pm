@@ -178,7 +178,7 @@ sub itemhold {
                                         expiration_date  => undef,
                                         notes            => $config->{default_hold_note} // 'Placed by ILL',
                                         title            => '',
-                                        itemnumber       => undef,
+                                        itemnumber       => $item->itemnumber,
                                         found            => undef,
                                         itemtype         => undef
                                     }
@@ -195,7 +195,7 @@ sub itemhold {
                                     undef,                     # expdate
                                     $config->{default_hold_note} // 'Placed by ILL', # notes
                                     '',                        # title
-                                    undef,                     # checkitem
+                                    $item->itemnumber,         # checkitem
                                     undef                      # found
                                 );
                             }
