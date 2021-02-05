@@ -211,9 +211,9 @@ sub status_graph {
             next_actions   => [ 'O_ITEM_CHECKED_IN' ],
             ui_method_icon => 'fa-inbox',
         },
-        B_ITEM_RETURN_UNCIRCULATED => {
+        O_ITEM_RETURN_UNCIRCULATED => {
             prev_actions => [ 'O_ITEM_RECEIVED_DESTINATION', 'O_ITEM_CLAIMED_RETURNED' ],
-            id             => 'B_ITEM_RETURN_UNCIRCULATED',
+            id             => 'O_ITEM_RETURN_UNCIRCULATED',
             name           => 'Item in transit from borrowing library (uncirculated)',
             ui_method_name => '',
             method         => '',
