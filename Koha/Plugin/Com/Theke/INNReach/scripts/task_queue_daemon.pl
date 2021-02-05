@@ -384,16 +384,31 @@ sub mark_task {
 
     $attempts++ if $status eq 'retry';
 
-    my $query = $dbh->prepare(qq{
-        UPDATE
-            $table
-        SET
-            status='$status',
-            attempts=$attempts,
-            last_error='$error'
-        WHERE
-            id=$task_id
-    });
+    my $query;
+    if ( defined $error ) {
+        $query = $dbh->prepare(qq{
+            UPDATE
+                $table
+            SET
+                status='$status',
+                attempts=$attempts,
+                last_error='$error'
+            WHERE
+                id=$task_id
+        });
+    }
+    else {
+        $query = $dbh->prepare(qq{
+            UPDATE
+                $table
+            SET
+                status='$status',
+                attempts=$attempts,
+                last_error=NULL
+            WHERE
+                id=$task_id
+        });
+    }
 
     $query->execute;
 }
