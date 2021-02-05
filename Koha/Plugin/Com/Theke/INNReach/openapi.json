@@ -1128,7 +1128,7 @@
     }
   },
   "/v2/circ/localhold/{trackingId}/{centralCode}": {
-    "post": {
+    "put": {
       "x-mojo-to": "Com::Theke::INNReach::CircController#localhold",
       "operationId": "localhold",
       "description": "Originates a patron hold at central that is sent to the local site.",
