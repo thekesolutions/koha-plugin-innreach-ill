@@ -151,8 +151,8 @@ sub do_biblio_create {
     my $task         = $args->{task};
 
     try {
-        my @result = $contribution->contribute_bib({ bibId => $biblio_id });
-        if ( @result ) {
+        my $result = $contribution->contribute_bib({ bibId => $biblio_id });
+        if ( $result ) {
             if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
                 mark_task({ task => $task, status => 'retry' });
             }
@@ -183,8 +183,8 @@ sub do_biblio_modify {
     my $task         = $args->{task};
 
     try {
-        my @result = $contribution->contribute_bib({ bibId => $biblio_id });
-        if ( @result ) {
+        my $result = $contribution->contribute_bib({ bibId => $biblio_id });
+        if ( $result ) {
             if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
                 mark_task({ task => $task, status => 'retry' });
             }
@@ -215,8 +215,8 @@ sub do_biblio_delete {
     my $task         = $args->{task};
 
     try {
-        my @result = $contribution->decontribute_bib({ bibId => $biblio_id });
-        if ( @result ) {
+        my $result = $contribution->decontribute_bib({ bibId => $biblio_id });
+        if ( $result ) {
             if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
                 mark_task({ task => $task, status => 'retry' });
             }
