@@ -337,23 +337,24 @@ sub after_biblio_action {
 
     my $action    = $args->{action};
     my $biblio_id = $args->{biblio_id};
+    my $biblio    = $args->{biblio};
 
     my $task_queue    = $self->get_qualified_table_name('task_queue');
     my $configuration = $self->configuration;
 
-    my $biblioitem = Koha::Biblioitems->find({ biblionumber => $biblio_id });
-    if ( $biblioitem ) {
-        return
-            unless any { $biblioitem->itemtype eq $_ } @{ $configuration->{default_item_types} };
-    }
-    else {
-        # FIXME: This is due to the fact that we lack information on delete. Koha bug
-        warn "Cannot find the requested biblio ($biblio_id). Deleted?";
-    }
-
     my @central_servers = $self->central_servers;
 
     foreach my $central_server ( @central_servers ) {
+
+        if ( $action ne 'delete' ) {
+
+            my $item_type = $biblio->itemtype;
+            if ( !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type}) {
+                warn "Unampped item type ($item_type) on central server ($central_server).";
+                next;
+            }
+        }
+
         C4::Context->dbh->do(qq{
             INSERT INTO $task_queue
                 ( central_server, object_type, object_id, action, status, attempts )
@@ -365,7 +366,7 @@ sub after_biblio_action {
 
 =head3 after_item_action
 
-Hool that is caled on item modification
+Hook that is caled on item modification
 
 =cut
 
@@ -374,24 +375,24 @@ sub after_item_action {
 
     my $action  = $args->{action};
     my $item_id = $args->{item_id};
+    my $item    = $args->{item};
 
     my $task_queue    = $self->get_qualified_table_name('task_queue');
     my $configuration = $self->configuration;
 
-    my $item = Koha::Items->find( $item_id );
-
-    if ( $item ) {
-        return
-            unless any { $item->itype eq $_ } @{ $configuration->{default_item_types} };
-    }
-    else {
-        # FIXME: This is due to the fact that we lack information on delete. Koha bug
-        warn "Cannot find the requested item ($item_id). Deleted?";
-    }
-
     my @central_servers = $self->central_servers;
 
     foreach my $central_server ( @central_servers ) {
+
+        if ( $action ne 'delete' ) {
+
+            my $item_type = $item->itype;
+            if ( !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type}) {
+                warn "Unampped item type ($item_type) on central server ($central_server).";
+                next;
+            }
+        }
+
         C4::Context->dbh->do(qq{
             INSERT INTO $task_queue
                 ( central_server, object_type, object_id, action, status, attempts )
