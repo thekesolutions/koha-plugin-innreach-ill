@@ -25,7 +25,7 @@ use Try::Tiny;
 use Koha::Database;
 
 use C4::Biblio qw(DelBiblio);
-use C4::Circulation qw(AddIssue);
+use C4::Circulation qw(AddIssue AddReturn);
 
 use Koha::Biblios;
 use Koha::DateUtils qw(dt_from_string);
@@ -521,6 +521,10 @@ sub item_in_transit {
 
     Koha::Database->new->schema->txn_do(
         sub {
+            # Return the item first
+            my $barcode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemBarcode' })->value;
+
+            AddReturn( $barcode );
             # Is there a hold still?
             # Should we? There's no ON DELETE NULL...
             # $req->biblio_id(undef)->store;
