@@ -250,8 +250,8 @@ sub do_item_create {
     my $biblio_id = $item->biblionumber;
 
     try {
-        my @result = $contribution->contribute_batch_items({ item => $item, bibId => $biblio_id });
-        if ( @result ) {
+        my $result = $contribution->contribute_batch_items({ item => $item, bibId => $biblio_id });
+        if ( $result ) {
             if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
                 mark_task({ task => $task, status => 'retry' });
             }
@@ -285,8 +285,8 @@ sub do_item_modify {
     my $biblio_id = $item->biblionumber;
 
     try {
-        my @result = $contribution->contribute_batch_items({ item => $item, bibId => $biblio_id });
-        if ( @result ) {
+        my $result = $contribution->contribute_batch_items({ item => $item, bibId => $biblio_id });
+        if ( $result ) {
             if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
                 mark_task({ task => $task, status => 'retry' });
             }
@@ -317,8 +317,8 @@ sub do_item_delete {
     my $task         = $args->{task};
 
     try {
-        my @result = $contribution->decontribute_item({ itemId => $item_id });
-        if ( @result ) {
+        my $result = $contribution->decontribute_item({ itemId => $item_id });
+        if ( $result ) {
             if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
                 mark_task({ task => $task, status => 'retry' });
             }
@@ -346,13 +346,13 @@ sub handle_item_renewal {
     my $payload      = decode_json($task->{payload});
 
     try {
-        my @result = $contribution->notify_borrower_renew(
+        my $result = $contribution->notify_borrower_renew(
             {
                 item_id  => $item_id,
                 date_due => $payload->{date_due}
             }
         );
-        if ( @result ) {
+        if ( $result ) {
             if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
                 mark_task({ task => $task, status => 'retry' });
             }
@@ -374,7 +374,7 @@ sub mark_task {
     my $task     = $args->{task};
     my $status   = $args->{status};
     my $task_id  = $task->{id};
-    my $attempts = $task->{attempts};
+    my $attempts = $task->{attempts} // 0;
     my $error    = $task->{error};
 
     my $dbh = C4::Context->dbh;
