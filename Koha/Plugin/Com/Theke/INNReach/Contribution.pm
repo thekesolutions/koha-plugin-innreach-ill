@@ -830,7 +830,7 @@ sub notify_borrower_renew {
 
     my $req = $self->get_ill_request_from_item_id(
         {
-            item_id => 'item_id',
+            item_id => $item_id,
             status  => 'B_ITEM_RECEIVED',
         }
     );
