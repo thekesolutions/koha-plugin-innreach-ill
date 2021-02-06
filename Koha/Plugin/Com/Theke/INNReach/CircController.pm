@@ -1111,21 +1111,23 @@ sub local_checkin {
     };
 }
 
-=head2 TODO AREA
-
 =head3 borrowerrenew
 
-TODO: this method is a stub
+This method receives a renewal notification from the Central Server. All it does is
+recording the new due date.
 
 =cut
 
 sub borrowerrenew {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId = $c->validation->param('trackingId');
-    my $centralCode   = $c->validation->param('centralCode');
+    my $trackingId  = $c->validation->param('trackingId');
+    my $centralCode = $c->validation->param('centralCode');
+
+    my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
     my $body = $c->validation->param('body');
+
 
     my $transactionTime   = $body->{transactionTime};
     my $dueDateTime       = $body->{dueDateTime};
@@ -1135,7 +1137,15 @@ sub borrowerrenew {
     my $itemId            = $body->{itemId};
 
     return try {
-        # do your stuff
+
+        my $date_due =
+                DateTime->from_epoch( epoch => $dueDateTime )
+                        ->truncate( to => 'day' )
+                        ->set( hour => 23, minute => 59 );
+
+        my $checkout = Koha::Checkouts->find({ itemnumber => $itemId });
+        $checkout->set({ date_due => $date_due })->store;
+
         return $c->render(
             status  => 200,
             openapi => {
