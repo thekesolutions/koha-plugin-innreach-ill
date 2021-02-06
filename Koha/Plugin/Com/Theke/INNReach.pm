@@ -314,7 +314,7 @@ sub upgrade {
         $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
-    $new_version = "2.6.11";
+    $new_version = "2.6.12";
     if (
         Koha::Plugins::Base::_version_compare(
             $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
@@ -345,7 +345,7 @@ FIXME: Should be made available to plugins in core
 =cut
 
 sub _table_exists {
-    my $table = shift;
+    my ($self, $table) = @_;
     eval {
         C4::Context->dbh->{PrintError} = 0;
         C4::Context->dbh->{RaiseError} = 1;
