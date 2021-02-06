@@ -841,7 +841,7 @@ sub notify_borrower_renew {
 
     my $response;
 
-    try {
+    return try {
 
         my $trackingId  = $req->illrequestattributes->search({ type => 'trackingId'  })->next->value;
         my $centralCode = $req->illrequestattributes->search({ type => 'centralCode' })->next->value;
@@ -855,8 +855,16 @@ sub notify_borrower_renew {
                 }
             }
         );
-        warn p( $response )
-            if $response->is_error or $ENV{DEBUG};
+
+        if ( $response->is_error ) {
+
+            warn p( $response )
+                if $ENV{DEBUG};
+
+            return ($response);
+        }
+
+        return;
     }
     catch {
         INNReach::Ill->throw( "Unhandled exception: $_" );
