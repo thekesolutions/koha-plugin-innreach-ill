@@ -158,7 +158,7 @@ sub install {
                 `object_type`  ENUM('biblio', 'item') NOT NULL DEFAULT 'biblio',
                 `object_id`    INT(11) NOT NULL DEFAULT 0,
                 `payload`      TEXT DEFAULT NULL,
-                `action`       ENUM('create', 'modify', 'delete', 'renewal') NOT NULL DEFAULT 'modify',
+                `action`       ENUM('create', 'modify', 'delete', 'renewal', 'checkin', 'checkout') NOT NULL DEFAULT 'modify',
                 `status`       ENUM('queued', 'retry', 'success', 'error') NOT NULL DEFAULT 'queued',
                 `attempts`     INT(11) NOT NULL DEFAULT 0,
                 `last_error`   VARCHAR(191) DEFAULT NULL,
@@ -198,13 +198,16 @@ Takes care of upgrading whatever is needed (table structure, new tables, informa
 sub upgrade {
     my ( $self, $args ) = @_;
 
-    my $database_version = $self->retrieve_data('__INSTALLED_VERSION__') || 0;
-
-    if ( Koha::Plugins::Base::_version_compare( $database_version, "1.0.2" ) == -1 ) {
+    my $new_version = "1.1.0";
+    if (
+        Koha::Plugins::Base::_version_compare(
+            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
+      )
+    {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
-        unless ($self->_table_exists( $task_queue )) {
+        unless ( $self->_table_exists($task_queue) ) {
             C4::Context->dbh->do(qq{
                 CREATE TABLE $task_queue (
                     `id`           INT(11) NOT NULL AUTO_INCREMENT,
@@ -220,28 +223,39 @@ sub upgrade {
             });
         }
 
-        $self->store_data({ '__INSTALLED_VERSION__' => "1.1.0" });
+        $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
-    if ( Koha::Plugins::Base::_version_compare( $database_version, "1.1.17" ) == -1 ) {
+    $new_version = "1.1.18";
+    if (
+        Koha::Plugins::Base::_version_compare(
+            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
+      )
+    {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
-        unless ($self->_table_exists( $task_queue )) {
+        unless ( $self->_table_exists($task_queue) ) {
             C4::Context->dbh->do(qq{
                 ALTER TABLE $task_queue
                     ADD COLUMN `last_error` VARCHAR(191) DEFAULT NULL AFTER `attempts`;
             });
         }
 
-        $self->store_data({ '__INSTALLED_VERSION__' => "1.1.18" });
+        $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
-    if ( Koha::Plugins::Base::_version_compare( $database_version, "2.1.3" ) == -1 ) {
+    $new_version = "2.1.4";
+    if (
+        Koha::Plugins::Base::_version_compare(
+            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
+      )
+    {
 
-        my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
+        my $agency_to_patron =
+          $self->get_qualified_table_name('agency_to_patron');
 
-        unless ( $self->_table_exists( $agency_to_patron ) ) {
+        unless ( $self->_table_exists($agency_to_patron) ) {
             C4::Context->dbh->do(qq{
                 CREATE TABLE $agency_to_patron (
                     `central_server` VARCHAR(191) NOT NULL,
@@ -254,14 +268,19 @@ sub upgrade {
             });
         }
 
-        $self->store_data({ '__INSTALLED_VERSION__' => "2.1.4" });
+        $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
-    if ( Koha::Plugins::Base::_version_compare( $database_version, "2.2.6" ) == -1 ) {
+    $new_version = "2.2.6";
+    if (
+        Koha::Plugins::Base::_version_compare(
+            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
+      )
+    {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
-        if ($self->_table_exists( $task_queue )) {
+        if ( $self->_table_exists($task_queue) ) {
             C4::Context->dbh->do(qq{
                 ALTER TABLE $task_queue
                     ADD COLUMN    `payload` TEXT DEFAULT NULL AFTER `object_id`,
@@ -269,14 +288,19 @@ sub upgrade {
             });
         }
 
-        $self->store_data({ '__INSTALLED_VERSION__' => "2.2.6" });
+        $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
-    if ( Koha::Plugins::Base::_version_compare( $database_version, "2.3.0" ) == -1 ) {
+    $new_version = "2.3.0";
+    if (
+        Koha::Plugins::Base::_version_compare(
+            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
+      )
+    {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
-        if ($self->_table_exists( $task_queue )) {
+        if ( $self->_table_exists($task_queue) ) {
             C4::Context->dbh->do(qq{
                 ALTER TABLE $task_queue
                     ADD COLUMN `central_server` VARCHAR(10) NOT NULL AFTER `timestamp`;
@@ -287,21 +311,26 @@ sub upgrade {
             });
         }
 
-        $self->store_data({ '__INSTALLED_VERSION__' => "2.3.0" });
+        $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
-    if ( Koha::Plugins::Base::_version_compare( $database_version, "2.4.0" ) == -1 ) {
+    $new_version = "2.4.0";
+    if (
+        Koha::Plugins::Base::_version_compare(
+            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
+      )
+    {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
-        if ($self->_table_exists( $task_queue )) {
+        if ( $self->_table_exists($task_queue) ) {
             C4::Context->dbh->do(qq{
                 ALTER TABLE $task_queue
                     MODIFY COLUMN `action` ENUM('create', 'modify', 'delete', 'renewal', 'checkin', 'checkout') NOT NULL DEFAULT 'modify';
             });
         }
 
-        $self->store_data({ '__INSTALLED_VERSION__' => "2.4.0" });
+        $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
     return 1;
