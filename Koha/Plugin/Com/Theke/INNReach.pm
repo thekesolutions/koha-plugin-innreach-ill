@@ -314,7 +314,7 @@ sub upgrade {
         $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
-    $new_version = "2.4.0";
+    $new_version = "2.6.11";
     if (
         Koha::Plugins::Base::_version_compare(
             $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
