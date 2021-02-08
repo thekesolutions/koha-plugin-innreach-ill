@@ -9,7 +9,8 @@ Koha able to be part of ILL networks using the INN-Reach service.
 The plugin implements methods that cover all data contribution options.
 
 ### Implemented required endpoints
-```
+
+```shell
     POST /api/v1/contrib/innreach/v2/getbibrecord/{bibId}/{centralCode}
 ```
 
@@ -27,13 +28,15 @@ by API interactions.
 
 ### Implemented required endpoints
 
-```
+```shell
+    PUT  /api/v1/contrib/innreach/v2/circ/borrowerrenew/{trackingId}/{centralCode}
     PUT  /api/v1/contrib/innreach/v2/circ/cancelitemhold/{trackingId}/{centralCode}
     PUT  /api/v1/contrib/innreach/v2/circ/claimsreturned/{trackingId}/{centralCode}
     PUT  /api/v1/contrib/innreach/v2/circ/intransit/{trackingId}/{centralCode}
     POST /api/v1/contrib/innreach/v2/circ/itemhold/{trackingId}/{centralCode}
     PUT  /api/v1/contrib/innreach/v2/circ/itemreceived/{trackingId}/{centralCode}
     PUT  /api/v1/contrib/innreach/v2/circ/ownerrenew/{trackingId}/{centralCode}
+    PUT  /api/v1/contrib/innreach/v2/circ/returnuncirculated/{trackingId}/{centralCode} 
 ```
 
 ## Borrowing site
@@ -46,7 +49,7 @@ by API interactions.
 
 ### Implemented required endpoints
 
-```
+```shell
     POST /api/v1/contrib/innreach/v2/circ/verifypatron
     POST /api/v1/contrib/innreach/v2/circ/patronhold/{trackingId}/{centralCode}
     PUT  /api/v1/contrib/innreach/v2/circ/itemshipped/{trackingId}/{centralCode}
@@ -55,33 +58,29 @@ by API interactions.
     PUT  /api/v1/contrib/innreach/v2/circ/transferrequest/{trackingId}/{centralCode}
 ```
 
-# TODO
-
-The following endpoints have no clear fit in the documented flows and require further conversations to get implemented properly.
-
-```
-    PUT  /api/v1/contrib/innreach/v2/circ/borrowerrenew/{trackingId}/{centralCode}
-    PUT  /api/v1/contrib/innreach/v2/circ/receiveunshipped/{trackingId}/{centralCode}
-    PUT  /api/v1/contrib/innreach/v2/circ/returnuncirculated/{trackingId}/{centralCode} 
-```
-
 ## Preparation
 
+This plugin requires Koha version *20.11* or higher. If you need to run it on earlier versions, you need to backport
+the patches from the bugs listed below.
 ### Dependencies
 
 Install the missing deps:
-```
+
+```shell
   $ sudo apt install \
            libnet-oauth2-authorizationserver-perl \
            libcryptx-perl \
            libdata-printer-perl
 ```
 
-### Patches
+### Required patches
+
 The following patches need to be backported for this plugin to work:
 * [Bug 25855 - Add post_renewal_hook in circulation](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=25855) (Required for renewal actions)
 * [Bug 21468 - Plugins need hooks for checkin and checkout actions](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=21468) (Required for item update actions)
 * [Bug 26470 - Store the item before calling the after action hook](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=26470) (Required for item update actions)
+
+The [ByWater branch for 20.05](https://github.com/bywatersolutions/bywater-koha/tree/bywater-v20.05.08-03), contains has this patches backported.
 
 ###  Settings
 
@@ -93,7 +92,7 @@ The following patches need to be backported for this plugin to work:
 ### ILL
 ILL needs to be set in _koha-conf.xml_ (replace _${INSTANCE}_ for your instance name):
 
-```
+```xml
 <interlibrary_loans>
      <!-- Path to where Illbackends are located on the system
           - This setting should normally not be touched -->
@@ -127,7 +126,7 @@ Install it as any other plugin following the general [plugin install instruction
 The plugin configuration is an HTML text area in which a _YAML_ structure is pasted. The available options
 are maintained on this document.
 
-```
+```yaml
 ---
 d2ir:
     api_base_url: https://rssandbox-api.iii.com
@@ -197,7 +196,7 @@ INN-Reach defines unique ids to item types based on the exchange with the differ
 
 You can check the defined central server item types by running:
 
-```
+```shell
   $ sudo koha-shell <instance>
   $ cd /var/lib/koha/<instance>/plugins
   $ PERL5LIB=/usr/share/koha/lib:. perl \
@@ -209,7 +208,7 @@ INN-Reach defines unique ids to patron types based on the exchange with the diff
 
 You can check the defined central server item types by running:
 
-```
+```shell
   $ sudo koha-shell <instance>
   $ cd /var/lib/koha/<instance>/plugins
   $ PERL5LIB=/usr/share/koha/lib:. perl \
@@ -220,7 +219,7 @@ You can check the defined central server item types by running:
 The use case covered by this implementation is that locations are Koha's branches (i.e. they are really pickup locations).
 One of the first configuration steps is to populate INN-Reach with our current locations. Use the _contribute_data.pl_ for that:
 
-```
+```shell
   $ sudo koha-shell <instance>
   $ cd /var/lib/koha/<instance>/plugins
   $ PERL5LIB=/usr/share/koha/lib:. perl \
@@ -229,7 +228,7 @@ One of the first configuration steps is to populate INN-Reach with our current l
 
 You can retrieve the central server locations (e.g. to check things went corretly):
 
-```
+```shell
   $ PERL5LIB=/usr/share/koha/lib:. perl \
                 Koha/Plugin/Com/Theke/INNReach/scripts/get_central_servers_data.pl --locations
 ```
@@ -239,9 +238,22 @@ The task queue daemon will process any actions that are scheduled to be run. Thi
 updates to be notified to central servers, but also some other circulation notifications like 'borrowerrenew'.
 
 To run it:
-```
+
+```shell
   $ sudo koha-shell <instance>
   $ cd /var/lib/koha/<instance>/plugins
   $ PERL5LIB=/usr/share/koha/lib:. perl \
                 Koha/Plugin/Com/Theke/INNReach/scripts/task_queue_daemon.pl --sleep 5
 ```
+
+## Caveats
+
+The following endpoints have no clear fit in the documented flows and require further conversations to get implemented properly.
+
+```shell
+    PUT  /api/v1/contrib/innreach/v2/circ/receiveunshipped/{trackingId}/{centralCode}
+```
+
+Also, Koha doesn't have a proper way to *move a hold* from one item/biblio to another. So there's no UI allowing to trigget the
+_transferrequest_ flow on the owning site. The borrowing site does implement the route, though. So koha accepts _transferrequest_
+and can act accordingly, but it needs to be generated from another third party server.
