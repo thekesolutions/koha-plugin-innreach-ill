@@ -594,15 +594,15 @@ sub cancelitemhold {
     my $trackingId  = $c->validation->param('trackingId');
     my $centralCode = $c->validation->param('centralCode');
 
-    # my $body = $c->validation->param('body');
+    my $body = $c->validation->param('body');
 
-    # my $attributes = {
-    #     transactionTime  => $body->{transactionTime},
-    #     patronId         => $body->{patronId},
-    #     patronAgencyCode => $body->{patronAgencyCode},
-    #     itemAgencyCode   => $body->{itemAgencyCode},
-    #     itemId           => $body->{itemId}
-    # }
+    my $attributes = {
+        transactionTime  => $body->{transactionTime},
+        patronId         => $body->{patronId},
+        patronAgencyCode => $body->{patronAgencyCode},
+        itemAgencyCode   => $body->{itemAgencyCode},
+        itemId           => $body->{itemId}
+    };
 
     return try {
 
@@ -620,6 +620,23 @@ sub cancelitemhold {
             }
         ) unless $req->status eq 'O_ITEM_REQUESTED';
 
+        my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
+        my $agency_id  = $attributes->{patronAgencyCode};
+        my $patron_id  = $plugin->get_patron_id_from_agency({
+            agency_id      => $agency_id,
+            central_server => $centralCode
+        });
+
+
+        my $patron = Koha::Patrons->find( $patron_id );
+        if ( $patron ) {
+            my $holds = $patron->holds->search({ itemnumber => $attributes->{itemId} });
+            while ( my $hold = $holds->next ) {
+                $hold->cancel;
+            }
+        }
+
         $req->status('O_ITEM_CANCELLED')->store;
 
         return $c->render(
@@ -633,11 +650,11 @@ sub cancelitemhold {
     }
     catch {
         return $c->render(
-            status => 500,
+            status  => 500,
             openapi => {
                 status => 'error',
-                reason => "Internal error ($_)",
-                errors => []
+                reason => '',
+                errors => [ "$_" ]
             }
         );
     };
