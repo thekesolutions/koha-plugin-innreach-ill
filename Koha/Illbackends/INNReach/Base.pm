@@ -190,8 +190,17 @@ sub status_graph {
             name           => 'Item received by borrowing library',
             ui_method_name => '',
             method         => '',
-            next_actions   => [ ],
+            next_actions   => [ 'O_ITEM_RECALLED' ],
             ui_method_icon => '',
+        },
+        O_ITEM_RECALLED => {
+            prev_actions => [ 'O_ITEM_RECEIVED_DESTINATION' ],
+            id             => 'O_ITEM_RECALLED',
+            name           => 'Item recalled to borrowing library',
+            ui_method_name => 'Recall item',
+            method         => 'item_recalled',
+            next_actions   => [ ],
+            ui_method_icon => 'fa-exclamation-circle',
         },
         O_ITEM_CLAIMED_RETURNED => {
             prev_actions => [ 'O_ITEM_RECEIVED_DESTINATION' ],
@@ -275,6 +284,15 @@ sub status_graph {
             method         => 'item_received',
             next_actions   => [ 'B_ITEM_IN_TRANSIT', 'B_ITEM_CLAIMED_RETURNED', 'B_ITEM_RETURN_UNCIRCULATED' ],
             ui_method_icon => 'fa-inbox',
+        },
+        B_ITEM_RECALLED => {
+            prev_actions => [ ],
+            id             => 'B_ITEM_RECALLED',
+            name           => 'Item recalled by owning library',
+            ui_method_name => '',
+            method         => '',
+            next_actions   => [ 'B_ITEM_IN_TRANSIT' ],
+            ui_method_icon => '',
         },
         B_ITEM_CLAIMED_RETURNED => {
             prev_actions => [ 'B_ITEM_RECEIVED' ],
@@ -373,6 +391,74 @@ sub item_shipped {
             value   => q{},
         };
     };
+}
+
+=head3 item_recalled
+
+Method triggered by the UI, to notify the requesting site the item has been
+recalled.
+
+=cut
+
+sub item_recalled {
+    my ( $self, $params ) = @_;
+
+    my $stage = $params->{other}->{stage};
+        use Data::Printer colored => 1;
+        warn p($params);
+
+    if ( !$stage || $stage eq 'init' ) { # initial form, allow choosing date
+        return {
+            error   => 0,
+            status  => '',
+            message => '',
+            method  => 'item_recalled',
+            stage   => 'form'
+        };
+    }
+    else {
+        my $req = $params->{request};
+
+        my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId' })->value;
+        my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
+        my $itemId      = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemId' })->value;
+
+        my $recall_due_date = dt_from_string( $params->{other}->{recall_due_date} );
+
+        return try {
+
+            my $response = $self->oauth2( $centralCode )->post_request(
+                {   endpoint    => "/innreach/v2/circ/recall/$trackingId/$centralCode",
+                    centralCode => $centralCode,
+                    data        => {
+                        dueDateTime => $recall_due_date->epoch,
+                    }
+                }
+            );
+
+            $req->status('O_ITEM_RECALLED')->store;
+
+            return {
+                error   => 0,
+                status  => '',
+                message => '',
+                method  => 'item_recalled',
+                stage   => 'commit',
+                next    => 'illview',
+                value   => '',
+            };
+        }
+        catch {
+            return {
+                error   => 1,
+                status  => 'error_on_recall',
+                message => "$_",
+                method  => 'item_recalled',
+                stage   => 'commit',
+                value   => q{},
+            };
+        };
+    }
 }
 
 =head3 item_checkin
@@ -684,6 +770,26 @@ sub claims_returned {
         next    => 'illview',
         value   => '',
     };
+}
+
+=head3 capabilities
+
+    $capability = $backend->capabilities($name);
+
+Return the sub implementing a capability selected by I<$name>, or 0 if that
+capability is not implemented.
+
+=cut
+
+sub capabilities {
+    my ( $self, $name ) = @_;
+    my ($query) = @_;
+
+    my $capabilities = {
+        item_recalled => sub { $self->item_recalled(@_); }
+    };
+
+    return $capabilities->{$name};
 }
 
 =head2 Helper methods
