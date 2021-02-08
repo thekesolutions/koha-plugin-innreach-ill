@@ -579,6 +579,83 @@
       }
     }
   },
+  "/v2/circ/recall/{trackingId}/{centralCode}": {
+    "put": {
+      "x-mojo-to": "Com::Theke::INNReach::CircController#recall",
+      "operationId": "recall",
+      "description": "Item recall",
+      "tags": [
+        "circulation"
+      ],
+      "parameters": [
+        {
+          "name": "trackingId",
+          "in": "path",
+          "description": "ID used for transaction tracking",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "centralCode",
+          "in": "path",
+          "description": "Unique code that identifies the central server. 3-5 character lowercase alphanumeric",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "Item recall data",
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "transactionTime": {
+                "description": "Epoch UNIX time stamp, for example: 1544466568",
+                "type": "integer"
+              },
+              "patronId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              },
+              "patronAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemAgencyCode": {
+                "description": "5 character lowercase alphanumeric",
+                "type": "string"
+              },
+              "itemId": {
+                "description": "lowercase alphanumeric string, maximum 32 characters",
+                "type": "string"
+              },
+              "dueDateTime": {
+                "description": "Epoch UNIX time stamp, for example: 1544466568",
+                "type": "integer"
+              }
+            }
+          }
+        }
+      ],
+      "produces": [
+        "application/json"
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful item hold"
+        },
+        "404": {
+          "description": "An error occured"
+        }
+      },
+      "x-koha-authorization": {
+        "permissions": {
+          "circulate": "1"
+        }
+      }
+    }
+  },
   "/v2/circ/claimsreturned/{trackingId}/{centralCode}": {
     "put": {
       "x-mojo-to": "Com::Theke::INNReach::CircController#claimsreturned",

@@ -1073,6 +1073,59 @@ sub finalcheckin {
     };
 }
 
+=head3 recall
+
+This method receives a recall notification from the Central Server. It stores the
+due date and changes the status.
+
+=cut
+
+sub recall {
+    my $c = shift->openapi->valid_input or return;
+
+    my $trackingId  = $c->validation->param('trackingId');
+    my $centralCode = $c->validation->param('centralCode');
+
+    my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+
+    my $body = $c->validation->param('body');
+
+    my $transactionTime   = $body->{transactionTime};
+    my $dueDateTime       = $body->{dueDateTime};
+    my $patronId          = $body->{patronId};
+    my $patronAgencyCode  = $body->{patronAgencyCode};
+    my $itemAgencyCode    = $body->{itemAgencyCode};
+    my $itemId            = $body->{itemId};
+
+    return try {
+
+        # record this due date for later UI use
+        Koha::Illrequestattribute->new(
+            {
+                illrequest_id => $req->illrequest_id,
+                type          => 'recallDueDateTime',
+                value         => $dueDateTime,
+                readonly      => 1
+            }
+        )->store;
+
+        # Update request status
+        $req->status('B_ITEM_RECALLED')->store;
+
+        return $c->render(
+            status  => 200,
+            openapi => {
+                status => 'ok',
+                reason => '',
+                errors => []
+            }
+        );
+    }
+    catch {
+        return $c->render( status => 500, openapi => { error => 'Some error' } );
+    };
+}
+
 =head2 Endpoints for general use
 
 =head3 local_checkin
