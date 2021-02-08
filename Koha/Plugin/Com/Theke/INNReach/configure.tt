@@ -1,9 +1,13 @@
+[% USE raw %]
+[% USE Asset %]
+
 [% INCLUDE 'doc-head-open.inc' %]
  <title>Koha &rsaquo; INN-Reach integration &rsaquo; Configuration</title>
 [% INCLUDE 'doc-head-close.inc' %]
   <style>
-    .gobi {
-      width: 70%;
+    .CodeMirror {
+      border: 2px solid #eee;
+      height: auto;
     }
   </style>
   <script type="text/javascript">
@@ -25,6 +29,11 @@
         return output;
       }
   </script>
+
+[% Asset.js( "lib/codemirror/codemirror.min.js" ) | $raw %]
+[% Asset.css("lib/codemirror/codemirror.min.css") | $raw %]
+[% Asset.css("lib/codemirror/lint.min.css") | $raw %]
+
 </head>
 <body>
 [% INCLUDE 'header.inc' %]
@@ -48,11 +57,12 @@
         <input type="hidden" name="save"   value="1"/>
         <div class="input-group">
           <span class="input-group-addon" id="configuration_label">Configuration</span>
-          <textarea rows="30"
-                    columns="100"
+          <textarea rows="200"
+                    columns="200"
                     class="form-control"
                     aria-describedby="configuration_label"
-                    name="configuration" id="configuration">[%- configuration -%]</textarea>
+                    name="configuration"
+                    id="configuration">[%- configuration -%]</textarea>
         </div>
         <br/>
         <button type="submit" value="Save" class="btn btn-default" type="button">Save</button>
@@ -61,5 +71,23 @@
   <div class="yui-b">
     <div id="navmenu">&nbsp;</div>
   </div>
+
+
+    [% Asset.js( "lib/codemirror/yaml.min.js" ) | $raw %]
+    [% Asset.js( "lib/codemirror/lint.min.js" ) | $raw %]
+    [% Asset.js( "lib/linters/js-yaml.min.js" ) | $raw %]
+    [% Asset.js( "lib/codemirror/yaml-lint.min.js" ) | $raw %]
+
+    <script>
+        $( document ).ready( function () {
+            var editor = CodeMirror.fromTextArea( document.getElementById( "configuration" ), {
+                lineNumbers: true,
+                mode: 'text/x-yaml',
+                lineWrapping: false,
+                gutters: ["CodeMirror-lint-markers"],
+                lint: true
+            });
+        });
+    </script>
 
 [% INCLUDE 'intranet-bottom.inc' %]
