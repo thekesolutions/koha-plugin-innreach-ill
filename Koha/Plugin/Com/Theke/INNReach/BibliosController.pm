@@ -68,7 +68,10 @@ sub getbibrecord {
     return try {
 
         my $suppress = 'n'; # expected default
-        # TODO: calculate $suppress => y, n, g
+        my $suppress_subfield = $record->subfield('942','n');
+        if ( $suppress_subfield ) {
+            $suppress = 'y';
+        }
         my $encoded_record = encode_base64url( $record->as_usmarc );
 
         return $c->render(
