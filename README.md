@@ -14,9 +14,17 @@ The plugin implements methods that cover all data contribution options.
     POST /api/v1/contrib/innreach/v2/getbibrecord/{bibId}/{centralCode}
 ```
 
-TODO: They aren't yet packed into a set of maintenance scripts/daemons that keep
-things up-to-date. _Koha::Plugin::Com::Theke::INNReach::Contribution_ implements
-all documented interactions.
+### Tools
+
+A convenient script that allows to manually contribute things is added. For running it
+or checking the available options, just run:
+
+```shell
+  sudo koha-shell <instance>
+  cd /var/lib/koha/<instance>/plugins
+  PERL5LIB=/usr/share/koha/lib:. perl \
+            Koha/Plugin/Com/Theke/INNReach/scripts/contribute_data.pl --help
+```
 
 ## Owning site
 
