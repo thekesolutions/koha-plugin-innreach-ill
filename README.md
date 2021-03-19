@@ -90,7 +90,7 @@ The following patches need to be backported for this plugin to work:
 
 The [ByWater branch for 20.05](https://github.com/bywatersolutions/bywater-koha/tree/bywater-v20.05.08-03), contains has this patches backported.
 
-###  Settings
+### Settings
 
 * Enable _RESTOAuth2ClientCredentials_ syspref
 * Create an _ILL_ patron category
@@ -98,6 +98,7 @@ The [ByWater branch for 20.05](https://github.com/bywatersolutions/bywater-koha/
 * Create an API client_id/client_secret pair
 
 ### ILL
+
 ILL needs to be set in _koha-conf.xml_ (replace _${INSTANCE}_ for your instance name):
 
 ```xml
@@ -165,6 +166,9 @@ d2ir:
         LIBSTAFF: 201
         NR: 200
         SR: 202
+    central_to_local_itype:
+        200: D2IR_BK
+        201: D2IR_CF
     contribution:
         max_retries: 10
     # Default values for biblios/items configuration
@@ -188,6 +192,7 @@ d2ir:
 * __local_patron_id__: This is the _borrowernumber_ for the Koha user we created for INN-Reach to use (with permissions and API keys). This isn't supposed to be needed, but depending on the Koha version it wasn't possible to get the current patron from the stash. FIXME: This workaround should be removed once we are sure Koha _18.11.x_ is fixed (patched in master by us).
 * __library_to_location__: INN-Reach defines unique codes for 'agencies' (branches). _library_to_location_ is a hash for mapping Koha's branchcodes to INN-Reach-defined agency codes. See the [kick-off checklist](#kick-off-checklist).
 * __local_to_central_itype__: Hash for mapping Koha's itemtype codes to INN-Reach-defined ones. See the [kick-off checklist](#kick-off-checklist).
+* __central_to_local_itype__: Hash for mapping central server's item types into locally defined ones. This is useful for being able to define special circ rules for each material type that comes via ILL. It defaults to the value from __default_item_type__ if not defined.
 * __local_to_central_patron_type__: Hash for mapping Koha's patron categories into INN-Reach-defined ones. See the [kick-off checklist](#kick-off-checklist).
 * __contribution__: Data contribution specific settings. _max_retries_ defines how many retries are to be accepted before failing to contribute a record/item.
 

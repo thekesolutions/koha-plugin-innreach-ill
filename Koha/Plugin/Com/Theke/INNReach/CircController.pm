@@ -948,12 +948,16 @@ sub itemshipped {
         my $schema = Koha::Database->new->schema;
         $schema->txn_do(
             sub {
+
+                my $centralItemType = $body->{centralItemType};
+
                 # Create the MARC record and item
                 my ($biblio_id, $item_id, $biblioitemnumber) = $c->add_virtual_record_and_item(
                     { req         => $req,
                       config      => $config,
                       call_number => $attributes->{callNumber},
                       barcode     => $attributes->{itemBarcode},
+                      central_item_type => $centralItemType,
                     }
                 );
 
@@ -1480,14 +1484,27 @@ sub add_virtual_record_and_item {
     my $config      = $args->{config};
     my $call_number = $args->{call_number};
     my $barcode     = $args->{barcode};
+    my $centralItemType = $args->{central_item_type};
+
 
     my $marc_flavour   = C4::Context->preference('marcflavour');
     my $framework_code = $config->{default_marc_framework} || 'FA';
-    my $item_type      = $config->{default_item_type};
     my $ccode          = $config->{default_item_ccode};
     my $location       = $config->{default_location};
     my $materials      = $config->{default_materials_specified} || 'Additional processing required (ILL)';
     my $checkin_note   = $config->{default_checkin_note} || 'Additional processing required (ILL)';
+
+    # determine the right item types
+    my $item_type;
+    if ( exists $config->{central_to_local_itype} ) {
+        $item_type = ( exists $config->{central_to_local_itype}->{$centralItemType}
+                          and $config->{central_to_local_itype}->{$centralItemType} )
+                    ? $config->{central_to_local_itype}->{$centralItemType}
+                    : $config->{default_item_type};
+    }
+    else {
+        $item_type = $config->{default_item_type};
+    }
 
     unless ( $item_type ) {
         return $c->render(
