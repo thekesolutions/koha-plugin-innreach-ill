@@ -146,8 +146,12 @@ d2ir:
     require_patron_auth: true
     partners_library_id: ILL
     library_to_location:
-        CPL: code1
-        MPL: code2
+        CPL:
+            location: code1
+            description: Library 1
+        MPL:
+            location: code2
+            description: Library 2
     local_to_central_itype:
         BK: 200
         CF: 201

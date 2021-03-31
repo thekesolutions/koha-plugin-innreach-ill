@@ -482,19 +482,13 @@ POST /innreach/v2/contribution/locations
 =cut
 
 sub upload_locations_list {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     try {
         my @locationList;
 
-        my $libraries = Koha::Libraries->search;
-
-        while ( my $library = $libraries->next ) {
-            push @locationList, {
-                locationKey => lc($library->branchcode),
-                description => $library->branchname
-            }
-        }
+        # Get the branch codes
+        my @libraries = Koha::Libraries->search->get_column('branchcode');
 
         my @central_servers;
         if ( $args->{centralServer} ) {
@@ -505,14 +499,28 @@ sub upload_locations_list {
         }
 
         for my $central_server (@central_servers) {
+
+            # The locationList is built for each central server as the mapping
+            # is specific to that central server
+            my @locationList;
+            foreach my $library (@libraries) {
+                push @locationList,
+                  {
+                    locationKey => $self->{config}->{$central_server}->{library_to_location}->{$library}->{location},
+                    description => $self->{config}->{$central_server}->{library_to_location}->{$library}->{description}
+                  }
+                  if exists $self->{config}->{$central_server}->{library_to_location}->{$library};
+            }
+
             my $response = $self->oauth2->{$central_server}->post_request(
-                {   endpoint    => '/innreach/v2/contribution/locations',
+                {
+                    endpoint    => '/innreach/v2/contribution/locations',
                     centralCode => $central_server,
                     data        => { locationList => \@locationList }
                 }
             );
-            warn p( $response )
-                if $response->is_error or $ENV{DEBUG};
+            warn p($response)
+              if $response->is_error or $ENV{DEBUG};
         }
     }
     catch {
