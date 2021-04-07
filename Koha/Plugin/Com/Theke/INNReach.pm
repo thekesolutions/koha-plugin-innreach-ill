@@ -385,7 +385,7 @@ sub after_biblio_action {
 
             # We do not contribute unmapped item types, report on the logs
             if ( !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type}) {
-                warn "Unampped item type ($item_type) on central server ($central_server).";
+                warn "Unmapped item type ($item_type) on central server ($central_server).";
                 next;
             }
         }
@@ -429,7 +429,7 @@ sub after_item_action {
 
             # We do not contribute unmapped item types, report on the logs
             if ( !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type}) {
-                warn "Unampped item type ($item_type) on central server ($central_server).";
+                warn "Unmapped item type ($item_type) on central server ($central_server).";
                 next;
             }
         }
