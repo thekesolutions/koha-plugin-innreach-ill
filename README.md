@@ -175,6 +175,7 @@ d2ir:
         201: D2IR_CF
     contribution:
         max_retries: 10
+        exclude_empty_biblios: true
     # Default values for biblios/items configuration
     default_marc_framework: FA
     default_item_type: ILL
