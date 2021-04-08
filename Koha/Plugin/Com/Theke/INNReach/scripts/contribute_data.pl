@@ -50,17 +50,20 @@ my $result = GetOptions(
 
 unless ($result) {
     print_usage();
-    die "Not sure what wen't wrong";
+    say "Not sure what wen't wrong";
+    exit 1;
 }
 
 unless ( $central_server ) {
     print_usage();
-    die "--central_server is missing (mandatory)";
+    say "--central_server is missing (mandatory)";
+    exit 1;
 }
 
 if ( $biblio_id and $all_biblios ) {
     print_usage();
-    die "--biblio_id and --all are mutually exclussive";
+    say "--biblio_id and --all are mutually exclussive";
+    exit 1;
 }
 
 sub print_usage {
@@ -86,7 +89,8 @@ my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
 
 unless ( any { $_ eq $central_server } @{$contribution->{centralServers}} ) { # valid?
     print_usage();
-    die "$central_server is not a valid configured central server!";
+    say "$central_server is not a valid configured central server!";
+    exit 1;
 }
 
 if ( $biblio_id or $all_biblios ) {
