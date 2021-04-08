@@ -176,6 +176,12 @@ d2ir:
     contribution:
         max_retries: 10
         exclude_empty_biblios: true
+        included_items:
+            biblionumber: [ 1, 2, 3 ]
+            ccode: [ a, b, c ]
+        excluded_items:
+            biblionumber: [ 1, 2, 3 ]
+            ccode: [ a, b, c ]
     # Default values for biblios/items configuration
     default_marc_framework: FA
     default_item_type: ILL
