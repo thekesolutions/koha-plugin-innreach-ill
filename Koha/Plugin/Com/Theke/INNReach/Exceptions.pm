@@ -19,9 +19,11 @@ use Modern::Perl;
 
 use Exception::Class (
   'INNReach::Ill',
-  'INNReach::Ill::InconsistentStatus' => { isa => 'INNReach::Ill', fields => ['expected_status'] },
-  'INNReach::Ill::UnknownItemId'      => { isa => 'INNReach::Ill', fields => ['item_id'] },
-  'INNReach::Ill::UnknownBiblioId'    => { isa => 'INNReach::Ill', fields => ['biblio_id'] }
+  'INNReach::Ill::InconsistentStatus'   => { isa => 'INNReach::Ill', fields => ['expected_status'] },
+  'INNReach::Ill::InvalidCentralserver' => { isa => 'INNReach::Ill', fields => ['central_server'] },
+  'INNReach::Ill::MissingParameter'     => { isa => 'INNReach::Ill', fields => ['param'] },
+  'INNReach::Ill::UnknownItemId'        => { isa => 'INNReach::Ill', fields => ['item_id'] },
+  'INNReach::Ill::UnknownBiblioId'      => { isa => 'INNReach::Ill', fields => ['biblio_id'] }
 );
 
 1;
