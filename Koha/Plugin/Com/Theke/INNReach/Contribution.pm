@@ -19,6 +19,7 @@ use Modern::Perl;
 
 use Encode qw{ encode decode };
 use HTTP::Request::Common qw{ DELETE GET POST PUT };
+use List::MoreUtils qw(any);
 use Mojo::JSON qw(decode_json encode_json);
 use MARC::Record;
 use MARC::File::XML;
@@ -951,6 +952,98 @@ sub get_ill_request_from_item_id {
     # TODO: Owning site use case?
 
     return $req;
+}
+
+=head3 should_item_be_contributed
+
+    if ( $contribution->should_item_be_contributed({
+                 item           => $item,
+                 central_server => $central_server }})
+       )
+       { ... }
+
+Returns a I<boolean> telling if the item should be contributed to the specified
+
+=cut
+
+sub should_item_be_contributed {
+    my ( $self, $params ) = @_;
+
+    my $item = $params->{item};
+
+    INNReach::Ill::MissingParameter->throw( param => 'item' )
+        unless $item;
+
+    my $central_server = $params->{central_server};
+
+    INNReach::Ill::MissingParameter->throw( param => 'central_server' )
+        unless $central_server;
+
+    INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
+        unless any { $_ eq $central_server } @{$self->{centralServers}};
+
+    my $items_rs = Koha::Items->search({ itemnumber => $item->itemnumber });
+
+    return $self->filter_items_by_contributable(
+        {
+            items => $items_rs,
+            central_server => $central_server
+        }
+    )->count > 0;
+}
+
+=head3 filter_items_by_contributable
+
+    my $items = $contribution->filter_items_by_contributable(
+        {
+            items => $biblio->items,
+            central_server => $central_server
+        }
+    );
+
+Given a I<Koha::Items> iterator and a I<central server code>, it returns a new resultset,
+filtered by the configured rules for the specified central server.
+
+=cut
+
+sub filter_items_by_contributable {
+    my ( $self, $params ) = @_;
+
+    my $items = $params->{items};
+
+    INNReach::Ill::MissingParameter->throw( param => 'items' )
+        unless $items;
+
+    my $central_server = $params->{central_server};
+
+    INNReach::Ill::MissingParameter->throw( param => 'central_server' )
+        unless $central_server;
+
+    INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
+        unless any { $_ eq $central_server } @{$self->{centralServers}};
+
+    my $configuration = $self->config->{$central_server};
+
+    if ( exists $configuration->{contribution}->{included_items} ) {
+        # Allow-list case, overrides any deny-list setup
+        if ( $configuration->{contribution}->{included_items} ) {
+            # there are rules!
+            $items = $items->search($configuration->{contribution}->{included_items});
+        }
+        else {
+            $items = $items->empty # No items if the rules exist but are empty
+        }
+    }
+    else {
+        # Deny-list case
+        if ( $configuration->{contribution}->{included_items} ) {
+            # there are rules!
+            $items = $items->search({ '-not' => $configuration->{contribution}->{included_items} });
+        }
+        # else {  } # no filter
+    }
+
+    return $items;
 }
 
 1;
