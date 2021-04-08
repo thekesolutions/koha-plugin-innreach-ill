@@ -265,7 +265,9 @@ One of the first configuration steps is to populate INN-Reach with our current l
   $ sudo koha-shell <instance>
   $ cd /var/lib/koha/<instance>/plugins
   $ PERL5LIB=/usr/share/koha/lib:. perl \
-                Koha/Plugin/Com/Theke/INNReach/scripts/contribute_data.pl --overwrite_locations
+                Koha/Plugin/Com/Theke/INNReach/scripts/contribute_data.pl \
+                --central_server d2ir \
+                --overwrite_locations
 ```
 
 You can retrieve the central server locations (e.g. to check things went corretly):

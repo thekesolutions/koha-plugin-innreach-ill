@@ -68,7 +68,7 @@ sub print_usage {
 
     C'mon! Valid options are
 
-    --central_server       Only contribute to the specified central server
+    --central_server       Contribute to the specified central server (mandatory)
 
     --biblio_id            Only contribute the specified biblio_id
     --all_biblios          Contribute all records
