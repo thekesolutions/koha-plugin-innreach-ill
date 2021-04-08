@@ -380,13 +380,23 @@ sub after_biblio_action {
             my $item_type = $biblio->itemtype;
 
             # We don't contribute ILL-generated records
+            # or unmapped types
             next
-                if $item_type eq $configuration->{$central_server}->{default_item_type};
+                if $item_type eq $configuration->{$central_server}->{default_item_type}
+                   or !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type};
 
-            # We do not contribute unmapped item types, report on the logs
-            if ( !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type}) {
-                warn "Unmapped item type ($item_type) on central server ($central_server).";
-                next;
+            my $exclude_empty_biblios =
+              ( !exists $configuration->{contribution} )
+              ? 1
+              : $configuration->{contribution}->{exclude_empty_biblios};
+
+            if ( $action eq 'create' ) {
+                ## We are adding, check some configurations
+                # exclude_empty_biblios
+                if ( $exclude_empty_biblios ) {
+                    next
+                        unless $biblio->items->count > 0;
+                }
             }
         }
 
@@ -425,13 +435,9 @@ sub after_item_action {
 
             # We don't contribute ILL-generated items
             next
-                if $item_type eq $configuration->{$central_server}->{default_item_type};
-
-            # We do not contribute unmapped item types, report on the logs
-            if ( !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type}) {
-                warn "Unmapped item type ($item_type) on central server ($central_server).";
-                next;
-            }
+              if $item_type eq $configuration->{$central_server}->{default_item_type}
+              or !
+              exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type};
         }
 
         C4::Context->dbh->do(qq{
