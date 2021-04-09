@@ -26,6 +26,7 @@ use YAML;
 use Koha::Biblioitems;
 use Koha::Items;
 
+use Koha::Plugin::Com::Theke::INNReach::Contribution;
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 
 our $VERSION = "{VERSION}";
@@ -370,6 +371,7 @@ sub after_biblio_action {
 
     my $task_queue    = $self->get_qualified_table_name('task_queue');
     my $configuration = $self->configuration;
+    my $contribution  = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
 
     my @central_servers = $self->central_servers;
 
@@ -395,7 +397,12 @@ sub after_biblio_action {
                 # exclude_empty_biblios
                 if ( $exclude_empty_biblios ) {
                     next
-                        unless $biblio->items->count > 0;
+                      unless $contribution->filter_items_by_contributable(
+                        {
+                            items          => $biblio->items,
+                            central_server => $central_server
+                        }
+                    )->count > 0;
                 }
             }
         }
@@ -424,6 +431,7 @@ sub after_item_action {
 
     my $task_queue    = $self->get_qualified_table_name('task_queue');
     my $configuration = $self->configuration;
+    my $contribution  = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
 
     my @central_servers = $self->central_servers;
 
@@ -435,9 +443,21 @@ sub after_item_action {
 
             # We don't contribute ILL-generated items
             next
-              if $item_type eq $configuration->{$central_server}->{default_item_type}
-              or !
+              if $item_type eq $configuration->{$central_server}->{default_item_type};
+
+            # Skip if item type is not mapped
+            next
+              if !
               exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type};
+
+            # Skip if rules say so
+            next
+              if !$contribution->should_item_be_contributed(
+                {
+                    item           => $item,
+                    central_server => $central_server
+                }
+              );
         }
 
         C4::Context->dbh->do(qq{

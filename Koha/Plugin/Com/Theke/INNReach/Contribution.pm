@@ -986,7 +986,7 @@ sub should_item_be_contributed {
 
     return $self->filter_items_by_contributable(
         {
-            items => $items_rs,
+            items          => $items_rs,
             central_server => $central_server
         }
     )->count > 0;
