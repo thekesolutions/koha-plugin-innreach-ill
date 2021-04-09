@@ -68,10 +68,11 @@ sub new {
         $args->{centralServers} = \@centralServers;
         foreach my $centralCode ( @centralServers ) {
             $args->{oauth2}->{$centralCode} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new(
-                {   client_id         => $args->{config}->{$centralCode}->{client_id},
-                    client_secret     => $args->{config}->{$centralCode}->{client_secret},
-                    api_base_url      => $args->{config}->{$centralCode}->{api_base_url},
-                    local_server_code => $args->{config}->{$centralCode}->{localServerCode}
+                {   client_id          => $args->{config}->{$centralCode}->{client_id},
+                    client_secret      => $args->{config}->{$centralCode}->{client_secret},
+                    api_base_url       => $args->{config}->{$centralCode}->{api_base_url},
+                    api_token_base_url => $args->{config}->{$centralCode}->{api_token_base_url},
+                    local_server_code  => $args->{config}->{$centralCode}->{localServerCode}
                 }
             );
         }

@@ -83,26 +83,27 @@ sub new {
     my $credentials = encode_base64url( "$client_id:$client_secret" );
 
     my $self = $class->SUPER::new($args);
-    $self->{localServerCode} = $local_server_code;
-    $self->{api_base_url}    = $api_base_url;
-    $self->{token_endpoint}  = "$api_base_url/auth/v1/oauth2/token";
-    $self->{ua}          = LWP::UserAgent->new();
-    $self->{scope}       = "innreach_tp";
-    $self->{grant_type}  = 'client_credentials';
-    $self->{credentials} = $credentials;
-    $self->{request}     = POST(
+    $self->{localServerCode}    = $local_server_code;
+    $self->{api_base_url}       = $api_base_url;
+    $self->{api_token_base_url} = $args->{api_token_base_url} // $api_base_url;
+    $self->{token_endpoint}     = $self->{api_token_base_url} . "/auth/v1/oauth2/token";
+    $self->{ua}                 = LWP::UserAgent->new();
+    $self->{scope}              = "innreach_tp";
+    $self->{grant_type}         = 'client_credentials';
+    $self->{credentials}        = $credentials;
+    $self->{request}            = POST(
         $self->{token_endpoint},
         Authorization => "Basic $credentials",
-        Accept        => "application/json",,
-        ContentType   => "application/x-www-form-urlencoded",
-        Content       =>
-        [
+        Accept        => "application/json",
+        ,
+        ContentType => "application/x-www-form-urlencoded",
+        Content     => [
             grant_type => 'client_credentials',
             scope      => $self->{scope},
             undefined  => undef,
         ]
     );
-    $self->{debug_mode} = ($args->{debug_mode}) ? 1 : 0;
+    $self->{debug_mode} = ( $args->{debug_mode} ) ? 1 : 0;
 
     bless $self, $class;
 

@@ -80,10 +80,11 @@ sub new {
     my $oauth2;
     foreach my $centralServer ( @central_servers ) {
         $oauth2->{$centralServer} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new({
-            client_id         => $configuration->{$centralServer}->{client_id},
-            client_secret     => $configuration->{$centralServer}->{client_secret},
-            api_base_url      => $configuration->{$centralServer}->{api_base_url},
-            local_server_code => $configuration->{$centralServer}->{localServerCode}
+            client_id          => $configuration->{$centralServer}->{client_id},
+            client_secret      => $configuration->{$centralServer}->{client_secret},
+            api_base_url       => $configuration->{$centralServer}->{api_base_url},
+            api_token_base_url => $configuration->{$centralServer}->{api_token_base_url},
+            local_server_code  => $configuration->{$centralServer}->{localServerCode}
         });
     }
     my $self = {
