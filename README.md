@@ -139,6 +139,7 @@ are maintained on this document.
 ---
 d2ir:
     api_base_url: https://rssandbox-api.iii.com
+    api_token_base_url: https://rssandbox-api.iii.com
     client_id: a_client_id
     client_secret: a_client_secret
     localServerCode: koha1
