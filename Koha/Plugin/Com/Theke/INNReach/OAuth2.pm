@@ -123,7 +123,7 @@ sub post_request {
     my ( $self, $args ) = @_;
 
     my $request = POST(
-        $self->{api_base_url} . '/' . $args->{endpoint},
+        $self->{api_base_url} . $args->{endpoint},
         'Authorization' => "Bearer " . $self->get_token,
         'X-From-Code'   => $self->{local_server_code},
         'X-To-Code'     => $args->{centralCode},
@@ -151,7 +151,7 @@ sub put_request {
     my ( $self, $args ) = @_;
 
     my $request = PUT(
-        $self->{api_base_url} . '/' . $args->{endpoint},
+        $self->{api_base_url} . $args->{endpoint},
         'Authorization' => "Bearer " . $self->get_token,
         'X-From-Code'   => $self->{local_server_code},
         'X-To-Code'     => $args->{centralCode},
@@ -177,7 +177,7 @@ sub get_request {
     my ( $self, $args ) = @_;
 
     my $request = GET(
-        $self->{api_base_url} . '/' . $args->{endpoint},
+        $self->{api_base_url} . $args->{endpoint},
         'Authorization' => "Bearer " . $self->get_token,
         'X-From-Code'   => $self->{local_server_code},
         'X-To-Code'     => $args->{centralCode},
@@ -202,7 +202,7 @@ sub delete_request {
     my ( $self, $args ) = @_;
 
     my $request = DELETE(
-        $self->{api_base_url} . '/' . $args->{endpoint},
+        $self->{api_base_url} . $args->{endpoint},
         'Authorization' => "Bearer " . $self->get_token,
         'X-From-Code'   => $self->{local_server_code},
         'X-To-Code'     => $args->{centralCode},
