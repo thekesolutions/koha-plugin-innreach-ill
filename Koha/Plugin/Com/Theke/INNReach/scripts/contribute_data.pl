@@ -37,6 +37,7 @@ my $exclude_items = 0;
 my $overwrite_locations = 0;
 my $delete_location;
 my $central_server;
+my $help;
 
 my $result = GetOptions(
     'biblio_id=s'         => \$biblio_id,
@@ -46,12 +47,18 @@ my $result = GetOptions(
     'delete_location=s'   => \$delete_location,
     'noout'               => \$noout,
     'central_server=s'    => \$central_server,
+    'help'                => \$help,
 );
 
 unless ($result) {
     print_usage();
     say "Not sure what wen't wrong";
     exit 1;
+}
+
+if ( $help ) {
+    print_usage();
+    exit 0;
 }
 
 unless ( $central_server ) {
