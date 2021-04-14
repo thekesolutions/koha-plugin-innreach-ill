@@ -578,7 +578,7 @@ sub upload_single_location {
                 }
 
                 my $response = $self->oauth2->{$central_server}->post_request(
-                    {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
+                    {   endpoint    => '/innreach/v2/location/' . $locationKey,
                         centralCode => $central_server,
                         data        => { description => $description }
                     }
@@ -641,7 +641,7 @@ sub update_single_location {
                 }
 
                 my $response = $self->oauth2->{$central_server}->put_request(
-                    {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
+                    {   endpoint    => '/innreach/v2/location/' . $locationKey,
                         centralCode => $central_server,
                         data        => { description => $description }
                     }
