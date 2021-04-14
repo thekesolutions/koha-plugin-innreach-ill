@@ -36,6 +36,7 @@ my $noout         = 0;
 my $exclude_items = 0;
 my $overwrite_locations = 0;
 my $delete_location;
+my $update_location;
 my $central_server;
 my $help;
 
@@ -45,6 +46,7 @@ my $result = GetOptions(
     'exclude_items'       => \$exclude_items,
     'overwrite_locations' => \$overwrite_locations,
     'delete_location=s'   => \$delete_location,
+    'update_location=s'   => \$update_location,
     'noout'               => \$noout,
     'central_server=s'    => \$central_server,
     'help'                => \$help,
@@ -76,18 +78,24 @@ if ( $biblio_id and $all_biblios ) {
 sub print_usage {
     print <<_USAGE_;
 
-    C'mon! Valid options are
+Options:
 
     --central_server       Contribute to the specified central server (mandatory)
-
-    --biblio_id            Only contribute the specified biblio_id
-    --all_biblios          Contribute all records
-    --exclude_items        Exclude items from this batch update
-    --overwrite_locations  Update Central server's locations
-    --delete_location id   Sends a request to remove library id from the locations list
     --noout                No output
 
-Note: --biblio_id and --all are mutually exclussive
+Record contribution actions:
+
+    --biblio_id  id        Only contribute the specified biblio_id
+    --all_biblios          Contribute all records
+    --exclude_items        Exclude items from this batch update
+
+Locations actions:
+
+    --overwrite_locations  Update Central server's locations
+    --delete_location id   Sends a request to remove library id from the locations list
+    --update_location id   Sends a request to update library id from the locations list
+
+Note: --biblio_id and --all_biblios are mutually exclussive
 
 _USAGE_
 }
@@ -143,6 +151,15 @@ if ( $delete_location ) {
     $contribution->delete_single_location(
         {
             library_id    => $delete_location,
+            centralServer => $central_server
+        }
+    );
+}
+
+if ( $update_location ) {
+    $contribution->update_single_location(
+        {
+            library_id    => $update_location,
             centralServer => $central_server
         }
     );
