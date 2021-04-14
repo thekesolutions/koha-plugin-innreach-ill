@@ -533,7 +533,7 @@ sub upload_locations_list {
 =head3 upload_single_location
 
     my $res = $contribution->upload_single_location(
-        { library => $library,
+        { library_id => $library_id,
           [ centralServer => $centralServer ]
         }
     );
@@ -547,13 +547,15 @@ POST /innreach/v2/contribution/locations/<locationKey>
 sub upload_single_location {
     my ($self, $args) = @_;
 
-    my $library = $args->{library};
+    my $library_id = $args->{library_id};
     die 'Mandatory parameter is missing: library'
+        unless $library_id;
+
+    my $library = Koha::Libraries->find($library_id);
+    die "Invalid library_id: $library_id"
         unless $library;
 
     try {
-
-        my $locationKey = lc($library->branchcode);
 
         my @central_servers;
         if ( $args->{centralServer} ) {
@@ -564,14 +566,26 @@ sub upload_single_location {
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->oauth2->{$central_server}->post_request(
-                {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
-                    centralCode => $central_server,
-                    data        => { description => $library->branchname }
+
+            if ( exists $self->{config}->{$central_server}->{library_to_location}->{$library_id} ) {
+
+                my $locationKey = $self->{config}->{$central_server}->{library_to_location}->{$library_id}->{location};
+                my $description = $self->{config}->{$central_server}->{library_to_location}->{$library_id}->{description};
+
+                unless ($description) {
+                    $description = $library->branchname;
+                    warn "Mapped library lacks description ($library_id).";
                 }
-            );
-            warn p( $response )
-                if $response->is_error or $ENV{DEBUG};
+
+                my $response = $self->oauth2->{$central_server}->post_request(
+                    {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
+                        centralCode => $central_server,
+                        data        => { description => $description }
+                    }
+                );
+                warn p( $response )
+                    if $response->is_error or $ENV{DEBUG};
+            }
         }
     }
     catch {
@@ -582,7 +596,7 @@ sub upload_single_location {
 =head3 update_single_location
 
     my $res = $contribution->update_single_location(
-        { library => $library,
+        { library_id => $library_id,
           [ centralServer => $centralServer ]
         }
     );
@@ -596,13 +610,15 @@ PUT /innreach/v2/contribution/locations/<locationKey>
 sub update_single_location {
     my ($self, $args) = @_;
 
-    my $library = $args->{library};
+    my $library_id = $args->{library_id};
     die 'Mandatory parameter is missing: library'
+        unless $library_id;
+
+    my $library = Koha::Libraries->find($library_id);
+    die "Invalid library_id: $library_id"
         unless $library;
 
     try {
-
-        my $locationKey = lc($library->branchcode);
 
         my @central_servers;
         if ( $args->{centralServer} ) {
@@ -613,14 +629,26 @@ sub update_single_location {
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->oauth2->{$central_server}->put_request(
-                {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
-                    centralCode => $central_server,
-                    data        => { description => $library->branchname }
+
+            if ( exists $self->{config}->{$central_server}->{library_to_location}->{$library_id} ) {
+
+                my $locationKey = $self->{config}->{$central_server}->{library_to_location}->{$library_id}->{location};
+                my $description = $self->{config}->{$central_server}->{library_to_location}->{$library_id}->{description};
+
+                unless ($description) {
+                    $description = $library->branchname;
+                    warn "Mapped library lacks description ($library_id).";
                 }
-            );
-            warn p( $response )
-                if $response->is_error or $ENV{DEBUG};
+
+                my $response = $self->oauth2->{$central_server}->put_request(
+                    {   endpoint    => '/innreach/v2/contribution/locations/' . $locationKey,
+                        centralCode => $central_server,
+                        data        => { description => $description }
+                    }
+                );
+                warn p( $response )
+                    if $response->is_error or $ENV{DEBUG};
+            }
         }
     }
     catch {
@@ -651,8 +679,6 @@ sub delete_single_location {
 
     try {
 
-        my $locationKey = lc($library_id);
-
         my @central_servers;
         if ( $args->{centralServer} ) {
             push @central_servers, $args->{centralServer};
@@ -662,13 +688,18 @@ sub delete_single_location {
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->oauth2->{$central_server}->delete_request(
-                {   endpoint    => '/innreach/v2/location/' . $locationKey,
-                    centralCode => $central_server
-                }
-            );
-            warn p( $response )
-                if $response->is_error or $ENV{DEBUG};
+
+            if ( exists $self->{config}->{$central_server}->{library_to_location}->{$library_id} ) {
+                my $locationKey = $self->{config}->{$central_server}->{library_to_location}->{$library_id}->{location};
+
+                my $response = $self->oauth2->{$central_server}->delete_request(
+                    {   endpoint    => '/innreach/v2/location/' . $locationKey,
+                        centralCode => $central_server
+                    }
+                );
+                warn p( $response )
+                    if $response->is_error or $ENV{DEBUG};
+            }
         }
     }
     catch {
