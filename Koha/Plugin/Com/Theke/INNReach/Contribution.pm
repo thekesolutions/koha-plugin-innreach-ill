@@ -226,9 +226,9 @@ sub contribute_batch_items {
 
             my $itemInfo = {
                 itemId            => $item->itemnumber,
-                agencyCode        => $self->config->{$central_server}->{library_to_location}->{$item->homebranch},
+                agencyCode        => $self->config->{$central_server}->{mainAgency},
                 centralItemType   => $self->config->{$central_server}->{local_to_central_itype}->{$item->effective_itemtype},
-                locationKey       => lc( $item->homebranch ),
+                locationKey       => $self->config->{$central_server}->{library_to_location}->{$item->homebranch}->{location},
                 itemCircStatus    => $self->item_circ_status({ item => $item }),
                 holdCount         => 0,
                 dueDateTime       => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
