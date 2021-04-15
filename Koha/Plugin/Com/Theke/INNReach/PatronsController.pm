@@ -107,9 +107,7 @@ sub verifypatron {
     }
 
     my $expiration_date     = dt_from_string( $patron->dateexpiry );
-    my $agency_code         = (exists $configuration->{library_to_location}->{$patron->branchcode})
-                                ? $configuration->{library_to_location}->{$patron->branchcode}->{location}
-                                : $configuration->{mainAgency};
+    my $agency_code         = $configuration->{mainAgency};
     my $central_patron_type = (exists $configuration->{local_to_central_patron_type}->{$patron->categorycode})
                                 ? $configuration->{local_to_central_patron_type}->{$patron->categorycode}
                                 : 200;
