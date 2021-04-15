@@ -119,8 +119,9 @@ sub configuration {
     foreach my $centralServer ( keys %{ $configuration } ) {
         # Reverse the library_to_location key
         my $library_to_location = $configuration->{$centralServer}->{library_to_location};
-        my %location_to_library = reverse %{ $library_to_location };
-        $configuration->{$centralServer}->{location_to_library} = \%location_to_library;
+        $configuration->{$centralServer}->{location_to_library} =
+          { map { $library_to_location->{$_}->{location} => $_ }
+              keys %{$library_to_location} };
 
         # Reverse the local_to_central_itype key
         my $local_to_central_itype = $configuration->{$centralServer}->{local_to_central_itype};
