@@ -35,6 +35,7 @@ my $all_biblios   = 0;
 my $noout         = 0;
 my $exclude_items = 0;
 my $overwrite_locations = 0;
+my $decontribute;
 my $delete_location;
 my $update_location;
 my $central_server;
@@ -45,6 +46,7 @@ my $result = GetOptions(
     'all_biblios'         => \$all_biblios,
     'exclude_items'       => \$exclude_items,
     'overwrite_locations' => \$overwrite_locations,
+    'decontribute'        => \$decontribute,
     'delete_location=s'   => \$delete_location,
     'update_location=s'   => \$update_location,
     'noout'               => \$noout,
@@ -89,6 +91,8 @@ Record contribution actions:
     --all_biblios          Contribute all records
     --exclude_items        Exclude items from this batch update
 
+    --decontribute         Tells the tool the action is to decontribute
+
 Locations actions:
 
     --overwrite_locations  Update Central server's locations
@@ -115,19 +119,31 @@ if ( $biblio_id or $all_biblios ) {
     }
 
     my $biblios = Koha::Biblios->search($query);
-    while ( my $biblio = $biblios->next ) {
-        $contribution->contribute_bib(
-            {
-                bibId         => $biblio->biblionumber,
-                centralServer => $central_server
-            }
-        );
-        $contribution->contribute_batch_items(
-            {
-                bibId         => $biblio->biblionumber,
-                centralServer => $central_server
-            }
-        ) unless $exclude_items;
+    if ( $decontribute ) {
+        while ( my $biblio = $biblios->next ) {
+            $contribution->decontribute_bib(
+                {
+                    bibId         => $biblio->biblionumber,
+                    centralServer => $central_server
+                }
+            );
+        }
+    }
+    else {
+        while ( my $biblio = $biblios->next ) {
+            $contribution->contribute_bib(
+                {
+                    bibId         => $biblio->biblionumber,
+                    centralServer => $central_server
+                }
+            );
+            $contribution->contribute_batch_items(
+                {
+                    bibId         => $biblio->biblionumber,
+                    centralServer => $central_server
+                }
+            ) unless $exclude_items;
+        }
     }
 }
 
