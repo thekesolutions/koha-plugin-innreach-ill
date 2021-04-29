@@ -224,11 +224,19 @@ sub contribute_batch_items {
                 die "Item (" . $item->itemnumber . ") doesn't belong to bib record ($bibId)";
             }
 
+            my $centralItemType = $self->config->{$central_server}->{local_to_central_itype}->{$item->effective_itemtype};
+            my $locationKey = $self->config->{$central_server}->{library_to_location}->{$item->homebranch}->{location};
+
+            # Skip the item if has unmapped values (that are relevant)
+            unless ( $centralItemType && $locationKey ) {
+                next;
+            }
+
             my $itemInfo = {
                 itemId            => $item->itemnumber,
                 agencyCode        => $self->config->{$central_server}->{mainAgency},
-                centralItemType   => $self->config->{$central_server}->{local_to_central_itype}->{$item->effective_itemtype},
-                locationKey       => $self->config->{$central_server}->{library_to_location}->{$item->homebranch}->{location},
+                centralItemType   => $centralItemType,
+                locationKey       => $locationKey,
                 itemCircStatus    => $self->item_circ_status({ item => $item }),
                 holdCount         => 0,
                 dueDateTime       => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
