@@ -1493,7 +1493,7 @@ sub add_virtual_record_and_item {
 
     my $attributes  = $req->illrequestattributes;
 
-    my $centralItemType = $attributes->search({ type => 'centralItemType' })->next;
+    my $centralItemType = $attributes->search({ type => 'centralItemType' })->next->value;
 
     my $marc_flavour   = C4::Context->preference('marcflavour');
     my $framework_code = $config->{default_marc_framework} || 'FA';

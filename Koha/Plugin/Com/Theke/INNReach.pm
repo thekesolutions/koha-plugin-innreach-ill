@@ -123,11 +123,6 @@ sub configuration {
           { map { $library_to_location->{$_}->{location} => $_ }
               keys %{$library_to_location} };
 
-        # Reverse the local_to_central_itype key
-        my $local_to_central_itype = $configuration->{$centralServer}->{local_to_central_itype};
-        my %central_to_local_itype = reverse %{ $local_to_central_itype };
-        $configuration->{$centralServer}->{central_to_local_itype} = \%central_to_local_itype;
-
         # Reverse the local_to_central_patron_type key
         my $local_to_central_patron_type = $configuration->{$centralServer}->{local_to_central_patron_type};
         my %central_to_local_patron_type = reverse %{ $local_to_central_patron_type };
