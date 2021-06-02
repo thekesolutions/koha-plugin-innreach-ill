@@ -152,59 +152,54 @@ sub itemhold {
                     }
                 }
 
+                my $can_item_be_reserved = CanItemBeReserved( $patron_id, $item->itemnumber, $library_id )->{status};
+
+                unless ( $can_item_be_reserved eq 'OK' ) {
+                    warn "INN-Reach: placing the hold, but rules woul've prevented it. FIXME! (patron_id=$patron_id, item_id="
+                         . $item->itemnumber
+                         . ", library_id=$library_id, status=$can_item_be_reserved)";
+                }
+
+                my $hold_id;
+                if ( C4::Context->preference('Version') ge '20.050000' ) {
+                    $hold_id = AddReserve(
+                        {
+                            branchcode       => $req->branchcode,
+                            borrowernumber   => $patron_id,
+                            biblionumber     => $biblio->biblionumber,
+                            priority         => 1,
+                            reservation_date => undef,
+                            expiration_date  => undef,
+                            notes            => $config->{default_hold_note} // 'Placed by ILL',
+                            title            => '',
+                            itemnumber       => $item->itemnumber,
+                            found            => undef,
+                            itemtype         => undef
+                        }
+                    );
+                }
+                else {
+                    $hold_id = AddReserve(
+                        $req->branchcode,          # branch
+                        $patron_id,                # borrowernumber
+                        $biblio->biblionumber,     # biblionumber
+                        undef,                     # biblioitemnumber
+                        1,                         # priority
+                        undef,                     # resdate
+                        undef,                     # expdate
+                        $config->{default_hold_note} // 'Placed by ILL', # notes
+                        '',                        # title
+                        $item->itemnumber,         # checkitem
+                        undef                      # found
+                    );
+                }
+
                 $c->render(
                     status  => 200,
                     openapi => {
                         status => 'ok',
                         reason => '',
                         errors => []
-                    }
-                );
-
-                $c->tx->on(
-                    finish => sub {
-                        my $can_item_be_reserved = CanItemBeReserved( $patron_id, $item->itemnumber, $library_id )->{status};
-                        if ( $can_item_be_reserved eq 'OK' ) {
-                            # hold can be placed, just do it
-                            my $hold_id;
-                            if ( C4::Context->preference('Version') ge '20.050000' ) {
-                                $hold_id = AddReserve(
-                                    {
-                                        branchcode       => $req->branchcode,
-                                        borrowernumber   => $patron_id,
-                                        biblionumber     => $biblio->biblionumber,
-                                        priority         => 1,
-                                        reservation_date => undef,
-                                        expiration_date  => undef,
-                                        notes            => $config->{default_hold_note} // 'Placed by ILL',
-                                        title            => '',
-                                        itemnumber       => $item->itemnumber,
-                                        found            => undef,
-                                        itemtype         => undef
-                                    }
-                                );
-                            }
-                            else {
-                                $hold_id = AddReserve(
-                                    $req->branchcode,          # branch
-                                    $patron_id,                # borrowernumber
-                                    $biblio->biblionumber,     # biblionumber
-                                    undef,                     # biblioitemnumber
-                                    1,                         # priority
-                                    undef,                     # resdate
-                                    undef,                     # expdate
-                                    $config->{default_hold_note} // 'Placed by ILL', # notes
-                                    '',                        # title
-                                    $item->itemnumber,         # checkitem
-                                    undef                      # found
-                                );
-                            }
-                        }
-                        else {
-                            # hold cannot be placed, notify them
-                            my $ill = Koha::Illbackends::INNReach::Base->new;
-                            $ill->cancel_request({ request => $req });
-                        }
                     }
                 );
             }
