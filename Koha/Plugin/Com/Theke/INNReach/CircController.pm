@@ -949,15 +949,12 @@ sub itemshipped {
         $schema->txn_do(
             sub {
 
-                my $centralItemType = $body->{centralItemType};
-
                 # Create the MARC record and item
                 my ($biblio_id, $item_id, $biblioitemnumber) = $c->add_virtual_record_and_item(
                     { req         => $req,
                       config      => $config,
                       call_number => $attributes->{callNumber},
                       barcode     => $attributes->{itemBarcode},
-                      central_item_type => $centralItemType,
                     }
                 );
 
@@ -1472,6 +1469,15 @@ sub get_ill_request_from_barcode {
 
 =head3 add_virtual_record_and_item
 
+    $self->add-virtual_record_and_item(
+        {
+            req         => $req,
+            config      => $central_server_config,
+            call_number => $call_number,
+            barcode     => $barcode,
+        }
+    );
+
 This method is used for adding a virtual (hidden for end-users) MARC record
 with an item, so a hold is placed for it.
 
@@ -1484,8 +1490,10 @@ sub add_virtual_record_and_item {
     my $config      = $args->{config};
     my $call_number = $args->{call_number};
     my $barcode     = $args->{barcode};
-    my $centralItemType = $args->{central_item_type};
 
+    my $attributes  = $req->illrequestattributes;
+
+    my $centralItemType = $attributes->search({ type => 'centralItemType' })->next;
 
     my $marc_flavour   = C4::Context->preference('marcflavour');
     my $framework_code = $config->{default_marc_framework} || 'FA';
@@ -1516,8 +1524,6 @@ sub add_virtual_record_and_item {
             }
         );
     }
-
-    my $attributes  = $req->illrequestattributes;
 
     my $author_attr = $attributes->search({ type => 'author' })->next;
     my $author      = ( $author_attr ) ? $author_attr->value : '';
