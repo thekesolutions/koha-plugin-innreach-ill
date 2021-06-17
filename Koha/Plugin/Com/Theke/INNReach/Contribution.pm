@@ -187,11 +187,12 @@ sub contribute_batch_items {
     my ($self, $args) = @_;
 
     my $bibId = $args->{bibId};
-    die "bibId is mandatory" unless $bibId;
+    INNReach::Ill::MissingParameter->throw( param =>  "bibId" )
+        unless $bibId;
 
     my $biblio = Koha::Biblios->find( $bibId );
     unless ( $biblio ) {
-        die "Biblio not found ($bibId)";
+        INNReach::Ill::UnknownBiblioId->throw( biblio_id => $bibId );
     }
 
     my @items;

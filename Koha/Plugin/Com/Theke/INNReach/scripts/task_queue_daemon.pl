@@ -123,13 +123,13 @@ sub do_task {
     }
     elsif ( $object_type eq 'item' ) {
         if ( $action eq 'create' ) {
-            do_item_create({ item_id => $object_id, contribution => $contribution, task => $task });
+            do_item_contribute({ item_id => $object_id, contribution => $contribution, task => $task });
         }
         elsif ( $action eq 'modify' ) {
-            do_item_modify({ item_id => $object_id, contribution => $contribution, task => $task });
+            do_item_contribute({ item_id => $object_id, contribution => $contribution, task => $task });
         }
         elsif ( $action eq 'delete' ) {
-            do_item_delete({ item_id => $object_id, contribution => $contribution, task => $task });
+            do_item_decontribute({ item_id => $object_id, contribution => $contribution, task => $task });
         }
         elsif ( $action eq 'renewal' ) {
             handle_item_renewal({ item_id => $object_id, contribution => $contribution, task => $task });
@@ -167,12 +167,13 @@ sub do_biblio_contribute {
     }
     catch {
         if ( ref($_) eq 'INNReach::Ill::UnknownBiblioId' ) {
-            mark_task( { task => $task, status => 'skipped' } );
+            warn "do_biblio_contribute: biblio not found ($biblio_id) [skipped]";
+            mark_task( { task => $task, status => 'skipped', error => 'Biblio not found' } );
             return 1;
         }
         else {
             warn "do_biblio_contribute: $_";
-            mark_task({ task => $task, status => 'error' });
+            mark_task({ task => $task, status => 'error', error => "$_" });
         }
     };
 
@@ -206,17 +207,17 @@ sub do_biblio_decontribute {
     }
     catch {
         warn "do_biblio_decontribute: $_";
-        mark_task({ task => $task, status => 'error' });
+        mark_task({ task => $task, status => 'error', error => "$_" });
     };
 
     return 1;
 }
 
-=head3 do_item_create
+=head3 do_item_contribute
 
 =cut
 
-sub do_item_create {
+sub do_item_contribute {
     my ($args) = @_;
 
     my $item_id      = $args->{item_id};
@@ -224,6 +225,12 @@ sub do_item_create {
     my $task         = $args->{task};
 
     my $item = Koha::Items->find( $item_id );
+
+    unless ( $item ) {
+        warn "do_item_contribute: item not found ($item_id) [skipped]";
+        mark_task( { task => $task, status => 'skipped', error => 'Item not found' } );
+    }
+
     my $biblio_id = $item->biblionumber;
 
     try {
@@ -241,52 +248,18 @@ sub do_item_create {
         }
     }
     catch {
-        warn "$_";
+        warn "do_item_decontribute: $_";
+        mark_task({ task => $task, status => 'error', error => "$_" });
     };
 
     return 1;
 }
 
-=head3 do_item_modify
+=head3 do_item_decontribute
 
 =cut
 
-sub do_item_modify {
-    my ($args) = @_;
-
-    my $item_id      = $args->{item_id};
-    my $contribution = $args->{contribution};
-    my $task         = $args->{task};
-
-    my $item = Koha::Items->find( $item_id );
-    my $biblio_id = $item->biblionumber;
-
-    try {
-        my $result = $contribution->contribute_batch_items({ item => $item, bibId => $biblio_id });
-        if ( $result ) {
-            if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
-                mark_task({ task => $task, status => 'retry' });
-            }
-            else {
-                mark_task({ task => $task, status => 'error' });
-            }
-        }
-        else {
-            mark_task({ task => $task, status => 'success' });
-        }
-    }
-    catch {
-        die "$_";
-    };
-
-    return 1;
-}
-
-=head3 do_item_delete
-
-=cut
-
-sub do_item_delete {
+sub do_item_decontribute {
     my ($args) = @_;
 
     my $item_id      = $args->{item_id};
@@ -308,7 +281,8 @@ sub do_item_delete {
         }
     }
     catch {
-        die "$_";
+        warn "do_item_decontribute: $_";
+        mark_task({ task => $task, status => 'error', error => "$_" });
     };
 
     return 1;
