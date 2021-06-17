@@ -81,7 +81,8 @@ sub run_queued_tasks {
             payload,
             action,
             attempts,
-            timestamp
+            timestamp,
+            central_server
         FROM
             $table
         WHERE
@@ -152,7 +153,7 @@ sub do_biblio_contribute {
     my $task         = $args->{task};
 
     try {
-        my $result = $contribution->contribute_bib({ bibId => $biblio_id });
+        my $result = $contribution->contribute_bib({ bibId => $biblio_id, centralServer => $task->{central_server} });
         if ( $result ) {
             if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
                 mark_task({ task => $task, status => 'retry' });
@@ -192,7 +193,7 @@ sub do_biblio_decontribute {
     my $task         = $args->{task};
 
     try {
-        my $result = $contribution->decontribute_bib({ bibId => $biblio_id });
+        my $result = $contribution->decontribute_bib({ bibId => $biblio_id, centralServer => $task->{central_server} });
         if ( $result ) {
             if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
                 mark_task({ task => $task, status => 'retry' });
@@ -234,7 +235,7 @@ sub do_item_contribute {
     my $biblio_id = $item->biblionumber;
 
     try {
-        my $result = $contribution->contribute_batch_items({ item => $item, bibId => $biblio_id });
+        my $result = $contribution->contribute_batch_items({ item => $item, bibId => $biblio_id, centralServer => $task->{central_server} });
         if ( $result ) {
             if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
                 mark_task({ task => $task, status => 'retry' });
@@ -267,7 +268,7 @@ sub do_item_decontribute {
     my $task         = $args->{task};
 
     try {
-        my $result = $contribution->decontribute_item({ itemId => $item_id });
+        my $result = $contribution->decontribute_item({ itemId => $item_id, centralServer => $task->{central_server} });
         if ( $result ) {
             if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
                 mark_task({ task => $task, status => 'retry' });
