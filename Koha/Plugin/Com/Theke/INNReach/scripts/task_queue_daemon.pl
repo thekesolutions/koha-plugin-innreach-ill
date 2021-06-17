@@ -112,13 +112,13 @@ sub do_task {
 
     if ( $object_type eq 'biblio' ) {
         if ( $action eq 'create' ) {
-            do_biblio_create({ biblio_id => $object_id, contribution => $contribution, task => $task });
+            do_biblio_contribute({ biblio_id => $object_id, contribution => $contribution, task => $task });
         }
         elsif ( $action eq 'modify' ) {
-            do_biblio_modify({ biblio_id => $object_id, contribution => $contribution, task => $task });
+            do_biblio_contribute({ biblio_id => $object_id, contribution => $contribution, task => $task });
         }
         elsif ( $action eq 'delete' ) {
-            do_biblio_delete({ biblio_id => $object_id, contribution => $contribution, task => $task });
+            do_biblio_decontribute({ biblio_id => $object_id, contribution => $contribution, task => $task });
         }
     }
     elsif ( $object_type eq 'item' ) {
@@ -140,11 +140,11 @@ sub do_task {
     }
 }
 
-=head3 do_biblio_create
+=head3 do_biblio_contribute
 
 =cut
 
-sub do_biblio_create {
+sub do_biblio_contribute {
     my ($args) = @_;
 
     my $biblio_id    = $args->{biblio_id};
@@ -166,49 +166,24 @@ sub do_biblio_create {
         }
     }
     catch {
-        die "$_";
-    };
-
-    return 1;
-}
-
-=head3 do_biblio_modify
-
-=cut
-
-sub do_biblio_modify {
-    my ($args) = @_;
-
-    my $biblio_id    = $args->{biblio_id};
-    my $contribution = $args->{contribution};
-    my $task         = $args->{task};
-
-    try {
-        my $result = $contribution->contribute_bib({ bibId => $biblio_id });
-        if ( $result ) {
-            if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
-                mark_task({ task => $task, status => 'retry' });
-            }
-            else {
-                mark_task({ task => $task, status => 'error' });
-            }
+        if ( ref($_) eq 'INNReach::Ill::UnknownBiblioId' ) {
+            mark_task( { task => $task, status => 'skipped' } );
+            return 1;
         }
         else {
-            mark_task({ task => $task, status => 'success' });
+            warn "do_biblio_contribute: $_";
+            mark_task({ task => $task, status => 'error' });
         }
-    }
-    catch {
-        die "$_";
     };
 
     return 1;
 }
 
-=head3 do_biblio_delete
+=head3 do_biblio_decontribute
 
 =cut
 
-sub do_biblio_delete {
+sub do_biblio_decontribute {
     my ($args) = @_;
 
     my $biblio_id    = $args->{biblio_id};
@@ -230,7 +205,8 @@ sub do_biblio_delete {
         }
     }
     catch {
-        die "$_";
+        warn "do_biblio_decontribute: $_";
+        mark_task({ task => $task, status => 'error' });
     };
 
     return 1;

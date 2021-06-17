@@ -103,17 +103,16 @@ sub contribute_bib {
     my ($self, $args) = @_;
 
     my $bibId = $args->{bibId};
-    die "bibId is mandatory" unless $bibId;
+    INNReach::Ill::MissingParameter->throw( param =>  "bibId" )
+        unless $bibId;
 
     my ( $biblio, $record );
 
-    try {
-        $biblio = Koha::Biblios->find({ biblionumber => $bibId });
-        $record = $biblio->metadata->record;
+    $biblio = Koha::Biblios->find({ biblionumber => $bibId });
+
+    unless ( $biblio ) {
+        INNReach::Ill::UnknownBiblioId->throw( biblio_id => $bibId );
     }
-    catch {
-        die "Problem with requested biblio ($bibId)";
-    };
 
     # Got the biblio, POST it
     my $suppress = 'n'; # expected default
@@ -348,7 +347,8 @@ sub decontribute_bib {
     my ($self, $args) = @_;
 
     my $bibId = $args->{bibId};
-    die "bibId is mandatory" unless $bibId;
+    INNReach::Ill::MissingParameter->throw( param =>  "bibId" )
+        unless $bibId;
 
     my @central_servers;
     if ( $args->{centralServer} ) {
