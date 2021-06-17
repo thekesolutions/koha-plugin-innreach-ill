@@ -156,7 +156,7 @@ sub install {
                 `object_id`    INT(11) NOT NULL DEFAULT 0,
                 `payload`      TEXT DEFAULT NULL,
                 `action`       ENUM('create', 'modify', 'delete', 'renewal', 'checkin', 'checkout') NOT NULL DEFAULT 'modify',
-                `status`       ENUM('queued', 'retry', 'success', 'error') NOT NULL DEFAULT 'queued',
+                `status`       ENUM('queued', 'retry', 'success', 'error', 'skipped') NOT NULL DEFAULT 'queued',
                 `attempts`     INT(11) NOT NULL DEFAULT 0,
                 `last_error`   VARCHAR(191) DEFAULT NULL,
                 `timestamp`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -324,6 +324,25 @@ sub upgrade {
             C4::Context->dbh->do(qq{
                 ALTER TABLE $task_queue
                     MODIFY COLUMN `action` ENUM('create', 'modify', 'delete', 'renewal', 'checkin', 'checkout') NOT NULL DEFAULT 'modify';
+            });
+        }
+
+        $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
+    }
+
+    $new_version = "3.3.14";
+    if (
+        Koha::Plugins::Base::_version_compare(
+            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
+      )
+    {
+
+        my $task_queue = $self->get_qualified_table_name('task_queue');
+
+        if ( $self->_table_exists($task_queue) ) {
+            C4::Context->dbh->do(qq{
+                ALTER TABLE $task_queue
+                    MODIFY COLUMN `status` ENUM('queued', 'retry', 'success', 'error', 'skipped') NOT NULL DEFAULT 'queued';
             });
         }
 
