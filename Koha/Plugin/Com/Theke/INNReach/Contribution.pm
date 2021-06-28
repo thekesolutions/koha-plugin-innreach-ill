@@ -241,8 +241,8 @@ sub contribute_batch_items {
                 holdCount         => 0,
                 dueDateTime       => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
                 callNumber        => $item->itemcallnumber,
-                volumeDesignation => undef, # TODO
-                copyNumber        => $item->copynumber, # TODO
+                volumeDesignation => $item->enumchron,
+                copyNumber        => $item->copynumber,
             # marc856URI        => undef, # We really don't have this concept in Koha
             # marc856PublicNote => undef, # We really don't have this concept in Koha
                 itemNote          => $item->itemnotes,
