@@ -89,6 +89,7 @@ sub new {
     }
     my $self = {
         configuration => $configuration,
+        plugin        => $plugin,
         _oauth2       => $oauth2
     };
     bless( $self, $class );
@@ -535,6 +536,16 @@ sub cancel_request {
     while ( my $hold = $holds->next ) {
         $hold->cancel;
     }
+
+    # Make sure we notify the item status
+    $self->plugin->schedule_task(
+        {
+            action         => 'modify',
+            central_server => $centralCode,
+            object_type    => 'item',
+            object_id      => $item_id,
+        }
+    );
 
     $req->status('O_ITEM_CANCELLED_BY_US')->store;
 
