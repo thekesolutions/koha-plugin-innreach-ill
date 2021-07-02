@@ -1081,9 +1081,9 @@ sub filter_items_by_contributable {
     }
     else {
         # Deny-list case
-        if ( $configuration->{contribution}->{included_items} ) {
+        if ( $configuration->{contribution}->{excluded_items} ) {
             # there are rules!
-            $items = $items->search({ '-not' => $configuration->{contribution}->{included_items} });
+            $items = $items->search({ '-not' => $configuration->{contribution}->{excluded_items} });
         }
         # else {  } # no filter
     }
