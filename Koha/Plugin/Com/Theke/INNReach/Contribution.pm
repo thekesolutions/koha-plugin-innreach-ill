@@ -106,12 +106,16 @@ sub contribute_bib {
     INNReach::Ill::MissingParameter->throw( param =>  "bibId" )
         unless $bibId;
 
-    my ( $biblio, $record );
-
-    $biblio = Koha::Biblios->find({ biblionumber => $bibId });
+    my $biblio = Koha::Biblios->find({ biblionumber => $bibId });
 
     unless ( $biblio ) {
         INNReach::Ill::UnknownBiblioId->throw( biblio_id => $bibId );
+    }
+
+    my $record = $biblio->metadata->record;
+
+    unless ( $record ) {
+        INNReach::Ill::UnknownBiblioId->throw( "Cannot retrieve record metadata" );
     }
 
     # Got the biblio, POST it
