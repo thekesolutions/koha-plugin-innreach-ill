@@ -553,10 +553,10 @@ sub schedule_task {
             unless exists $params->{$param};
     }
 
-    my $action         = $args->{action};
-    my $central_server = $args->{central_server};
-    my $object_type    = $args->{object_type};
-    my $object_id      = $args->{object_id};
+    my $action         = $params->{action};
+    my $central_server = $params->{central_server};
+    my $object_type    = $params->{object_type};
+    my $object_id      = $params->{object_id};
 
     my $task_queue      = $self->get_qualified_table_name('task_queue');
 
