@@ -34,6 +34,7 @@ my $biblio_id;
 my $all_biblios   = 0;
 my $noout         = 0;
 my $exclude_items = 0;
+my $force         = 0;
 my $overwrite_locations = 0;
 my $decontribute;
 my $delete_location;
@@ -45,6 +46,7 @@ my $result = GetOptions(
     'biblio_id=s'         => \$biblio_id,
     'all_biblios'         => \$all_biblios,
     'exclude_items'       => \$exclude_items,
+    'force'               => \$force,
     'overwrite_locations' => \$overwrite_locations,
     'decontribute'        => \$decontribute,
     'delete_location=s'   => \$delete_location,
@@ -84,6 +86,7 @@ Options:
 
     --central_server       Contribute to the specified central server (mandatory)
     --noout                No output
+    --force                Force action (check the code for cases)
 
 Record contribution actions:
 
@@ -131,20 +134,24 @@ if ( $biblio_id or $all_biblios ) {
     }
     else {
         while ( my $biblio = $biblios->next ) {
-            $contribution->contribute_bib(
+
+            my $items = $contribution->filter_items_by_contributable(
                 {
-                    bibId         => $biblio->biblionumber,
-                    centralServer => $central_server
+                    central_server => $central_server,
+                    items          => $biblio->items
                 }
             );
 
-            unless ( $exclude_items ) {
-                my $items = $contribution->filter_items_by_contributable(
+            if ( $items->count > 0 or $force ) {
+                $contribution->contribute_bib(
                     {
-                        central_server => $central_server,
-                        items          => $biblio->items
+                        bibId         => $biblio->biblionumber,
+                        centralServer => $central_server
                     }
                 );
+            }
+
+            unless ( $exclude_items ) {
                 while ( my $item = $items->next ) {
                     $contribution->contribute_batch_items(
                         {
