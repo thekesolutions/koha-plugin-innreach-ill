@@ -137,12 +137,24 @@ if ( $biblio_id or $all_biblios ) {
                     centralServer => $central_server
                 }
             );
-            $contribution->contribute_batch_items(
-                {
-                    bibId         => $biblio->biblionumber,
-                    centralServer => $central_server
+
+            unless ( $exclude_items ) {
+                my $items = $contribution->filter_items_by_contributable(
+                    {
+                        central_server => $central_server,
+                        items          => $biblio->items
+                    }
+                );
+                while ( my $item = $items->next ) {
+                    $contribution->contribute_batch_items(
+                        {
+                            bibId         => $biblio->biblionumber,
+                            centralServer => $central_server,
+                            item          => $item,
+                        }
+                    );
                 }
-            ) unless $exclude_items;
+            }
         }
     }
 }
