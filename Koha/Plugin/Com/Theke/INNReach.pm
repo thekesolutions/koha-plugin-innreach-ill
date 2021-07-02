@@ -529,6 +529,47 @@ sub after_circ_action {
     }
 }
 
+=head3 schedule_task
+
+    $plugin->schedule_task(
+        {
+            action         => $action,
+            central_server => $central_server,
+            object_type    => $object_type,
+            object_id      => $object->id
+        }
+    );
+
+Method for adding tasks to the queue
+
+=cut
+
+sub schedule_task {
+    my ( $self, $params ) = @_;
+
+    my @mandatory_params = qw(action central_server object_type object_id);
+    foreach my $param ( @mandatory_params ) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $params->{$param};
+    }
+
+    my $action         = $args->{action};
+    my $central_server = $args->{central_server};
+    my $object_type    = $args->{object_type};
+    my $object_id      = $args->{object_id};
+
+    my $task_queue      = $self->get_qualified_table_name('task_queue');
+
+    C4::Context->dbh->do(qq{
+        INSERT INTO $task_queue
+            (  central_server,     object_type,   object_id,   action,   status,  attempts )
+        VALUES
+            ( '$central_server', '$object_type', $object_id, '$action', 'queued', 0 );
+    });
+
+    return $self;
+}
+
 =head3 api_routes
 
 Method that returns the API routes to be merged into Koha's
