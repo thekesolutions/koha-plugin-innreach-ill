@@ -124,12 +124,22 @@ if ( $biblio_id or $all_biblios ) {
     my $biblios = Koha::Biblios->search($query);
     if ( $decontribute ) {
         while ( my $biblio = $biblios->next ) {
-            $contribution->decontribute_bib(
+            print STDOUT "# Decontributing record: " . $biblio->id . "\n"
+                unless $noout;
+            my @errors = $contribution->decontribute_bib(
                 {
                     bibId         => $biblio->biblionumber,
                     centralServer => $central_server
                 }
             );
+            if ( @errors ) {
+                print STDOUT " - Status: Error (" . join( ' - ', @errors ) . ")\n"
+                    unless $noout;
+            }
+            else {
+                print STDOUT " - Status: OK\n"
+                    unless $noout;
+            }
         }
     }
     else {
@@ -143,23 +153,53 @@ if ( $biblio_id or $all_biblios ) {
             );
 
             if ( $items->count > 0 or $force ) {
-                $contribution->contribute_bib(
+                print STDOUT "# Contributing record: " . $biblio->id . "\n"
+                    unless $noout;
+                my @errors = $contribution->contribute_bib(
                     {
                         bibId         => $biblio->biblionumber,
                         centralServer => $central_server
                     }
                 );
+                if ( @errors ) {
+                    print STDOUT " - Status: Error (" . join( ' - ', @errors ) . ")\n"
+                        unless $noout;
+                }
+                else {
+                    print STDOUT " - Status: OK\n"
+                        unless $noout;
+                }
+            }
+            else {
+                print STDOUT " - Status: Skipped (no items)\n"
+                    unless $noout;
             }
 
             unless ( $exclude_items ) {
-                while ( my $item = $items->next ) {
-                    $contribution->contribute_batch_items(
-                        {
-                            bibId         => $biblio->biblionumber,
-                            centralServer => $central_server,
-                            item          => $item,
+                if ( $items->count > 0 ) {
+                    print STDOUT " - Items:\n"
+                        unless $noout;
+                    while ( my $item = $items->next ) {
+                        my @errors = $contribution->contribute_batch_items(
+                            {
+                                bibId         => $biblio->biblionumber,
+                                centralServer => $central_server,
+                                item          => $item,
+                            }
+                        );
+                        if ( @errors ) {
+                            print STDOUT "        > " . $item->id . ": Error (" . join( ' - ', @errors ) . ")\n"
+                                unless $noout;
                         }
-                    );
+                        else {
+                            print STDOUT "        > " . $item->id . ": Ok\n"
+                                unless $noout;
+                        }
+                    }
+                }
+                else {
+                    print STDOUT " - Items: biblio has no items\n"
+                        unless $noout;
                 }
             }
         }
