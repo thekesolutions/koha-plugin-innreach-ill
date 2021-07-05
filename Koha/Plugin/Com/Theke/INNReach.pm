@@ -183,6 +183,32 @@ sub install {
         });
     }
 
+    my $contributed_biblios = $self->get_qualified_table_name('contributed_biblios');
+
+    unless ( !$self->_table_exists( $contributed_biblios ) ) {
+        C4::Context->dbh->do(qq{
+            CREATE TABLE $contributed_biblios (
+                `central_server` VARCHAR(191) NOT NULL,
+                `biblio_id`      INT(11) NOT NULL,
+                `timestamp`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`central_server`,`biblio_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        });
+    }
+
+    my $contributed_items = $self->get_qualified_table_name('contributed_items');
+
+    unless ( !$self->_table_exists( $contributed_items ) ) {
+        C4::Context->dbh->do(qq{
+            CREATE TABLE $contributed_items (
+                `central_server` VARCHAR(191) NOT NULL,
+                `item_id`        INT(11) NOT NULL,
+                `timestamp`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`central_server`,`item_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        });
+    }
+
     return 1;
 }
 
@@ -343,6 +369,42 @@ sub upgrade {
             C4::Context->dbh->do(qq{
                 ALTER TABLE $task_queue
                     MODIFY COLUMN `status` ENUM('queued', 'retry', 'success', 'error', 'skipped') NOT NULL DEFAULT 'queued';
+            });
+        }
+
+        $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
+    }
+
+    $new_version = "3.4.0";
+    if (
+        Koha::Plugins::Base::_version_compare(
+            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
+      )
+    {
+
+        my $contributed_biblios = $self->get_qualified_table_name('contributed_biblios');
+
+        unless ( !$self->_table_exists( $contributed_biblios ) ) {
+            C4::Context->dbh->do(qq{
+                CREATE TABLE $contributed_biblios (
+                    `central_server` VARCHAR(191) NOT NULL,
+                    `biblio_id`      INT(11) NOT NULL,
+                    `timestamp`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`central_server`,`biblio_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            });
+        }
+
+        my $contributed_items = $self->get_qualified_table_name('contributed_items');
+
+        unless ( !$self->_table_exists( $contributed_items ) ) {
+            C4::Context->dbh->do(qq{
+                CREATE TABLE $contributed_items (
+                    `central_server` VARCHAR(191) NOT NULL,
+                    `item_id`        INT(11) NOT NULL,
+                    `timestamp`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`central_server`,`item_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             });
         }
 
