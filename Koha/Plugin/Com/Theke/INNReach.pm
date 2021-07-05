@@ -381,10 +381,9 @@ sub upgrade {
             $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
       )
     {
-
         my $contributed_biblios = $self->get_qualified_table_name('contributed_biblios');
 
-        unless ( !$self->_table_exists( $contributed_biblios ) ) {
+        if ( !$self->_table_exists( $contributed_biblios ) ) {
             C4::Context->dbh->do(qq{
                 CREATE TABLE $contributed_biblios (
                     `central_server` VARCHAR(191) NOT NULL,
@@ -397,7 +396,7 @@ sub upgrade {
 
         my $contributed_items = $self->get_qualified_table_name('contributed_items');
 
-        unless ( !$self->_table_exists( $contributed_items ) ) {
+        if ( !$self->_table_exists( $contributed_items ) ) {
             C4::Context->dbh->do(qq{
                 CREATE TABLE $contributed_items (
                     `central_server` VARCHAR(191) NOT NULL,
