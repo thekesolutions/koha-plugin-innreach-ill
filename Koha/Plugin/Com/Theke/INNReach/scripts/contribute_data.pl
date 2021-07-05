@@ -126,14 +126,14 @@ if ( $biblio_id or $all_biblios ) {
         while ( my $biblio = $biblios->next ) {
             print STDOUT "# Decontributing record: " . $biblio->id . "\n"
                 unless $noout;
-            my @errors = $contribution->decontribute_bib(
+            my $errors = $contribution->decontribute_bib(
                 {
                     bibId         => $biblio->biblionumber,
                     centralServer => $central_server
                 }
             );
-            if ( @errors ) {
-                print STDOUT " - Status: Error (" . join( ' - ', @errors ) . ")\n"
+            if ( $errors->{$central_server} ) {
+                print STDOUT " - Status: Error (" . $errors->{$central_server} . ")\n"
                     unless $noout;
             }
             else {
@@ -163,7 +163,7 @@ if ( $biblio_id or $all_biblios ) {
                 );
 
                 if ( $errors->{$central_server} ) {
-                    print STDOUT " - Status: Error (" . join( ' - ', $errors->{$central_server} ) . ")\n"
+                    print STDOUT " - Status: Error (" . $errors->{$central_server} . ")\n"
                         unless $noout;
                     next;
                 }
@@ -191,7 +191,7 @@ if ( $biblio_id or $all_biblios ) {
                             }
                         );
                         if ( $errors->{$central_server} ) {
-                            print STDOUT "        > " . $item->id . ": Error (" . join( ' - ', $errors->{$central_server} ) . ")\n"
+                            print STDOUT "        > " . $item->id . ": Error (" . $errors->{$central_server} . ")\n"
                                 unless $noout;
                         }
                         else {
