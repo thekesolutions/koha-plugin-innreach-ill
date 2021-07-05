@@ -148,7 +148,7 @@ sub contribute_bib {
         @central_servers = @{ $self->{centralServers} };
     }
 
-    my @errors;
+    my $errors;
 
     for my $central_server (@central_servers) {
         my $response = $self->oauth2->{$central_server}->post_request(
@@ -157,17 +157,13 @@ sub contribute_bib {
                 data        => $data
             }
         );
-        warn p( $response )
-            if $response->is_error or $ENV{DEBUG};
-        warn p( $data )
-            if $response->is_error or $ENV{DEBUG};
 
         unless ( $response->is_success ) {
-            push @errors, $response->status_line;
+            $errors->{$central_server} = $response->status_line;
         }
     }
 
-    return @errors if scalar @errors;
+    return $errors if $errors;
 }
 
 =head3 contribute_batch_items
@@ -217,7 +213,7 @@ sub contribute_batch_items {
         @central_servers = @{ $self->{centralServers} };
     }
 
-    my @errors;
+    my $errors;
 
     for my $central_server (@central_servers) {
 
@@ -262,15 +258,13 @@ sub contribute_batch_items {
                 data        => { itemInfo => \@itemInfo }
             }
         );
-        warn p( $response )
-            if $response->is_error or $ENV{DEBUG};
 
         unless ( $response->is_success ) {
-            push @errors, $response->status_line;
+            $errors->{$central_server} = $response->status_line;
         }
     }
 
-    return @errors if scalar @errors;
+    return $errors if $errors;
 }
 
 =head3 update_item_status
@@ -293,7 +287,7 @@ sub update_item_status {
 
     my $item;
 
-    my @errors;
+    my $errors;
 
     try {
         $item = Koha::Items->find( $itemId );
@@ -319,11 +313,9 @@ sub update_item_status {
                     data        => $data
                 }
             );
-            warn p( $response )
-                if $response->is_error or $ENV{DEBUG};
 
             unless ( $response->is_success ) {
-                push @errors, $response->status_line;
+                $errors->{$central_server} = $response->status_line;
             }
         }
     }
@@ -331,7 +323,7 @@ sub update_item_status {
         die "Problem updating requested item ($itemId)";
     };
 
-    return @errors if scalar @errors;
+    return $errors if $errors;
 }
 
 =head3 decontribute_bib
@@ -363,7 +355,7 @@ sub decontribute_bib {
         @central_servers = @{ $self->{centralServers} };
     }
 
-    my @errors;
+    my $errors;
 
     for my $central_server (@central_servers) {
         my $response = $self->oauth2->{$central_server}->delete_request(
@@ -371,15 +363,13 @@ sub decontribute_bib {
                 centralCode => $central_server
             }
         );
-        warn p( $response )
-            if $response->is_error or $ENV{DEBUG};
 
         unless ( $response->is_success ) {
-            push @errors, $response->status_line;
+            $errors->{$central_server} = $response->status_line;
         }
     }
 
-    return @errors if scalar @errors;
+    return $errors if $errors;
 }
 
 =head3 decontribute_item
@@ -410,7 +400,7 @@ sub decontribute_item {
         @central_servers = @{ $self->{centralServers} };
     }
 
-    my @errors;
+    my $errors;
 
     for my $central_server (@central_servers) {
         my $response = $self->oauth2->{$central_server}->delete_request(
@@ -418,15 +408,13 @@ sub decontribute_item {
                 centralCode => $central_server
             }
         );
-        warn p( $response )
-            if $response->is_error or $ENV{DEBUG};
 
         unless ( $response->is_success ) {
-            push @errors, $response->status_line;
+            $errors->{$central_server} = $response->status_line;
         }
     }
 
-    return @errors if scalar @errors;
+    return $errors if $errors;
 }
 
 =head3 update_bib_status
@@ -447,7 +435,7 @@ sub update_bib_status {
 
     my ( $biblio, $metadata, $record );
 
-    my @errors;
+    my $errors;
 
     try {
         $biblio   = Koha::Biblios->find( $bibId );
@@ -471,11 +459,9 @@ sub update_bib_status {
                     data        => $data
                 }
             );
-            warn p( $response )
-                if $response->is_error or $ENV{DEBUG};
 
             unless ( $response->is_success ) {
-                push @errors, $response->status_line;
+                $errors->{$central_server} = $response->status_line;
             }
         }
     }
@@ -483,7 +469,7 @@ sub update_bib_status {
         die "Problem updating requested biblio ($bibId)";
     };
 
-    return @errors if scalar @errors;
+    return $errors if $errors;
 }
 
 =head3 upload_locations_list

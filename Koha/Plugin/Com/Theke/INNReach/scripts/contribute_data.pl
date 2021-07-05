@@ -155,15 +155,17 @@ if ( $biblio_id or $all_biblios ) {
             if ( $items->count > 0 or $force ) {
                 print STDOUT "# Contributing record: " . $biblio->id . "\n"
                     unless $noout;
-                my @errors = $contribution->contribute_bib(
+                my $errors = $contribution->contribute_bib(
                     {
                         bibId         => $biblio->biblionumber,
                         centralServer => $central_server
                     }
                 );
-                if ( @errors ) {
-                    print STDOUT " - Status: Error (" . join( ' - ', @errors ) . ")\n"
+
+                if ( $errors->{$central_server} ) {
+                    print STDOUT " - Status: Error (" . join( ' - ', $errors->{$central_server} ) . ")\n"
                         unless $noout;
+                    next;
                 }
                 else {
                     print STDOUT " - Status: OK\n"
@@ -173,6 +175,7 @@ if ( $biblio_id or $all_biblios ) {
             else {
                 print STDOUT " - Status: Skipped (no items)\n"
                     unless $noout;
+                next;
             }
 
             unless ( $exclude_items ) {
@@ -180,15 +183,15 @@ if ( $biblio_id or $all_biblios ) {
                     print STDOUT " - Items:\n"
                         unless $noout;
                     while ( my $item = $items->next ) {
-                        my @errors = $contribution->contribute_batch_items(
+                        my $errors = $contribution->contribute_batch_items(
                             {
                                 bibId         => $biblio->biblionumber,
                                 centralServer => $central_server,
                                 item          => $item,
                             }
                         );
-                        if ( @errors ) {
-                            print STDOUT "        > " . $item->id . ": Error (" . join( ' - ', @errors ) . ")\n"
+                        if ( $errors->{$central_server} ) {
+                            print STDOUT "        > " . $item->id . ": Error (" . join( ' - ', $errors->{$central_server} ) . ")\n"
                                 unless $noout;
                         }
                         else {
