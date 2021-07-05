@@ -158,8 +158,17 @@ sub contribute_bib {
             }
         );
 
-        unless ( $response->is_success ) {
+        if ( !$response->is_success ) {    # HTTP code is not 2xx
             $errors->{$central_server} = $response->status_line;
+        } else {                           # III encoding errors in the response body of a 2xx
+            my $response_content = decode_json( $response->decoded_content );
+            if ( $response_content->{status} eq 'failed' ) {
+                my @iii_errors = $response_content->{errors};
+
+                # we pick the first one
+                my $THE_error = $iii_errors[0][0];
+                $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+            }
         }
     }
 
@@ -259,8 +268,17 @@ sub contribute_batch_items {
             }
         );
 
-        unless ( $response->is_success ) {
+        if ( !$response->is_success ) {    # HTTP code is not 2xx
             $errors->{$central_server} = $response->status_line;
+        } else {                           # III encoding errors in the response body of a 2xx
+            my $response_content = decode_json( $response->decoded_content );
+            if ( $response_content->{status} eq 'failed' ) {
+                my @iii_errors = $response_content->{errors};
+
+                # we pick the first one
+                my $THE_error = $iii_errors[0][0];
+                $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+            }
         }
     }
 
@@ -314,8 +332,17 @@ sub update_item_status {
                 }
             );
 
-            unless ( $response->is_success ) {
+            if ( !$response->is_success ) {    # HTTP code is not 2xx
                 $errors->{$central_server} = $response->status_line;
+            } else {                           # III encoding errors in the response body of a 2xx
+                my $response_content = decode_json( $response->decoded_content );
+                if ( $response_content->{status} eq 'failed' ) {
+                    my @iii_errors = $response_content->{errors};
+
+                    # we pick the first one
+                    my $THE_error = $iii_errors[0][0];
+                    $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+                }
             }
         }
     }
@@ -364,11 +391,19 @@ sub decontribute_bib {
             }
         );
 
-        unless ( $response->is_success ) {
+        if ( !$response->is_success ) {    # HTTP code is not 2xx
             $errors->{$central_server} = $response->status_line;
+        } else {                           # III encoding errors in the response body of a 2xx
+            my $response_content = decode_json( $response->decoded_content );
+            if ( $response_content->{status} eq 'failed' ) {
+                my @iii_errors = $response_content->{errors};
+
+                # we pick the first one
+                my $THE_error = $iii_errors[0][0];
+                $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+            }
         }
     }
-
     return $errors if $errors;
 }
 
@@ -409,8 +444,17 @@ sub decontribute_item {
             }
         );
 
-        unless ( $response->is_success ) {
+        if ( !$response->is_success ) {    # HTTP code is not 2xx
             $errors->{$central_server} = $response->status_line;
+        } else {                           # III encoding errors in the response body of a 2xx
+            my $response_content = decode_json( $response->decoded_content );
+            if ( $response_content->{status} eq 'failed' ) {
+                my @iii_errors = $response_content->{errors};
+
+                # we pick the first one
+                my $THE_error = $iii_errors[0][0];
+                $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+            }
         }
     }
 
@@ -460,8 +504,17 @@ sub update_bib_status {
                 }
             );
 
-            unless ( $response->is_success ) {
+            if ( !$response->is_success ) {    # HTTP code is not 2xx
                 $errors->{$central_server} = $response->status_line;
+            } else {                           # III encoding errors in the response body of a 2xx
+                my $response_content = decode_json( $response->decoded_content );
+                if ( $response_content->{status} eq 'failed' ) {
+                    my @iii_errors = $response_content->{errors};
+
+                    # we pick the first one
+                    my $THE_error = $iii_errors[0][0];
+                    $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+                }
             }
         }
     }
