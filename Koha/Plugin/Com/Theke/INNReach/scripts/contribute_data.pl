@@ -152,9 +152,10 @@ if ( $biblio_id or $all_biblios ) {
                 }
             );
 
+            print STDOUT "# Contributing record: " . $biblio->id . "\n"
+                unless $noout;
+
             if ( $items->count > 0 or $force ) {
-                print STDOUT "# Contributing record: " . $biblio->id . "\n"
-                    unless $noout;
                 my $errors = $contribution->contribute_bib(
                     {
                         bibId         => $biblio->biblionumber,
