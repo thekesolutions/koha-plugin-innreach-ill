@@ -41,7 +41,7 @@ binmode STDOUT, ':encoding(UTF-8)';
 
 use base qw(Class::Accessor);
 
-__PACKAGE__->mk_accessors(qw( oauth2 config centralServers ));
+__PACKAGE__->mk_accessors(qw( oauth2 config centralServers plugin ));
 
 =head1 Koha::Plugin::Com::Theke::INNReach::Contribution
 
