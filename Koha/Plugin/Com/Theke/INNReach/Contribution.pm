@@ -63,6 +63,7 @@ sub new {
 
     try {
         my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+        $args->{plugin} = $plugin;
         $args->{config} = $plugin->configuration;
         my @centralServers = $plugin->central_servers;
         $args->{centralServers} = \@centralServers;
@@ -168,6 +169,14 @@ sub contribute_bib {
                 # we pick the first one
                 my $THE_error = $iii_errors[0][0];
                 $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+            }
+            else {
+                $self->mark_biblio_as_contributed(
+                    {
+                        biblio_id      => $bibId,
+                        central_server => $central_server,
+                    }
+                );
             }
         }
     }
@@ -278,6 +287,16 @@ sub contribute_batch_items {
                 # we pick the first one
                 my $THE_error = $iii_errors[0][0];
                 $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+            }
+            else {
+                foreach my $item (@items) {
+                    $self->mark_item_as_contributed(
+                        {
+                            central_server => $central_server,
+                            item_id        => $item->id,
+                        }
+                    );
+                }
             }
         }
     }
@@ -402,6 +421,14 @@ sub decontribute_bib {
                 my $THE_error = $iii_errors[0][0];
                 $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
             }
+            else {
+                $self->unmark_biblio_as_contributed(
+                    {
+                        biblio_id      => $bibId,
+                        central_server => $central_server,
+                    }
+                );
+            }
         }
     }
     return $errors if $errors;
@@ -454,6 +481,14 @@ sub decontribute_item {
                 # we pick the first one
                 my $THE_error = $iii_errors[0][0];
                 $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+            }
+            else {
+                $self->unmark_item_as_contributed(
+                    {
+                        central_server => $central_server,
+                        item_id        => $itemId,
+                    }
+                );
             }
         }
     }
@@ -1128,6 +1163,194 @@ sub filter_items_by_contributable {
     }
 
     return $items;
+}
+
+=head3 mark_biblio_as_contributed
+
+    $plugin->mark_biblio_as_contributed(
+        {
+            central_server => $central_server,
+            biblio_id      => $biblio_id
+        }
+    );
+
+Method for marking an biblio as contributed.
+
+=cut
+
+sub mark_biblio_as_contributed {
+    my ( $self, $params ) = @_;
+
+    my @mandatory_params = qw(central_server biblio_id);
+    foreach my $param ( @mandatory_params ) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $params->{$param};
+    }
+
+    my $central_server = $params->{central_server};
+    my $biblio_id      = $params->{biblio_id};
+
+    my $dbh = C4::Context->dbh;
+    my $contributed_biblios = $self->plugin->get_qualified_table_name('contributed_biblios');
+
+    my $sth = $dbh->prepare(qq{
+        SELECT COUNT(*) FROM $contributed_biblios
+        WHERE central_server = ?
+          AND biblio_id = ?;
+    });
+
+    $sth->execute($central_server, $biblio_id);
+    my ($count) = $sth->fetchrow_array;
+
+    if ($count) { # update
+        $dbh->do(qq{
+            UPDATE $contributed_biblios
+            SET timestamp=NOW()
+            WHERE central_server='$central_server'
+              AND biblio_id='$biblio_id';
+        });
+    }
+    else { # insert
+        $dbh->do(qq{
+            INSERT INTO $contributed_biblios
+                (  central_server,     biblio_id )
+            VALUES
+                ( '$central_server', '$biblio_id' );
+        });
+    }
+
+    return $self;
+}
+
+=head3 mark_item_as_contributed
+
+    $plugin->mark_item_as_contributed(
+        {
+            central_server => $central_server,
+            item_id        => $item_id
+        }
+    );
+
+Method for marking an item as contributed.
+
+=cut
+
+sub mark_item_as_contributed {
+    my ( $self, $params ) = @_;
+
+    my @mandatory_params = qw(central_server item_id);
+    foreach my $param ( @mandatory_params ) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $params->{$param};
+    }
+
+    my $central_server = $params->{central_server};
+    my $item_id        = $params->{item_id};
+
+    my $dbh = C4::Context->dbh;
+    my $contributed_items = $self->plugin->get_qualified_table_name('contributed_items');
+
+    my $sth = $dbh->prepare(qq{
+        SELECT COUNT(*) FROM $contributed_items
+        WHERE central_server = ?
+          AND item_id = ?;
+    });
+
+    $sth->execute($central_server, $item_id);
+    my ($count) = $sth->fetchrow_array;
+
+    if ($count) { # update
+        $dbh->do(qq{
+            UPDATE $contributed_items
+            SET timestamp=NOW()
+            WHERE central_server='$central_server'
+              AND item_id='$item_id';
+        });
+    }
+    else { # insert
+        $dbh->do(qq{
+            INSERT INTO $contributed_items
+                (  central_server,     item_id )
+            VALUES
+                ( '$central_server', '$item_id' );
+        });
+    }
+
+    return $self;
+}
+
+=head3 unmark_biblio_as_contributed
+
+    $plugin->unmark_biblio_as_contributed(
+        {
+            central_server => $central_server,
+            biblio_id      => $biblio_id
+        }
+    );
+
+Method for marking an biblio as contributed.
+
+=cut
+
+sub unmark_biblio_as_contributed {
+    my ( $self, $params ) = @_;
+
+    my @mandatory_params = qw(central_server biblio_id);
+    foreach my $param ( @mandatory_params ) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $params->{$param};
+    }
+
+    my $central_server = $params->{central_server};
+    my $biblio_id      = $params->{biblio_id};
+
+    my $dbh = C4::Context->dbh;
+    my $contributed_biblios = $self->plugin->get_qualified_table_name('contributed_biblios');
+
+    $dbh->do(qq{
+        DELETE FROM $contributed_biblios
+        WHERE central_server='$central_server'
+          AND      biblio_id='$biblio_id';
+    });
+
+    return $self;
+}
+
+=head3 unmark_item_as_contributed
+
+    $plugin->unmark_item_as_contributed(
+        {
+            central_server => $central_server,
+            item_id        => $item_id
+        }
+    );
+
+Method for marking an item as contributed.
+
+=cut
+
+sub unmark_item_as_contributed {
+    my ( $self, $params ) = @_;
+
+    my @mandatory_params = qw(central_server item_id);
+    foreach my $param ( @mandatory_params ) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $params->{$param};
+    }
+
+    my $central_server = $params->{central_server};
+    my $item_id        = $params->{item_id};
+
+    my $dbh = C4::Context->dbh;
+    my $contributed_items = $self->plugin->get_qualified_table_name('contributed_items');
+
+    $dbh->do(qq{
+        DELETE FROM $contributed_items
+        WHERE central_server='$central_server'
+          AND        item_id='$item_id';
+    });
+
+    return $self;
 }
 
 1;
