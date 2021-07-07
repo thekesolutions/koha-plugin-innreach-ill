@@ -31,7 +31,8 @@ binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
 my $biblio_id;
-my $all_biblios   = 0;
+my $biblios       = 0;
+my $where;
 my $noout         = 0;
 my $exclude_items = 0;
 my $force         = 0;
@@ -44,7 +45,8 @@ my $help;
 
 my $result = GetOptions(
     'biblio_id=s'         => \$biblio_id,
-    'all_biblios'         => \$all_biblios,
+    'biblios'             => \$biblios,
+    'where=s'             => \$where,
     'exclude_items'       => \$exclude_items,
     'force'               => \$force,
     'overwrite_locations' => \$overwrite_locations,
@@ -73,9 +75,9 @@ unless ( $central_server ) {
     exit 1;
 }
 
-if ( $biblio_id and $all_biblios ) {
+if ( $biblio_id and $where ) {
     print_usage();
-    say "--biblio_id and --all are mutually exclussive";
+    say "--biblio_id and --where are mutually exclussive";
     exit 1;
 }
 
@@ -90,8 +92,9 @@ Options:
 
 Record contribution actions:
 
+    --biblios              Triggers biblio contribution
     --biblio_id  id        Only contribute the specified biblio_id
-    --all_biblios          Contribute all records
+    --where                SQL WHERE conditions on biblios
     --exclude_items        Exclude items from this batch update
 
     --decontribute         Tells the tool the action is to decontribute
@@ -115,10 +118,13 @@ unless ( any { $_ eq $central_server } @{$contribution->{centralServers}} ) { # 
     exit 1;
 }
 
-if ( $biblio_id or $all_biblios ) {
+if ( $biblio_id or $biblios ) {
     my $query = {};
     if ($biblio_id) {
         $query = { biblionumber => $biblio_id };
+    }
+    elsif ($where) {
+        $query = \[ $where ];
     }
 
     my $biblios = Koha::Biblios->search($query);
