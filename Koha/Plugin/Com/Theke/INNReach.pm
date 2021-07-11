@@ -148,7 +148,7 @@ sub install {
 
     my $task_queue = $self->get_qualified_table_name('task_queue');
 
-    unless ( !$self->_table_exists( $task_queue ) ) {
+    unless ( $self->_table_exists( $task_queue ) ) {
         C4::Context->dbh->do(qq{
             CREATE TABLE $task_queue (
                 `id`           INT(11) NOT NULL AUTO_INCREMENT,
@@ -170,7 +170,7 @@ sub install {
 
     my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
 
-    unless ( !$self->_table_exists( $agency_to_patron ) ) {
+    unless ( $self->_table_exists( $agency_to_patron ) ) {
         C4::Context->dbh->do(qq{
             CREATE TABLE $agency_to_patron (
                 `central_server` VARCHAR(191) NOT NULL,
@@ -185,7 +185,7 @@ sub install {
 
     my $contributed_biblios = $self->get_qualified_table_name('contributed_biblios');
 
-    unless ( !$self->_table_exists( $contributed_biblios ) ) {
+    unless ( $self->_table_exists( $contributed_biblios ) ) {
         C4::Context->dbh->do(qq{
             CREATE TABLE $contributed_biblios (
                 `central_server` VARCHAR(191) NOT NULL,
@@ -198,7 +198,7 @@ sub install {
 
     my $contributed_items = $self->get_qualified_table_name('contributed_items');
 
-    unless ( !$self->_table_exists( $contributed_items ) ) {
+    unless ( $self->_table_exists( $contributed_items ) ) {
         C4::Context->dbh->do(qq{
             CREATE TABLE $contributed_items (
                 `central_server` VARCHAR(191) NOT NULL,
