@@ -186,7 +186,8 @@ d2ir:
     # Default values for biblios/items configuration
     default_marc_framework: FA
     default_item_type: ILL
-    default_item_ccode:
+    default_item_ccode: GENERAL_STACKS
+    default_notforloan: -1
     default_materials_specified: Additional processing required (ILL)
     default_location:
     default_checkin_note: Additional processing required (ILL)
