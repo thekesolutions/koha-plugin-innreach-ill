@@ -1494,6 +1494,7 @@ sub add_virtual_record_and_item {
     my $framework_code = $config->{default_marc_framework} || 'FA';
     my $ccode          = $config->{default_item_ccode};
     my $location       = $config->{default_location};
+    my $notforloan     = $config->{default_notforloan} // -1;
     my $materials      = $config->{default_materials_specified} || 'Additional processing required (ILL)';
     my $checkin_note   = $config->{default_checkin_note} || 'Additional processing required (ILL)';
 
@@ -1566,6 +1567,7 @@ sub add_virtual_record_and_item {
         ccode            => $ccode,
         location         => $location,
         materials        => $materials,
+        notforloan       => $notforloan,
         itemnotes_nonpublic => $checkin_note,
     };
     my $item_id;
