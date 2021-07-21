@@ -17,6 +17,7 @@ package Koha::Plugin::Com::Theke::INNReach::BibliosController;
 
 use Modern::Perl;
 
+use Encode qw{ encode decode };
 use List::MoreUtils qw(any);
 use MARC::Record;
 use MARC::File::XML;
