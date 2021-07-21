@@ -192,6 +192,11 @@ d2ir:
     default_location:
     default_checkin_note: Additional processing required (ILL)
     default_hold_note: Placed by ILL
+    # Patron validation restrictions
+    debt_blocks_holds: true
+    max_debt_blocks_holds: 100
+    expiration_blocks_holds: true
+    restriction_blocks_holds: true
     # Debugging
     debug_mode: false
 ```

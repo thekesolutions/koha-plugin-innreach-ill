@@ -130,6 +130,11 @@ sub configuration {
 
         push @default_item_types, $configuration->{$centralServer}->{default_item_type}
             if exists $configuration->{$centralServer}->{default_item_type};
+
+        $configuration->{$centralServer}->{debt_blocks_holds} //= 1;
+        $configuration->{$centralServer}->{max_debt_blocks_holds} //= 100;
+        $configuration->{$centralServer}->{expiration_blocks_holds} //= 1;
+        $configuration->{$centralServer}->{restriction_blocks_holds} //= 1;
     }
 
     $configuration->{default_item_types} = \@default_item_types;
