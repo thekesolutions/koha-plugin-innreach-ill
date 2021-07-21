@@ -103,7 +103,8 @@ sub getbibrecord {
             status => 500,
             openapi => {
                 status => 'error',
-                reason => "Internal unhandled error: $_"
+                reason => "Internal unhandled error: $_",
+                errors => []
             }
         );
     };
