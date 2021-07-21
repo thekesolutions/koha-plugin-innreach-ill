@@ -21,7 +21,7 @@ use Encode qw{ encode decode };
 use List::MoreUtils qw(any);
 use MARC::Record;
 use MARC::File::XML;
-use MIME::Base64 qw{ encode_base64url };
+use MIME::Base64 qw{ encode_base64 };
 use Try::Tiny;
 
 use Koha::Biblios;
