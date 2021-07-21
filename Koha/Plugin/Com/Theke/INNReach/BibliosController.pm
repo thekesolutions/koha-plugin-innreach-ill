@@ -48,24 +48,32 @@ sub getbibrecord {
     my $bibId       = $c->validation->param('bibId');
     my $centralCode = $c->validation->param('centralCode');
 
-    my $biblio   = Koha::Biblios->find( $bibId );
-    my $metadata = Koha::Biblio::Metadatas->find(
-        { biblionumber => $bibId, format => 'marcxml', marcflavour => 'marc21' } );
-    my $record = eval { MARC::Record::new_from_xml( $metadata->metadata, 'utf-8', $metadata->marcflavour ); };
+    return try {
 
-    unless ( $biblio and $record ) {
-        my $reason = ( $biblio ) ? 'Problem retrieving object' : 'Object not found';
-        return $c->render(
-            status  => 404,
-            openapi => {
-                status => 'error',
-                reason => $reason,
-                errors => []
+        my $biblio   = Koha::Biblios->find( $bibId );
+        my $metadata = Koha::Biblio::Metadatas->find(
+            {
+                biblionumber => $bibId,
+                format       => 'marcxml',
+                schema       => 'MARC21'
             }
         );
-    }
 
-    return try {
+        my $record = eval {
+            MARC::Record::new_from_xml( $metadata->metadata, 'UTF-8', $metadata->schema );
+        };
+
+        unless ( $biblio and $record ) {
+            my $reason = ( $biblio ) ? 'Problem retrieving object' : 'Object not found';
+            return $c->render(
+                status  => 404,
+                openapi => {
+                    status => 'error',
+                    reason => $reason,
+                    errors => []
+                }
+            );
+        }
 
         my $suppress = 'n'; # expected default
         my $suppress_subfield = $record->subfield('942','n');
@@ -95,7 +103,7 @@ sub getbibrecord {
             status => 500,
             openapi => {
                 status => 'error',
-                reason => 'Internal unhandled error'
+                reason => "Internal unhandled error: $_"
             }
         );
     };
