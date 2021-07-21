@@ -51,19 +51,8 @@ sub getbibrecord {
     return try {
 
         my $biblio   = Koha::Biblios->find( $bibId );
-        my $metadata = Koha::Biblio::Metadatas->find(
-            {
-                biblionumber => $bibId,
-                format       => 'marcxml',
-                schema       => 'MARC21'
-            }
-        );
 
-        my $record = eval {
-            MARC::Record::new_from_xml( $metadata->metadata, 'UTF-8', $metadata->schema );
-        };
-
-        unless ( $biblio and $record ) {
+        unless ( $biblio ) {
             my $reason = ( $biblio ) ? 'Problem retrieving object' : 'Object not found';
             return $c->render(
                 status  => 404,
@@ -75,12 +64,32 @@ sub getbibrecord {
             );
         }
 
+        my $record = $biblio->metadata->record;
+
+        unless ( $record ) {
+            my $reason = ( $record ) ? 'Problem retrieving object' : 'Object not found';
+            return $c->render(
+                status  => 404,
+                openapi => {
+                    status => 'error',
+                    reason => $reason,
+                    errors => []
+                }
+            );
+        }
+
+        # Got the biblio, POST it
         my $suppress = 'n'; # expected default
         my $suppress_subfield = $record->subfield('942','n');
         if ( $suppress_subfield ) {
             $suppress = 'y';
         }
-        my $encoded_record = encode_base64url( $record->as_usmarc );
+
+        # delete all local fields ("Omit 9XX fields" rule)
+        my @local = $record->field('9..');
+        $record->delete_fields(@local);
+        # Encode ISO2709 record
+        my $encoded_record = encode_base64( encode("UTF-8",$record->as_usmarc), "" );
 
         return $c->render(
             status  => 200,
