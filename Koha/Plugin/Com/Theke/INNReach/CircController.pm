@@ -1497,6 +1497,7 @@ sub add_virtual_record_and_item {
     my $notforloan     = $config->{default_notforloan} // -1;
     my $materials      = $config->{default_materials_specified} || 'Additional processing required (ILL)';
     my $checkin_note   = $config->{default_checkin_note} || 'Additional processing required (ILL)';
+    my $normalizers    = $config->{default_barcode_normalizers} // [];
 
     # determine the right item types
     my $item_type;

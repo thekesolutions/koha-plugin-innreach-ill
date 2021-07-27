@@ -134,4 +134,20 @@ sub remove_all_spaces {
     return $self;
 }
 
+=head3 available_normalizers
+
+Returns an arrayref of the valid normalizer names. To be used
+to validate configuration.
+
+=cut
+
+sub available_normalizers {
+    return [
+        'ltrim',
+        'rtrim',
+        'trim',
+        'remove_all_spaces',
+    ];
+}
+
 1;
