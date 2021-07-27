@@ -18,6 +18,7 @@ package Koha::Plugin::Com::Theke::INNReach::CircController;
 use Modern::Perl;
 
 use DateTime;
+use List::MoreUtils qw(any);
 use Try::Tiny;
 
 use C4::Biblio qw(AddBiblio);
@@ -1497,7 +1498,22 @@ sub add_virtual_record_and_item {
     my $notforloan     = $config->{default_notforloan} // -1;
     my $materials      = $config->{default_materials_specified} || 'Additional processing required (ILL)';
     my $checkin_note   = $config->{default_checkin_note} || 'Additional processing required (ILL)';
-    my $normalizers    = $config->{default_barcode_normalizers} // [];
+
+    my $default_normalizers = $config->{default_barcode_normalizers} // [];
+
+    my $normalizer = Koha::Plugin::Com::Theke::INNReach::Normalizer->new({ string => $barcode });
+
+    foreach my $method (@{$default_normalizers}) {
+        unless ( any { $_ eq $method } @{$normalizer->available_normalizers} ) {
+            # not a valid normalizer
+            warn "Invalid barcode normalizer configured: $method";
+        }
+        else {
+            $normalizer->$method;
+        }
+    }
+
+    $barcode = $normalizer->get_string;
 
     # determine the right item types
     my $item_type;

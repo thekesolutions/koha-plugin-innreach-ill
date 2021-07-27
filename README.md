@@ -185,6 +185,11 @@ d2ir:
             ccode: [ a, b, c ]
     # Default values for biblios/items configuration
     default_marc_framework: FA
+    default_barcode_normalizers:
+        - remove_all_spaces
+        - trim
+        - ltrim
+        - rtrim
     default_item_type: ILL
     default_item_ccode: GENERAL_STACKS
     default_notforloan: -1
