@@ -21,6 +21,7 @@ use DateTime;
 use List::MoreUtils qw(any);
 use Try::Tiny;
 
+use CGI;
 use C4::Biblio qw(AddBiblio);
 use C4::Items;
 use C4::Reserves qw(AddReserve CanItemBeReserved);
@@ -1382,6 +1383,78 @@ sub transferrequest {
     }
     catch {
         return $c->render( status => 500, openapi => { error => 'Some error' } );
+    };
+}
+
+=head3 get_print_slip
+
+Given an ILL request id and a letter code, this method returns the HTML required to
+generate a print slip for an ILL request.
+
+=cut
+
+sub get_print_slip {
+    my $c = shift->openapi->valid_input or return;
+
+    my $illrequest_id = $c->validation->param('illrequest_id');
+    my $print_slip_id = $c->validation->param('print_slip_id');
+
+    try {
+
+        my $plugin = Koha::Plugin::Com::Theke::INNReach->new();
+
+        $plugin->{cgi} = CGI->new; # required by C4::Auth::gettemplate and friends
+        my $template = $plugin->get_template({ file => 'print_slip.tt' });
+
+        my $req = Koha::Illrequests->find( $illrequest_id );
+
+        # Koha::Illrequest->get_notice with hardcoded letter_code
+        my $title     = $req->illrequestattributes->find({ type => 'title' });
+        my $author    = $req->illrequestattributes->find({ type => 'author' });
+        my $metahash  = $req->metadata;
+        my @metaarray = ();
+
+        while (my($key, $value) = each %{$metahash}) {
+            push @metaarray, "- $key: $value" if $value;
+        }
+
+        my $metastring = join("\n", @metaarray);
+
+        my $slip = C4::Letters::GetPreparedLetter(
+            module                 => 'ill',
+            letter_code            => 'ILL_SHIPPING_SLIP',
+            branchcode             => $req->branchcode,
+            message_transport_type => 'print',
+            lang                   => $req->patron->lang,
+            tables                 => {
+                illrequests => $req->illrequest_id,
+                borrowers   => $req->borrowernumber,
+                biblio      => $req->biblio_id,
+                branches    => $req->branchcode,
+            },
+            substitute  => {
+                ill_bib_title      => $title ? $title->value : '',
+                ill_bib_author     => $author ? $author->value : '',
+                ill_full_metadata  => $metastring
+            }
+        );
+        # / Koha::Illrequest->get_notice
+
+        $template->param(
+            slip  => $slip->{content},
+            title => $slip->{title},
+        );
+
+        return $c->render(
+            status => 200,
+            data   => $template->output()
+        );
+    }
+    catch {
+        return $c->render(
+            status  => 500,
+            openapi => { error => "No se: $_" }
+        );
     };
 }
 
