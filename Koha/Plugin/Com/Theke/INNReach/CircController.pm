@@ -38,6 +38,7 @@ use Koha::Illbackends::INNReach::Base;
 use Koha::Illrequests;
 use Koha::Illrequestattributes;
 use Koha::Plugin::Com::Theke::INNReach;
+use Koha::Plugin::Com::Theke::INNReach::Normalizer;
 
 use Mojo::Base 'Mojolicious::Controller';
 
@@ -1415,6 +1416,12 @@ sub get_print_slip {
             );
         }
 
+        my $illrequestattributes = {};
+        my $attributes = $req->illrequestattributes;
+        while ( my $attribute = $attributes->next ) {
+            $illrequestattributes->{$attribute->type} = $attribute->value;
+        }
+
         # Koha::Illrequest->get_notice with hardcoded letter_code
         my $title     = $req->illrequestattributes->find({ type => 'title' });
         my $author    = $req->illrequestattributes->find({ type => 'author' });
@@ -1440,10 +1447,11 @@ sub get_print_slip {
                 branches    => $req->branchcode,
             },
             substitute  => {
-                illrequest         => $req->unblessed, # FIXME: should be removed in 20.11+
-                ill_bib_title      => $title ? $title->value : '',
-                ill_bib_author     => $author ? $author->value : '',
-                ill_full_metadata  => $metastring
+                illrequestattributes => $illrequestattributes,
+                illrequest           => $req->unblessed, # FIXME: should be removed in 20.11+
+                ill_bib_title        => $title ? $title->value : '',
+                ill_bib_author       => $author ? $author->value : '',
+                ill_full_metadata    => $metastring
             }
         );
         # / Koha::Illrequest->get_notice
