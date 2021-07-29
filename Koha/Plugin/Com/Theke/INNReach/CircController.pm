@@ -17,6 +17,8 @@ package Koha::Plugin::Com::Theke::INNReach::CircController;
 
 use Modern::Perl;
 
+use utf8;
+
 use DateTime;
 use List::MoreUtils qw(any);
 use Try::Tiny;
@@ -25,6 +27,7 @@ use CGI;
 use C4::Biblio qw(AddBiblio);
 use C4::Items;
 use C4::Reserves qw(AddReserve CanItemBeReserved);
+use Encode;
 
 use Koha::Biblios;
 use Koha::Checkouts;
@@ -1463,7 +1466,7 @@ sub get_print_slip {
 
         return $c->render(
             status => 200,
-            data   => $template->output()
+            data   => Encode::encode('UTF-8', $template->output())
         );
     }
     catch {
