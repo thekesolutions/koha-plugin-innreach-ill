@@ -1408,6 +1408,13 @@ sub get_print_slip {
 
         my $req = Koha::Illrequests->find( $illrequest_id );
 
+        unless ($req) {
+            return $c->render(
+                status  => 404,
+                openapi => { error => 'Object not found' }
+            );
+        }
+
         # Koha::Illrequest->get_notice with hardcoded letter_code
         my $title     = $req->illrequestattributes->find({ type => 'title' });
         my $author    = $req->illrequestattributes->find({ type => 'author' });
