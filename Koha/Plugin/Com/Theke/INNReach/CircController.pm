@@ -1437,6 +1437,27 @@ sub get_print_slip {
 
         my $metastring = join("\n", @metaarray);
 
+        my $item_id;
+        if ( $req->status =~ /^O_/ ) {
+            # 'lending'
+            my $item_id_attr = $req->illrequestattributes->find({ type => 'itemId' });
+            $item_id = ($item_id_attr) ? $item_id_attr->value : '';
+        }
+        elsif ( $req->status =~ /^B_/ ) {
+            # 'borrowing' (itemId is the lending system's, use itemBarcode instead)
+            my $barcode_attr = $req->illrequestattributes->find({ type => 'itemBarcode' });
+            my $barcode = ($barcode_attr) ? $barcode_attr->value : '';
+            if ( $barcode ) {
+                if ( Koha::Items->search({ barcode => $barcode })->count > 0 ) {
+                    my $item = Koha::Items->search({ barcode => $barcode })->next;
+                    $item_id = $item->id;
+                }
+            }
+        }
+        else {
+            warn "Not sure where I am";
+        }
+
         my $slip = C4::Letters::GetPreparedLetter(
             module                 => 'circulation', # FIXME: should be 'ill' in 20.11+
             letter_code            => $print_slip_id,
@@ -1447,6 +1468,7 @@ sub get_print_slip {
                 # illrequests => $req->illrequest_id, # FIXME: should be used in 20.11+
                 borrowers   => $req->borrowernumber,
                 biblio      => $req->biblio_id,
+                item        => $item_id,
                 branches    => $req->branchcode,
             },
             substitute  => {
