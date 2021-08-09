@@ -538,7 +538,7 @@ sub cancel_request {
     }
 
     # Make sure we notify the item status
-    $self->plugin->schedule_task(
+    $self->{plugin}->schedule_task(
         {
             action         => 'modify',
             central_server => $centralCode,
