@@ -1027,6 +1027,12 @@ sub item_circ_status {
     elsif ( $item->notforloan ) {
         $status = 'Non-Lendable';
     }
+    elsif ( !C4::Context->preference('AllowHoldsOnDamagedItems') && $item->damaged ) {
+        $status = 'Non-Lendable';
+    }
+    elsif ( $item->itemlost ) {
+        $status = 'Not Available';
+    }
 
     return $status;
 }
