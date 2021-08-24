@@ -43,6 +43,7 @@ my $update_location;
 my $central_server;
 my $recontribution;
 my $only_items;
+my $all;
 my $help;
 
 my $result = GetOptions(
@@ -59,6 +60,7 @@ my $result = GetOptions(
     'central_server=s'    => \$central_server,
     'recontribution'      => \$recontribution,
     'only_items'          => \$only_items,
+    'all'                 => \$all,
     'help'                => \$help,
 );
 
@@ -106,7 +108,9 @@ Record contribution actions:
 
 Recontribution option:
 
+    --all                  Recontribute everything
     --only-items           Only recontribute items
+    --only-biblios         Only recontribute biblios (NOT IMPLEMENTED)
 
 Locations actions:
 
@@ -260,7 +264,7 @@ if ( $update_location ) {
 }
 
 if ( $recontribution ) {
-    if ( $only_items ) {
+    if ( $all or $only_items ) {
         # remove items to be de-contributed
         my $deleted_contributed_items = $contribution->get_deleted_contributed_items(
             {
@@ -314,6 +318,32 @@ if ( $recontribution ) {
             }
         }
 
+        my $items_to_recontribute = $contribution->filter_items_by_contributed(
+            {
+                central_server => $central_server,
+                items          => Koha::Items->new,
+            }
+        );
+
+        print STDOUT "# Recontributing items:\n"
+            unless $noout;
+
+        while( my $item = $items_to_recontribute->next ) {
+            my $errors = $contribution->decontribute_item(
+                {
+                    centralServer => $central_server,
+                    itemId        => $item->id,
+                }
+            );
+            if ( $errors->{$central_server} ) {
+                print STDOUT "\t" . $item->id . "\t> Error (" . $errors->{$central_server} . ")\n"
+                    unless $noout;
+            }
+            else {
+                print STDOUT "\t" . $item->id . "\t> Ok\n"
+                    unless $noout;
+            }
+        }
     }
 }
 
