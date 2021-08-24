@@ -1171,6 +1171,154 @@ sub filter_items_by_contributable {
     return $items;
 }
 
+=head3 filter_items_by_contributed
+
+    my $items = $contribution->filter_items_by_contributed(
+        {
+            items => $biblio->items,
+            central_server => $central_server
+        }
+    );
+
+Given a I<Koha::Items> iterator and a I<central server code>, it returns a new resultset,
+filtered by items that have been contributed to the specified central server.
+
+=cut
+
+sub filter_items_by_contributed {
+    my ( $self, $params ) = @_;
+
+    my $items = $params->{items};
+
+    INNReach::Ill::MissingParameter->throw( param => 'items' )
+        unless $items;
+
+    my $central_server = $params->{central_server};
+
+    INNReach::Ill::MissingParameter->throw( param => 'central_server' )
+        unless $central_server;
+
+    INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
+        unless any { $_ eq $central_server } @{$self->{centralServers}};
+
+    my $dbh = C4::Context->dbh;
+    my $contributed_items = $self->plugin->get_qualified_table_name('contributed_items');
+
+    my @item_ids = map { $_->[0] } $dbh->selectall_array(qq{
+        SELECT item_id FROM $contributed_items
+        WHERE central_server = ?;
+    }, undef, $central_server);
+
+    return $items->search(
+        {
+            itemnumber => \@item_ids
+        }
+    );
+}
+
+=head3 filter_items_by_to_be_decontributed
+
+    my $items = $contribution->filter_items_by_to_be_decontributed(
+        {
+            items => $biblio->items,
+            central_server => $central_server
+        }
+    );
+
+Given a I<Koha::Items> iterator and a I<central server code>, it returns a new resultset,
+filtered by items that have been contributed and should be decontributed from the specified
+central server.
+
+=cut
+
+sub filter_items_by_to_be_decontributed {
+    my ( $self, $params ) = @_;
+
+    my $items = $params->{items};
+
+    INNReach::Ill::MissingParameter->throw( param => 'items' )
+        unless $items;
+
+    my $central_server = $params->{central_server};
+
+    INNReach::Ill::MissingParameter->throw( param => 'central_server' )
+        unless $central_server;
+
+    INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
+        unless any { $_ eq $central_server } @{$self->{centralServers}};
+
+    $items = $self->filter_items_by_contributed(
+        {
+            central_server => $central_server,
+            items          => $items,
+        }
+    );
+
+    my $configuration = $self->config->{$central_server};
+
+    if ( exists $configuration->{contribution}->{included_items} ) {
+        # Allow-list case, overrides any deny-list setup
+        if ( $configuration->{contribution}->{included_items} ) {
+            # there are rules!
+            $items = $items->search({ '-not' => $configuration->{contribution}->{included_items} });
+        }
+    }
+    else {
+        # Deny-list case
+        if ( $configuration->{contribution}->{excluded_items} ) {
+            # there are rules!
+            $items = $items->search( $configuration->{contribution}->{excluded_items} );
+        }
+        else {
+            $items = $items->empty;
+        }
+    }
+
+    return $items->search;
+}
+
+=head3 get_deleted_contributed_items
+
+    my $item_ids = $contribution->get_deleted_contributed_items(
+        {
+            central_server => $central_server,
+        }
+    );
+
+Given a I<central server code>, it returns a list of item ids,
+filtered by items that have been contributed to the specified central server
+and are no longer present on the database.
+
+=cut
+
+sub get_deleted_contributed_items {
+    my ( $self, $params ) = @_;
+
+    my $central_server = $params->{central_server};
+
+    INNReach::Ill::MissingParameter->throw( param => 'central_server' )
+        unless $central_server;
+
+    INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
+        unless any { $_ eq $central_server } @{$self->{centralServers}};
+
+    my $dbh = C4::Context->dbh;
+    my $contributed_items = $self->plugin->get_qualified_table_name('contributed_items');
+
+    my @item_ids = map { $_->[0] } $dbh->selectall_array(qq{
+        SELECT item_id FROM
+        (
+          (SELECT item_id
+           FROM $contributed_items
+           WHERE central_server=?) b
+          LEFT JOIN items
+          ON (items.itemnumber=b.item_id)
+        ) WHERE items.itemnumber IS NULL;
+    }, undef, $central_server);
+
+    return \@item_ids;
+}
+
 =head3 mark_biblio_as_contributed
 
     $plugin->mark_biblio_as_contributed(
