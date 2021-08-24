@@ -41,6 +41,8 @@ my $decontribute;
 my $delete_location;
 my $update_location;
 my $central_server;
+my $recontribution;
+my $only_items;
 my $help;
 
 my $result = GetOptions(
@@ -55,6 +57,8 @@ my $result = GetOptions(
     'update_location=s'   => \$update_location,
     'noout'               => \$noout,
     'central_server=s'    => \$central_server,
+    'recontribution'      => \$recontribution,
+    'only_items'          => \$only_items,
     'help'                => \$help,
 );
 
@@ -89,6 +93,7 @@ Options:
     --central_server       Contribute to the specified central server (mandatory)
     --noout                No output
     --force                Force action (check the code for cases)
+    --recontribution       Work in recontribution mode
 
 Record contribution actions:
 
@@ -98,6 +103,10 @@ Record contribution actions:
     --exclude_items        Exclude items from this batch update
 
     --decontribute         Tells the tool the action is to decontribute
+
+Recontribution option:
+
+    --only-items           Only recontribute items
 
 Locations actions:
 
@@ -248,6 +257,64 @@ if ( $update_location ) {
             centralServer => $central_server
         }
     );
+}
+
+if ( $recontribution ) {
+    if ( $only_items ) {
+        # remove items to be de-contributed
+        my $deleted_contributed_items = $contribution->get_deleted_contributed_items(
+            {
+                central_server => $central_server,
+            }
+        );
+
+        print STDOUT "# Decontributing (deleted) items:\n"
+            unless $noout;
+
+        foreach my $item_id ( @{$deleted_contributed_items} ) {
+            my $errors = $contribution->decontribute_item(
+                {
+                    centralServer => $central_server,
+                    itemId        => $item_id,
+                }
+            );
+            if ( $errors->{$central_server} ) {
+                print STDOUT "\t$item_id\t> Error (" . $errors->{$central_server} . ")\n"
+                    unless $noout;
+            }
+            else {
+                print STDOUT "\t$item_id\t> Ok\n"
+                    unless $noout;
+            }
+        }
+
+        my $items_to_be_decontributed = $contribution->filter_items_by_to_be_decontributed(
+            {
+                central_server => $central_server,
+            }
+        );
+
+        print STDOUT "# Decontributing items (rules):\n"
+            unless $noout;
+
+        while( my $item = $items_to_be_decontributed->next ) {
+            my $errors = $contribution->decontribute_item(
+                {
+                    centralServer => $central_server,
+                    itemId        => $item->id,
+                }
+            );
+            if ( $errors->{$central_server} ) {
+                print STDOUT "\t" . $item->id . "\t> Error (" . $errors->{$central_server} . ")\n"
+                    unless $noout;
+            }
+            else {
+                print STDOUT "\t" . $item->id . "\t> Ok\n"
+                    unless $noout;
+            }
+        }
+
+    }
 }
 
 1;
