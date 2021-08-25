@@ -481,6 +481,14 @@ sub decontribute_item {
                 # we pick the first one
                 my $THE_error = $iii_errors[0][0];
                 $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+                if ( any { $_ =~ m/No item record found with specified recid/ } @{$THE_error->{messages}} ) {
+                    $self->unmark_item_as_contributed(
+                        {
+                            central_server => $central_server,
+                            item_id        => $itemId,
+                        }
+                    );
+                }
             }
             else {
                 $self->unmark_item_as_contributed(

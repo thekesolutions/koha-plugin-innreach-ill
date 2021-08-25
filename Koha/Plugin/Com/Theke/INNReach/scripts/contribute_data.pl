@@ -272,49 +272,54 @@ if ( $recontribution ) {
             }
         );
 
-        print STDOUT "# Decontributing (deleted) items:\n"
-            unless $noout;
+        if ( scalar @{$deleted_contributed_items} > 0 )  {
+            print STDOUT "# Decontributing (deleted) items:\n"
+                unless $noout;
 
-        foreach my $item_id ( @{$deleted_contributed_items} ) {
-            my $errors = $contribution->decontribute_item(
-                {
-                    centralServer => $central_server,
-                    itemId        => $item_id,
+            foreach my $item_id ( @{$deleted_contributed_items} ) {
+                my $errors = $contribution->decontribute_item(
+                    {
+                        centralServer => $central_server,
+                        itemId        => $item_id,
+                    }
+                );
+                if ( $errors->{$central_server} ) {
+                    print STDOUT "\t$item_id\t> Error (" . $errors->{$central_server} . ")\n"
+                        unless $noout;
                 }
-            );
-            if ( $errors->{$central_server} ) {
-                print STDOUT "\t$item_id\t> Error (" . $errors->{$central_server} . ")\n"
-                    unless $noout;
-            }
-            else {
-                print STDOUT "\t$item_id\t> Ok\n"
-                    unless $noout;
+                else {
+                    print STDOUT "\t$item_id\t> Ok\n"
+                        unless $noout;
+                }
             }
         }
 
         my $items_to_be_decontributed = $contribution->filter_items_by_to_be_decontributed(
             {
                 central_server => $central_server,
+                items          => Koha::Items->new,
             }
         );
 
-        print STDOUT "# Decontributing items (rules):\n"
-            unless $noout;
+        if ( $items_to_be_decontributed->count > 0 ) {
+            print STDOUT "# Decontributing items (rules):\n"
+                unless $noout;
 
-        while( my $item = $items_to_be_decontributed->next ) {
-            my $errors = $contribution->decontribute_item(
-                {
-                    centralServer => $central_server,
-                    itemId        => $item->id,
+            while( my $item = $items_to_be_decontributed->next ) {
+                my $errors = $contribution->decontribute_item(
+                    {
+                        centralServer => $central_server,
+                        itemId        => $item->id,
+                    }
+                );
+                if ( $errors->{$central_server} ) {
+                    print STDOUT "\t" . $item->id . "\t> Error (" . $errors->{$central_server} . ")\n"
+                        unless $noout;
                 }
-            );
-            if ( $errors->{$central_server} ) {
-                print STDOUT "\t" . $item->id . "\t> Error (" . $errors->{$central_server} . ")\n"
-                    unless $noout;
-            }
-            else {
-                print STDOUT "\t" . $item->id . "\t> Ok\n"
-                    unless $noout;
+                else {
+                    print STDOUT "\t" . $item->id . "\t> Ok\n"
+                        unless $noout;
+                }
             }
         }
 
@@ -325,23 +330,26 @@ if ( $recontribution ) {
             }
         );
 
-        print STDOUT "# Recontributing items:\n"
-            unless $noout;
+        if ( $items_to_recontribute->count > 0 ) {
+            print STDOUT "# Recontributing items:\n"
+                unless $noout;
 
-        while( my $item = $items_to_recontribute->next ) {
-            my $errors = $contribution->decontribute_item(
-                {
-                    centralServer => $central_server,
-                    itemId        => $item->id,
+            while( my $item = $items_to_recontribute->next ) {
+                my $errors = $contribution->contribute_batch_items(
+                    {
+                        centralServer => $central_server,
+                        bibId         => $item->biblionumber,
+                        item          => $item,
+                    }
+                );
+                if ( $errors->{$central_server} ) {
+                    print STDOUT "\t" . $item->id . "\t> Error (" . $errors->{$central_server} . ")\n"
+                        unless $noout;
                 }
-            );
-            if ( $errors->{$central_server} ) {
-                print STDOUT "\t" . $item->id . "\t> Error (" . $errors->{$central_server} . ")\n"
-                    unless $noout;
-            }
-            else {
-                print STDOUT "\t" . $item->id . "\t> Ok\n"
-                    unless $noout;
+                else {
+                    print STDOUT "\t" . $item->id . "\t> Ok\n"
+                        unless $noout;
+                }
             }
         }
     }
