@@ -116,7 +116,7 @@ sub verifypatron {
 
     # Borrowed from SIP/Patron.pm
     my $fines_amount = ($patron->account->balance > 0) ? $patron->account->balance : 0;
-    my $debt_blocks_holds = defined $configuration->{debt_blocks_holds} and $configuration->{debt_blocks_holds} eq 'true';
+    my $debt_blocks_holds = ( defined $configuration->{debt_blocks_holds} and $configuration->{debt_blocks_holds} eq 'true' ) ? 1 : 0;
     my $max_debt_blocks_holds = $configuration->{max_debt_blocks_holds};
 
     my $max_fees = $max_debt_blocks_holds // C4::Context->preference('maxoutstanding') + 0;
