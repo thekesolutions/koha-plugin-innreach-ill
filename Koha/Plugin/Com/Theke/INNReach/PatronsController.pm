@@ -116,7 +116,7 @@ sub verifypatron {
 
     # Borrowed from SIP/Patron.pm
     my $fines_amount = ($patron->account->balance > 0) ? $patron->account->balance : 0;
-    my $debt_blocks_holds     = $configuration->{debt_blocks_holds};
+    my $debt_blocks_holds = defined $configuration->{debt_blocks_holds} and $configuration->{debt_blocks_holds} eq 'true';
     my $max_debt_blocks_holds = $configuration->{max_debt_blocks_holds};
 
     my $max_fees = $max_debt_blocks_holds // C4::Context->preference('maxoutstanding') + 0;
@@ -152,11 +152,19 @@ sub verifypatron {
 
     push @errors, 'Patron authentication failure.' unless $pass_valid;
 
-    if ( $configuration->{restriction_blocks_holds} and $patron->is_debarred ) {
+    if (     defined $configuration->{restriction_blocks_holds}
+         and $configuration->{restriction_blocks_holds} eq 'true'
+         and $patron->is_debarred
+        )
+    {
         push @errors, 'The patron is restricted.';
     }
 
-    if ( $configuration->{expiration_blocks_holds} and $patron->is_expired ) {
+    if (     defined $configuration->{expiration_blocks_holds}
+         and $configuration->{expiration_blocks_holds} eq 'true'
+         and $patron->is_expired
+       )
+    {
         push @errors, 'The patron has expired.';
     }
 
