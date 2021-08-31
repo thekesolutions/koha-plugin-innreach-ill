@@ -83,9 +83,9 @@ my @item_ids = map { $_->[0] } $dbh->selectall_array(qq{
     WHERE central_server = ?;
 }, undef, $central_server);
 
-if ( scalar @items > 0 ) {
+if ( scalar @item_ids > 0 ) {
     print STDOUT "# Syncing items:\n";
-    foreach my $item_id ( @items ) {
+    foreach my $item_id ( @item_ids ) {
         try {
             my $result = $contribution->update_item_status(
                 {
