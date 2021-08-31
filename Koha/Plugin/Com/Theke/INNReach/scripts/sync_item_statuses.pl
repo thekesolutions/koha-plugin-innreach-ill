@@ -93,6 +93,13 @@ if ( scalar @item_ids > 0 ) {
                     centralServer => $central_server,
                 }
             );
+            if ( $result ) {
+                warn p($result);
+                print STDOUT "\t$item_id\t => ERROR\n"
+            }
+            else {
+                print STDOUT "\t$item_id\t => OK\n"
+            }
         }
         catch {
             warn "$_";
