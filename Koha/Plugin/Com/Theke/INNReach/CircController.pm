@@ -944,6 +944,10 @@ sub itemshipped {
         return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
             unless $req;
 
+        # catch duplicate itemshipped requests found in the wild.
+        return $c->out_of_sequence({ current_status => 'B_ITEM_SHIPPED', requested_status => 'B_ITEM_SHIPPED' })
+            unless $req->status eq 'B_ITEM_REQUESTED';
+
         my $config = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
 
         my $schema = Koha::Database->new->schema;
@@ -1768,6 +1772,36 @@ sub invalid_request_id {
                     reason        => "Invalid record key",
                     name          => "trackingId",
                     rejectedValue => $args->{trackingId}
+                }
+            ]
+        }
+    );
+}
+
+=head3 out_of_sequence
+
+Helper method for rendering invalid centralCode+transactionId combination
+errors.
+
+=cut
+
+sub out_of_sequence {
+    my ($self, $args) = @_;
+
+    my $current_status   = $args->{current_status};
+    my $requested_status = $args->{requested_status};
+
+    return $self->render(
+        status  => 409,
+        openapi => {
+            status => 'failed',
+            reason => 'The request is out of sequence',
+            errors => [
+                {
+                    type          => "StatusSequenceError",
+                    reason        => "The requested status ($requested_status) is not valid after ($current_status)",
+                    name          => "status",
+                    rejectedValue => $requested_status,
                 }
             ]
         }
