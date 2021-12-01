@@ -212,14 +212,7 @@ sub itemhold {
         );
     }
     catch {
-        return $c->render(
-            status => 500,
-            openapi => {
-                status => 'error',
-                reason => "Internal error ($_)",
-                errors => []
-            }
-        );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -382,14 +375,7 @@ sub localhold {
         );
     }
     catch {
-        return $c->render(
-            status => 500,
-            openapi => {
-                status => 'error',
-                reason => "Internal error ($_)",
-                errors => []
-            }
-        );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -444,14 +430,7 @@ sub itemreceived {
         );
     }
     catch {
-        return $c->render(
-            status => 500,
-            openapi => {
-                status => 'error',
-                reason => "Internal error ($_)",
-                errors => []
-            }
-        );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -506,14 +485,7 @@ sub intransit {
         );
     }
     catch {
-        return $c->render(
-            status => 500,
-            openapi => {
-                status => 'error',
-                reason => "Internal error ($_)",
-                errors => []
-            }
-        );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -569,14 +541,7 @@ sub returnuncirculated {
         );
     }
     catch {
-        return $c->render(
-            status => 500,
-            openapi => {
-                status => 'error',
-                reason => "Internal error ($_)",
-                errors => []
-            }
-        );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -650,14 +615,7 @@ sub cancelitemhold {
         );
     }
     catch {
-        return $c->render(
-            status  => 500,
-            openapi => {
-                status => 'error',
-                reason => '',
-                errors => [ "$_" ]
-            }
-        );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -711,14 +669,7 @@ sub ownerrenew {
         );
     }
     catch {
-        return $c->render(
-            status  => 500,
-            openapi => {
-                status => 'failed',
-                reason => "Unknown error: $_",
-                errors => []
-            }
-        );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -792,14 +743,7 @@ sub claimsreturned {
         );
     }
     catch {
-        return $c->render(
-            status => 500,
-            openapi => {
-                status => 'error',
-                reason => 'Internal error',
-                errors => []
-            }
-        );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -902,14 +846,7 @@ sub patronhold {
         );
     }
     catch {
-        return $c->render(
-            status => 500,
-            openapi => {
-                status => 'error',
-                reason => "Internal error ($_)",
-                errors => []
-            }
-        );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -1041,14 +978,7 @@ sub itemshipped {
         );
     }
     catch {
-        return $c->render(
-            status => 500,
-            openapi => {
-                status => 'error',
-                reason => "Internal error ($_)",
-                errors => []
-            }
-        );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -1085,14 +1015,7 @@ sub finalcheckin {
         );
     }
     catch {
-        return $c->render(
-            status => 500,
-            openapi => {
-                status => 'error',
-                reason => "Internal error ($_)",
-                errors => []
-            }
-        );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -1145,7 +1068,7 @@ sub recall {
         );
     }
     catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -1178,12 +1101,7 @@ sub local_checkin {
         );
     }
     catch {
-        return $c->render(
-            status  => 500,
-            openapi => {
-                error => "Internal server error ($_)"
-            }
-        );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -1232,7 +1150,7 @@ sub borrowerrenew {
         );
     }
     catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -1296,14 +1214,7 @@ sub cancelrequest {
         );
     }
     catch {
-        return $c->render(
-            status => 500,
-            openapi => {
-                status => 'error',
-                reason => 'Internal error',
-                errors => []
-            }
-        );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -1339,7 +1250,7 @@ sub receiveunshipped {
         );
     }
     catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -1390,7 +1301,7 @@ sub transferrequest {
         );
     }
     catch {
-        return $c->render( status => 500, openapi => { error => 'Some error' } );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -1496,10 +1407,7 @@ sub get_print_slip {
         );
     }
     catch {
-        return $c->render(
-            status  => 500,
-            openapi => { error => "No se: $_" }
-        );
+        return $c->unhandled_innreach_exception($_);
     };
 }
 
@@ -1646,11 +1554,12 @@ sub add_virtual_record_and_item {
     }
 
     unless ( $item_type ) {
+        $c->innreach_warn("'default_item_type' entry missing in configuration");
         return $c->render(
             status => 500,
             openapi => {
                 status => 'error',
-                reason => "'default_item_type' entry missing",
+                reason => "'default_item_type' entry missing in configuration",
                 errors => []
             }
         );
@@ -1806,6 +1715,39 @@ sub out_of_sequence {
             ]
         }
     );
+}
+
+=head3 unhandled_innreach_exception
+
+Helper method for rendering unhandled exceptions correctly
+
+=cut
+
+sub unhandled_innreach_exception {
+    my ( $self, $exception ) = @_;
+
+    $self->innreach_warn($exception);
+
+    return $self->render(
+        status  => 500,
+        openapi => {
+            status => 'error',
+            reason => 'Unhandled Koha exception',
+            errors => [ "$exception" ],
+        }
+    );
+}
+
+=head3 innreach_warn
+
+Helper method for logging warnings for the INN-Reach plugin
+
+=cut
+
+sub innreach_warn {
+    my ( $self, $warning ) = @_;
+
+    warn "innreach plugin warn: $warning";
 }
 
 1;
