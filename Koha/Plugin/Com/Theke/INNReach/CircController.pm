@@ -41,15 +41,10 @@ use Koha::Illbackends::INNReach::Base;
 use Koha::Illrequests;
 use Koha::Illrequestattributes;
 use Koha::Plugin::Com::Theke::INNReach;
+use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 use Koha::Plugin::Com::Theke::INNReach::Normalizer;
 
 use Mojo::Base 'Mojolicious::Controller';
-
-use Exception::Class (
-  'INNReach::Circ',
-  'INNReach::Circ::BadPickupLocation'  => { isa => 'INNReach::Circ', fields => ['value'] },
-  'INNReach::Circ::UnkownBarcode'      => { isa => 'INNReach::Circ', fields => ['barcode'] }
-);
 
 =head1 Koha::Plugin::Com::Theke::INNReach::CircController
 
