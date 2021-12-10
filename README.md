@@ -218,6 +218,7 @@ d2ir:
 * __central_to_local_itype__: Hash for mapping central server's item types into locally defined ones. This is useful for being able to define special circ rules for each material type that comes via ILL. It defaults to the value from __default_item_type__ if not defined.
 * __local_to_central_patron_type__: Hash for mapping Koha's patron categories into INN-Reach-defined ones. See the [kick-off checklist](#kick-off-checklist).
 * __contribution__: Data contribution specific settings. _max_retries_ defines how many retries are to be accepted before failing to contribute a record/item.
+* __debt_blocks_holds__ and __max_debt_blocks_holds__: This settings are curently used on patron validation. If __debt_blocks_holds__ is set to `true`, then __max_debt_blocks_holds__ will be used to determine if the patron _owes more than allowed_. If the latter is not set, the plugin will fallback to the `maxoutstanding` system preference.
 
 *Note*: Central patron types and central item types can be fetched using the defined methods
 using the Contribution class.
