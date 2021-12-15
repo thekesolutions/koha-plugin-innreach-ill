@@ -65,10 +65,22 @@
         "200": {
           "description": "Successful item hold"
         },
+        "400": {
+          "description": "Bad request"
+        },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -142,12 +154,21 @@
           "description": "Successful item hold cancel"
         },
         "400": {
-          "description": "An error occured"
+          "description": "Bad request"
+        },
+        "403": {
+          "description": "Forbidden"
+        },
+        "404": {
+          "description": "Resource not found"
         },
         "409": {
-          "description": "An error occured"
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -228,13 +249,22 @@
         "200": {
           "description": "Request successfully cancelled"
         },
+        "400": {
+          "description": "Bad request"
+        },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
         },
         "409": {
           "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -310,10 +340,19 @@
         "400": {
           "description": "Bad request"
         },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -389,10 +428,19 @@
         "400": {
           "description": "Bad request"
         },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -497,10 +545,22 @@
         "200": {
           "description": "Successful item hold"
         },
+        "400": {
+          "description": "Bad request"
+        },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -577,10 +637,22 @@
         "200": {
           "description": "Successful item hold"
         },
+        "400": {
+          "description": "Bad request"
+        },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -657,10 +729,22 @@
         "200": {
           "description": "Successful item hold"
         },
+        "400": {
+          "description": "Bad request"
+        },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -737,10 +821,22 @@
         "200": {
           "description": "Successful item hold"
         },
+        "400": {
+          "description": "Bad request"
+        },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -840,10 +936,19 @@
         "400": {
           "description": "Bad request"
         },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
           "description": "Resource not found"
         },
+        "409": {
+          "description": "Conflicting request"
+        },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -916,10 +1021,22 @@
         "200": {
           "description": "Successful item hold"
         },
+        "400": {
+          "description": "Bad request"
+        },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -1000,10 +1117,22 @@
         "200": {
           "description": "Successful item hold"
         },
+        "400": {
+          "description": "Bad request"
+        },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -1080,10 +1209,22 @@
         "200": {
           "description": "Transfer request processed correctly"
         },
+        "400": {
+          "description": "Bad request"
+        },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -1125,10 +1266,22 @@
         "200": {
           "description": "Record information"
         },
+        "400": {
+          "description": "Bad request"
+        },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -1220,10 +1373,19 @@
         "400": {
           "description": "Bad request"
         },
+        "403": {
+          "description": "Forbidden"
+        },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -1335,9 +1497,15 @@
           "description": "Forbidden"
         },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -1433,9 +1601,15 @@
           "description": "Forbidden"
         },
         "404": {
-          "description": "An error occured"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -1547,9 +1721,15 @@
           "description": "Forbidden"
         },
         "404": {
-          "description": "Object not found"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -1591,9 +1771,15 @@
           "description": "Forbidden"
         },
         "404": {
-          "description": "Object not found"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
+          "description": "Internal server error"
+        },
+        "501": {
           "description": "Internal server error"
         }
       },
@@ -1642,7 +1828,10 @@
           "description": "Forbidden"
         },
         "404": {
-          "description": "Object not found"
+          "description": "Resource not found"
+        },
+        "409": {
+          "description": "Conflicting request"
         },
         "500": {
           "description": "Internal server error"
