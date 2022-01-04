@@ -357,8 +357,20 @@ sub item_shipped {
     return try {
         Koha::Database->schema->storage->txn_do(
             sub {
-                my $patron = Koha::Patrons->find($req->borrowernumber);
-                AddIssue( $patron->unblessed, $item->barcode);
+                my $patron   = Koha::Patrons->find( $req->borrowernumber );
+                my $checkout = AddIssue( $patron->unblessed, $item->barcode );
+
+                # record checkout_id
+                Koha::Illrequestattribute->new(
+                    {
+                        illrequest_id => $req->illrequest_id,
+                        type          => 'checkout_id',
+                        value         => $checkout->id,
+                        readonly      => 0
+                    }
+                )->store;
+
+                # update status
                 $req->status('O_ITEM_SHIPPED')->store;
             }
         );
