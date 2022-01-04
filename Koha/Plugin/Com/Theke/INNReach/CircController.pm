@@ -1115,8 +1115,15 @@ sub borrowerrenew {
 
     my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
 
-    my $body = $c->validation->param('body');
+    # eary exit if wrong status
+    return $c->out_of_sequence(
+        {
+            current_status   => $req->status,
+            requested_status => 'O_ITEM_RECEIVED_DESTINATION'
+        }
+    ) if $req->status ne 'O_ITEM_RECEIVED_DESTINATION';
 
+    my $body = $c->validation->param('body');
 
     my $transactionTime   = $body->{transactionTime};
     my $dueDateTime       = $body->{dueDateTime};
@@ -1127,12 +1134,34 @@ sub borrowerrenew {
 
     return try {
 
+        # the current status is valid, retrieve the checkout object
+        my $checkout_id = $req->illrequestattributes->find({ type => 'checkout_id' });
+        my $checkout;
+
+        if ( $checkout_id ) {
+            $checkout = Koha::Checkouts->find( $checkout_id );
+        }
+        else {
+            warn "Old request: fallback to search by itemnumber a.k.a. might not be accurate!";
+            $checkout = Koha::Checkouts->find({ itemnumber => $itemId });
+        }
+
+        unless ( $checkout ) {
+            return $c->render(
+                status  => 409,
+                openapi => {
+                    status => 'error',
+                    reason => 'Item already checked in at owning library',
+                    errors => []
+                }
+            );
+        }
+
         my $date_due =
                 DateTime->from_epoch( epoch => $dueDateTime )
                         ->truncate( to => 'day' )
                         ->set( hour => 23, minute => 59 );
 
-        my $checkout = Koha::Checkouts->find({ itemnumber => $itemId });
         $checkout->set({ date_due => $date_due })->store;
 
         return $c->render(
