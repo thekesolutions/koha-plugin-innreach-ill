@@ -19,9 +19,10 @@ use Modern::Perl;
 
 use base qw(Koha::Plugins::Base);
 
+use Encode;
 use List::MoreUtils qw(any);
 use Mojo::JSON qw(decode_json encode_json);
-use YAML;
+use YAML::XS;
 
 use Koha::Biblioitems;
 use Koha::Items;
@@ -111,7 +112,10 @@ sub configuration {
     my ($self) = @_;
 
     my $configuration;
-    eval { $configuration = YAML::Load( $self->retrieve_data('configuration') . "\n\n" ); };
+    eval {
+        $configuration = YAML::XS::Load(
+            Encode::encode_utf8( $self->retrieve_data('configuration') ) );
+    };
     die($@) if $@;
 
     my @default_item_types;
