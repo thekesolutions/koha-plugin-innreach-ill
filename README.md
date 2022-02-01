@@ -174,6 +174,9 @@ d2ir:
     central_to_local_itype:
         200: D2IR_BK
         201: D2IR_CF
+    no_barcode_central_itypes:
+        - 201
+        - 202
     contribution:
         max_retries: 10
         exclude_empty_biblios: true
