@@ -1135,7 +1135,7 @@ sub borrowerrenew {
     return try {
 
         # the current status is valid, retrieve the checkout object
-        my $checkout_id = $req->illrequestattributes->find({ type => 'checkout_id' });
+        my $checkout_id = $req->illrequestattributes->find({ type => 'checkout_id' })->value;
         my $checkout;
 
         if ( $checkout_id ) {
