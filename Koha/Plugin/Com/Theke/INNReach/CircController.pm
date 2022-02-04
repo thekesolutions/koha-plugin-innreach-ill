@@ -156,9 +156,9 @@ sub itemhold {
                 my $can_item_be_reserved = CanItemBeReserved( $patron_id, $item->itemnumber, $library_id )->{status};
 
                 unless ( $can_item_be_reserved eq 'OK' ) {
-                    warn "INN-Reach: placing the hold, but rules woul've prevented it. FIXME! (patron_id=$patron_id, item_id="
+                    $c->innreach_warn("Placing the hold, but rules woul've prevented it. FIXME! (patron_id=$patron_id, item_id="
                          . $item->itemnumber
-                         . ", library_id=$library_id, status=$can_item_be_reserved)";
+                         . ", library_id=$library_id, status=$can_item_be_reserved)");
                 }
 
                 my $hold_id;
@@ -1142,7 +1142,7 @@ sub borrowerrenew {
             $checkout = Koha::Checkouts->find( $checkout_attribute->value );
         }
         else {
-            warn "Old request: fallback to search by itemnumber a.k.a. might not be accurate!";
+            $c->innreach_warn("Old request: fallback to search by itemnumber a.k.a. might not be accurate!");
             $checkout = Koha::Checkouts->search({ itemnumber => $itemId })->next;
         }
 
@@ -1394,7 +1394,7 @@ sub get_print_slip {
             }
         }
         else {
-            warn "Not sure where I am";
+            $c->innreach_warn("Not sure where I am");
         }
 
         my $slip = C4::Letters::GetPreparedLetter(
@@ -1501,7 +1501,7 @@ sub get_ill_request_from_barcode {
     );
 
     if ( $reqs->count > 1 ) {
-        warn "More than one ILL request for barcode ($barcode). Beware!";
+        $c->innreach_warn("More than one ILL request for barcode ($barcode). Beware!");
     }
 
     return unless $reqs->count > 0;
@@ -1566,7 +1566,7 @@ sub add_virtual_record_and_item {
               )
             {
                 # not a valid normalizer
-                warn "Invalid barcode normalizer configured: $method";
+                $c->innreach_warn("Invalid barcode normalizer configured: $method");
             }
             else {
                 $normalizer->$method;
@@ -1782,7 +1782,7 @@ Helper method for logging warnings for the INN-Reach plugin
 sub innreach_warn {
     my ( $self, $warning ) = @_;
 
-    warn "innreach plugin warn: $warning";
+    warn "innreach_plugin_warn: $warning";
 }
 
 1;
