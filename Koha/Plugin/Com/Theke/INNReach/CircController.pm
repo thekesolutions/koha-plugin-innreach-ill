@@ -1135,15 +1135,15 @@ sub borrowerrenew {
     return try {
 
         # the current status is valid, retrieve the checkout object
-        my $checkout_id = $req->illrequestattributes->find({ type => 'checkout_id' })->value;
+        my $checkout_attribute = $req->illrequestattributes->find({ type => 'checkout_id' });
         my $checkout;
 
-        if ( $checkout_id ) {
-            $checkout = Koha::Checkouts->find( $checkout_id );
+        if ( $checkout_attribute ) {
+            $checkout = Koha::Checkouts->find( $checkout_attribute->value );
         }
         else {
             warn "Old request: fallback to search by itemnumber a.k.a. might not be accurate!";
-            $checkout = Koha::Checkouts->find({ itemnumber => $itemId });
+            $checkout = Koha::Checkouts->search({ itemnumber => $itemId })->next;
         }
 
         unless ( $checkout ) {
