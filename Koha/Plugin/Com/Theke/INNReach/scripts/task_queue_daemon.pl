@@ -92,7 +92,13 @@ sub run_queued_tasks {
 
     $query->execute;
     while ( my $task = $query->fetchrow_hashref ) {
-        do_task({ task => $task, contribution => $contribution });
+        do_task(
+            {
+                contribution => $contribution,
+                plugin       => $plugin,
+                task         => $task,
+            }
+        );
     }
 }
 
@@ -104,8 +110,13 @@ sub do_task {
     my ($args) = @_;
 
     my $contribution = $args->{contribution};
+    my $plugin       = $args->{plugin};
     my $task         = $args->{task};
-    die unless $task;
+
+    unless ($task) {
+        warn "'do_task' called without the 'task' param! Beware!";
+        return 1;
+    }
 
     my $object_type = $task->{object_type};
     my $object_id   = $task->{object_id};
@@ -113,27 +124,32 @@ sub do_task {
 
     if ( $object_type eq 'biblio' ) {
         if ( $action eq 'create' ) {
-            do_biblio_contribute({ biblio_id => $object_id, contribution => $contribution, task => $task });
+            do_biblio_contribute({ biblio_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
         }
         elsif ( $action eq 'modify' ) {
-            do_biblio_contribute({ biblio_id => $object_id, contribution => $contribution, task => $task });
+            do_biblio_contribute({ biblio_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
         }
         elsif ( $action eq 'delete' ) {
-            do_biblio_decontribute({ biblio_id => $object_id, contribution => $contribution, task => $task });
+            do_biblio_decontribute({ biblio_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
         }
     }
     elsif ( $object_type eq 'item' ) {
         if ( $action eq 'create' ) {
-            do_item_contribute({ item_id => $object_id, contribution => $contribution, task => $task });
+            do_item_contribute({ item_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
         }
         elsif ( $action eq 'modify' ) {
-            do_item_contribute({ item_id => $object_id, contribution => $contribution, task => $task });
+            do_item_contribute({ item_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
         }
         elsif ( $action eq 'delete' ) {
-            do_item_decontribute({ item_id => $object_id, contribution => $contribution, task => $task });
+            do_item_decontribute({ item_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
         }
         elsif ( $action eq 'renewal' ) {
-            handle_item_renewal({ item_id => $object_id, contribution => $contribution, task => $task });
+            handle_item_renewal({ item_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
+        }
+    }
+    elsif ( $object_type eq 'circulation' ) {
+        if ( $action eq 'checkin' ) {
+            handle_checkin({ checkout_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
         }
     }
     else {
@@ -319,6 +335,38 @@ sub handle_item_renewal {
     catch {
         mark_task({ task => $task, status => 'error', error => "$_" });
     };
+}
+
+sub handle_checkin {
+    my ($args) = @_;
+
+    my $checkout_id  = $args->{checkout_id};
+    my $contribution = $args->{contribution};
+    my $plugin       = $args->{plugin};
+    my $task         = $args->{task};
+
+    # try {
+    #     my $result = $contribution->notify_borrower_renew(
+    #         {
+    #             item_id  => $item_id,
+    #             date_due => $payload->{date_due}
+    #         }
+    #     );
+    #     if ( $result ) {
+    #         if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
+    #             mark_task({ task => $task, status => 'retry' });
+    #         }
+    #         else {
+    #             mark_task({ task => $task, status => 'error' });
+    #         }
+    #     }
+    #     else {
+    #         mark_task({ task => $task, status => 'success' });
+    #     }
+    # }
+    # catch {
+    #     mark_task({ task => $task, status => 'error', error => "$_" });
+    # };
 }
 
 sub mark_task {
