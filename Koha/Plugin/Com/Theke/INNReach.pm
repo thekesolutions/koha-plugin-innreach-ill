@@ -597,6 +597,31 @@ sub after_circ_action {
             });
         }
     }
+    elsif ( $action eq 'checkin' ) {
+
+        my $hook_payload = $params->{payload};
+        my $checkout     = $hook_payload->{checkout};
+
+        my $checkout_id = $checkout->id;
+
+        my $req = $self->get_ill_request_from_checkout_id($checkout_id);
+
+        if ($req) {
+
+            my $central_server = Koha::Illrequestattributes->find(
+                { illrequest_id => $req->id, type => 'centralCode' } )->value;
+
+            $self->schedule_task(
+                {
+                    action         => $action,
+                    central_server => $central_server,
+                    object_id      => $checkout_id,
+                    object_type    => 'circulation',
+                    status         => 'queued',
+                }
+            );
+        }
+    }
 }
 
 =head3 schedule_task
