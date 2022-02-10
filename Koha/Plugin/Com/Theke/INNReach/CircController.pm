@@ -195,6 +195,15 @@ sub itemhold {
                     );
                 }
 
+                Koha::Illrequestattribute->new(
+                    {
+                        illrequest_id => $req->illrequest_id,
+                        type          => 'hold_id',
+                        value         => $hold_id,
+                        readonly      => 1
+                    }
+                )->store;
+
                 $c->render(
                     status  => 200,
                     openapi => {
@@ -898,10 +907,10 @@ sub itemshipped {
                 # Place a hold on the item
                 my $patron_id = $req->borrowernumber;
                 my $item      = Koha::Items->find( $item_id );
-                my $reserve_id;
+                my $hold_id;
 
                 if ( C4::Context->preference('Version') ge '20.050000' ) {
-                    $reserve_id = AddReserve(
+                    $hold_id = AddReserve(
                         {
                             branchcode       => $req->branchcode,
                             borrowernumber   => $patron_id,
@@ -918,7 +927,7 @@ sub itemshipped {
                     );
                 }
                 else {
-                    $reserve_id = AddReserve(
+                    $hold_id = AddReserve(
                         $req->branchcode,          # branch
                         $patron_id,                # borrowernumber
                         $biblio_id,                # biblionumber
@@ -960,6 +969,15 @@ sub itemshipped {
                         )->store;
                     }
                 }
+
+                Koha::Illrequestattribute->new(
+                    {
+                        illrequest_id => $req->illrequest_id,
+                        type          => 'hold_id',
+                        value         => $hold_id,
+                        readonly      => 0
+                    }
+                )->store;
 
                 return $c->render(
                     status  => 200,
