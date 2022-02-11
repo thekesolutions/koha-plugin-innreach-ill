@@ -161,7 +161,7 @@ sub install {
         C4::Context->dbh->do(qq{
             CREATE TABLE $task_queue (
                 `id`           INT(11) NOT NULL AUTO_INCREMENT,
-                `object_type`  ENUM('biblio', 'item') NOT NULL DEFAULT 'biblio',
+                `object_type`  ENUM('biblio', 'item', 'circulation') NOT NULL DEFAULT 'biblio',
                 `object_id`    INT(11) NOT NULL DEFAULT 0,
                 `payload`      TEXT DEFAULT NULL,
                 `action`       ENUM('create', 'modify', 'delete', 'renewal', 'checkin', 'checkout') NOT NULL DEFAULT 'modify',
@@ -413,6 +413,25 @@ sub upgrade {
                     `timestamp`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (`central_server`,`item_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            });
+        }
+
+        $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
+    }
+
+    $new_version = "3.8.1";
+    if (
+        Koha::Plugins::Base::_version_compare(
+            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
+      )
+    {
+
+        my $task_queue = $self->get_qualified_table_name('task_queue');
+
+        if ( $self->_table_exists($task_queue) ) {
+            C4::Context->dbh->do(qq{
+                ALTER TABLE $task_queue
+                    MODIFY COLUMN `object_type` ENUM('biblio', 'item', 'circulation') NOT NULL DEFAULT 'biblio';
             });
         }
 
