@@ -43,6 +43,7 @@ use Koha::Illrequestattributes;
 use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 use Koha::Plugin::Com::Theke::INNReach::Normalizer;
+use Koha::Plugin::Com::Theke::INNReach::Utils qw(innreach_warn);
 
 use Mojo::Base 'Mojolicious::Controller';
 
@@ -156,7 +157,7 @@ sub itemhold {
                 my $can_item_be_reserved = CanItemBeReserved( $patron_id, $item->itemnumber, $library_id )->{status};
 
                 unless ( $can_item_be_reserved eq 'OK' ) {
-                    $c->innreach_warn("Placing the hold, but rules woul've prevented it. FIXME! (patron_id=$patron_id, item_id="
+                    innreach_warn("Placing the hold, but rules woul've prevented it. FIXME! (patron_id=$patron_id, item_id="
                          . $item->itemnumber
                          . ", library_id=$library_id, status=$can_item_be_reserved)");
                 }
@@ -1160,7 +1161,7 @@ sub borrowerrenew {
             $checkout = Koha::Checkouts->find( $checkout_attribute->value );
         }
         else {
-            $c->innreach_warn("Old request: fallback to search by itemnumber a.k.a. might not be accurate!");
+            innreach_warn("Old request: fallback to search by itemnumber a.k.a. might not be accurate!");
             $checkout = Koha::Checkouts->search({ itemnumber => $itemId })->next;
         }
 
@@ -1412,7 +1413,7 @@ sub get_print_slip {
             }
         }
         else {
-            $c->innreach_warn("Not sure where I am");
+            innreach_warn("Not sure where I am");
         }
 
         my $slip = C4::Letters::GetPreparedLetter(
@@ -1519,7 +1520,7 @@ sub get_ill_request_from_barcode {
     );
 
     if ( $reqs->count > 1 ) {
-        $c->innreach_warn("More than one ILL request for barcode ($barcode). Beware!");
+        innreach_warn("More than one ILL request for barcode ($barcode). Beware!");
     }
 
     return unless $reqs->count > 0;
@@ -1584,7 +1585,7 @@ sub add_virtual_record_and_item {
               )
             {
                 # not a valid normalizer
-                $c->innreach_warn("Invalid barcode normalizer configured: $method");
+                innreach_warn("Invalid barcode normalizer configured: $method");
             }
             else {
                 $normalizer->$method;
@@ -1607,7 +1608,7 @@ sub add_virtual_record_and_item {
     }
 
     unless ( $item_type ) {
-        $c->innreach_warn("'default_item_type' entry missing in configuration");
+        innreach_warn("'default_item_type' entry missing in configuration");
         return $c->render(
             status => 500,
             openapi => {
@@ -1779,7 +1780,7 @@ Helper method for rendering unhandled exceptions correctly
 sub unhandled_innreach_exception {
     my ( $self, $exception ) = @_;
 
-    $self->innreach_warn($exception);
+    innreach_warn($exception);
 
     return $self->render(
         status  => 500,
@@ -1789,18 +1790,6 @@ sub unhandled_innreach_exception {
             errors => [ "$exception" ],
         }
     );
-}
-
-=head3 innreach_warn
-
-Helper method for logging warnings for the INN-Reach plugin
-
-=cut
-
-sub innreach_warn {
-    my ( $self, $warning ) = @_;
-
-    warn "innreach_plugin_warn: $warning";
 }
 
 1;

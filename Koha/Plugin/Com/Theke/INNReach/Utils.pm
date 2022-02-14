@@ -74,7 +74,7 @@ sub get_ill_request_from_attribute {
 
 =head3 innreach_warn
 
-Helper method for logging warnings for the INN-Reach plugin
+Helper method for logging warnings for the INN-Reach plugin homogeneously.
 
 =cut
 
