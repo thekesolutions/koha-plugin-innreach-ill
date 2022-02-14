@@ -134,9 +134,9 @@ sub itemhold {
                     branchcode     => $library_id,
                     borrowernumber => $patron_id,
                     biblio_id      => $item->biblionumber,
-                    updated        => dt_from_string(),
                     status         => 'O_ITEM_REQUESTED',
-                    backend        => 'INNReach'
+                    backend        => 'INNReach',
+                    placed         => \'NOW()',
                 })->store;
 
                 # Add the custom attributes
@@ -819,9 +819,9 @@ sub patronhold {
                     branchcode     => $pickup_location,
                     borrowernumber => $user_id,
                     biblio_id      => undef,
-                    updated        => dt_from_string(),
                     status         => 'B_ITEM_REQUESTED',
-                    backend        => 'INNReach'
+                    backend        => 'INNReach',
+                    placed         => \'NOW()',
                 })->store;
 
                 # Add the custom attributes
