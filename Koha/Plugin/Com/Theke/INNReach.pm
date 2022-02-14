@@ -165,10 +165,10 @@ sub install {
         C4::Context->dbh->do(qq{
             CREATE TABLE $task_queue (
                 `id`           INT(11) NOT NULL AUTO_INCREMENT,
-                `object_type`  ENUM('biblio', 'item', 'circulation') NOT NULL DEFAULT 'biblio',
+                `object_type`  ENUM('biblio', 'item', 'circulation', 'holds') NOT NULL DEFAULT 'biblio',
                 `object_id`    INT(11) NOT NULL DEFAULT 0,
                 `payload`      TEXT DEFAULT NULL,
-                `action`       ENUM('create', 'modify', 'delete', 'renewal', 'checkin', 'checkout') NOT NULL DEFAULT 'modify',
+                `action`       ENUM('create', 'modify', 'delete', 'renewal', 'checkin', 'checkout', 'fill', 'cancel') NOT NULL DEFAULT 'modify',
                 `status`       ENUM('queued', 'retry', 'success', 'error', 'skipped') NOT NULL DEFAULT 'queued',
                 `attempts`     INT(11) NOT NULL DEFAULT 0,
                 `last_error`   VARCHAR(191) DEFAULT NULL,
@@ -442,6 +442,30 @@ sub upgrade {
         $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
+    $new_version = "3.8.5";
+    if (
+        Koha::Plugins::Base::_version_compare(
+            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
+      )
+    {
+
+        my $task_queue = $self->get_qualified_table_name('task_queue');
+
+        if ( $self->_table_exists($task_queue) ) {
+            C4::Context->dbh->do(qq{
+                ALTER TABLE $task_queue
+                    MODIFY COLUMN `object_type` ENUM('biblio', 'item', 'circulation', 'holds') NOT NULL DEFAULT 'biblio';
+            });
+
+            C4::Context->dbh->do(qq{
+                ALTER TABLE $task_queue
+                    MODIFY COLUMN `action` ENUM('create', 'modify', 'delete', 'renewal', 'checkin', 'checkout', 'fill', 'cancel') NOT NULL DEFAULT 'modify';
+            });
+        }
+
+        $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
+    }
+
     return 1;
 }
 
@@ -627,7 +651,7 @@ sub after_circ_action {
 
         my $checkout_id = $checkout->id;
 
-        my $req = get_ill_request_from_attribute(
+        my $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
             {
                 type  => 'checkout_id',
                 value => $checkout_id,
@@ -645,6 +669,49 @@ sub after_circ_action {
                     central_server => $central_server,
                     object_id      => $checkout_id,
                     object_type    => 'circulation',
+                    status         => 'queued',
+                }
+            );
+        }
+    }
+}
+
+=head3 after_hold_action
+
+Hook that is caled on holds-related actions
+
+=cut
+
+sub after_hold_action {
+    my ( $self, $params ) = @_;
+
+    my $action = $params->{action};
+
+    if ( $action eq 'fill' ) {
+
+        my $payload = $params->{payload};
+        my $hold    = $payload->{hold};
+
+        my $hold_id = $hold->id;
+
+        my $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
+            {
+                type  => 'hold_id',
+                value => $hold_id,
+            }
+        );
+
+        if ($req) {
+
+            my $central_server = Koha::Illrequestattributes->find(
+                { illrequest_id => $req->id, type => 'centralCode' } )->value;
+
+            $self->schedule_task(
+                {
+                    action         => $action,
+                    central_server => $central_server,
+                    object_id      => $hold_id,
+                    object_type    => 'holds',
                     status         => 'queued',
                 }
             );
