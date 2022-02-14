@@ -18,12 +18,37 @@ package Koha::Plugin::Com::Theke::INNReach::Exceptions;
 use Modern::Perl;
 
 use Exception::Class (
-  'INNReach::Ill',
-  'INNReach::Ill::InconsistentStatus'   => { isa => 'INNReach::Ill', fields => ['expected_status'] },
-  'INNReach::Ill::InvalidCentralserver' => { isa => 'INNReach::Ill', fields => ['central_server'] },
-  'INNReach::Ill::MissingParameter'     => { isa => 'INNReach::Ill', fields => ['param'] },
-  'INNReach::Ill::UnknownItemId'        => { isa => 'INNReach::Ill', fields => ['item_id'] },
-  'INNReach::Ill::UnknownBiblioId'      => { isa => 'INNReach::Ill', fields => ['biblio_id'] }
+    'INNReach::Ill',
+    'INNReach::Ill::InconsistentStatus' => {
+        isa         => 'INNReach::Ill',
+        description => 'Request status inconsistent with the requested action',
+        fields      => ['expected_status']
+    },
+    'INNReach::Ill::InvalidCentralserver' => {
+        isa         => 'INNReach::Ill',
+        description => 'Passed central server is invalid',
+        fields      => ['central_server']
+    },
+    'INNReach::Ill::MissingParameter' => {
+        isa         => 'INNReach::Ill',
+        description => 'Required parameter is invalid',
+        fields      => ['param']
+    },
+    'INNReach::Ill::UnknownItemId' => {
+        isa         => 'INNReach::Ill',
+        description => 'Passed item_id is invalid',
+        fields      => ['item_id']
+    },
+    'INNReach::Ill::UnknownBiblioId' => {
+        isa         => 'INNReach::Ill',
+        description => 'Passed biblio_id is invalid',
+        fields      => ['biblio_id']
+    },
+    'INNReach::Ill::RequestFailed' => {
+        isa         => 'INNReach::Ill',
+        description => 'HTTP request error response',
+        fields      => [ 'method', 'response' ]
+    },
 );
 
 1;
