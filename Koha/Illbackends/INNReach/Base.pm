@@ -418,8 +418,6 @@ sub item_recalled {
     my ( $self, $params ) = @_;
 
     my $stage = $params->{other}->{stage};
-        use Data::Printer colored => 1;
-        warn p($params);
 
     if ( !$stage || $stage eq 'init' ) { # initial form, allow choosing date
         return {
