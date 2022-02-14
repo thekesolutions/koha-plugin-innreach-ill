@@ -1,4 +1,4 @@
-package Koha::Plugin::Com::Theke::INNReach::Commands::Base;
+package INNReach::Commands::Base;
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ use Try::Tiny;
 use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::OAuth2;
 
-=head1 Koha::Plugin::Com::Theke::INNReach::Commands::Base
+=head1 INNReach::Commands::Base
 
 A base class implementing classes of methods for sending messages to INN-Reach central servers
 

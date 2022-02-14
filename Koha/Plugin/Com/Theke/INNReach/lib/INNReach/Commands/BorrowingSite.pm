@@ -1,4 +1,4 @@
-package Koha::Plugin::Com::Theke::INNReach::Commands::BorrowingSite;
+package INNReach::Commands::BorrowingSite;
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,9 +17,9 @@ package Koha::Plugin::Com::Theke::INNReach::Commands::BorrowingSite;
 
 use Modern::Perl;
 
-use base qw(Koha::Plugin::Com::Theke::INNReach::Commands::Base);
+use base qw(INNReach::Commands::Base);
 
-=head1 Koha::Plugin::Com::Theke::INNReach::Commands::BorrowingSite
+=head1 INNReach::Commands::BorrowingSite
 
 A class implementing methods for sending borrowing site's messages
 to INN-Reach central servers
