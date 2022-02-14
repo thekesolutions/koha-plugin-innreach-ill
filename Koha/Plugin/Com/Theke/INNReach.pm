@@ -31,6 +31,8 @@ use Koha::Items;
 
 use Koha::Plugin::Com::Theke::INNReach::Contribution;
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
+use Koha::Plugin::Com::Theke::INNReach::Utils
+  qw(get_ill_request_from_attribute innreach_warn);
 
 our $VERSION = "{VERSION}";
 
@@ -625,7 +627,7 @@ sub after_circ_action {
 
         my $checkout_id = $checkout->id;
 
-        my $req = $self->get_ill_request_from_attribute(
+        my $req = get_ill_request_from_attribute(
             {
                 type  => 'checkout_id',
                 value => $checkout_id,
@@ -996,42 +998,4 @@ sub get_ill_request_from_biblio_id {
 
     return $req;
 }
-
-=head3 get_ill_request_from_checkout_id
-
-    my $req = $plugin->get_ill_request_from_checkout_id( $checkout_id );
-
-Retrieve an ILL request using a checkout id.
-
-=cut
-
-sub get_ill_request_from_attribute {
-    my ( $self, $args ) = @_;
-
-    my @mandatory_params = qw(type value);
-    foreach my $param ( @mandatory_params ) {
-        INNReach::Ill::MissingParameter->throw( param => $param )
-            unless exists $args->{$param};
-    }
-
-    my $type  = $args->{type};
-    my $value = $args->{value};
-
-    my $requests_rs = Koha::Illrequests->search(
-        {
-            'illrequestattributes.type'  => $type,
-            'illrequestattributes.value' => $value
-        },
-        { join => ['illrequestattributes'] }
-    );
-
-    my $count = $requests_rs->count;
-
-    warn "innreach_plugin_warn: more than one result searching requests with type='$type' value='$value'"
-      if $count > 1;
-
-    return $requests_rs->next
-        if $count > 0;
-}
-
 1;
