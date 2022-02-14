@@ -157,7 +157,7 @@ sub itemhold {
                 my $can_item_be_reserved = CanItemBeReserved( $patron_id, $item->itemnumber, $library_id )->{status};
 
                 unless ( $can_item_be_reserved eq 'OK' ) {
-                    innreach_warn("Placing the hold, but rules woul've prevented it. FIXME! (patron_id=$patron_id, item_id="
+                    Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("Placing the hold, but rules woul've prevented it. FIXME! (patron_id=$patron_id, item_id="
                          . $item->itemnumber
                          . ", library_id=$library_id, status=$can_item_be_reserved)");
                 }
@@ -1161,7 +1161,7 @@ sub borrowerrenew {
             $checkout = Koha::Checkouts->find( $checkout_attribute->value );
         }
         else {
-            innreach_warn("Old request: fallback to search by itemnumber a.k.a. might not be accurate!");
+            Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("Old request: fallback to search by itemnumber a.k.a. might not be accurate!");
             $checkout = Koha::Checkouts->search({ itemnumber => $itemId })->next;
         }
 
@@ -1413,7 +1413,7 @@ sub get_print_slip {
             }
         }
         else {
-            innreach_warn("Not sure where I am");
+            Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("Not sure where I am");
         }
 
         my $slip = C4::Letters::GetPreparedLetter(
@@ -1520,7 +1520,7 @@ sub get_ill_request_from_barcode {
     );
 
     if ( $reqs->count > 1 ) {
-        innreach_warn("More than one ILL request for barcode ($barcode). Beware!");
+        Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("More than one ILL request for barcode ($barcode). Beware!");
     }
 
     return unless $reqs->count > 0;
@@ -1585,7 +1585,7 @@ sub add_virtual_record_and_item {
               )
             {
                 # not a valid normalizer
-                innreach_warn("Invalid barcode normalizer configured: $method");
+                Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("Invalid barcode normalizer configured: $method");
             }
             else {
                 $normalizer->$method;
@@ -1608,7 +1608,7 @@ sub add_virtual_record_and_item {
     }
 
     unless ( $item_type ) {
-        innreach_warn("'default_item_type' entry missing in configuration");
+        Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("'default_item_type' entry missing in configuration");
         return $c->render(
             status => 500,
             openapi => {
@@ -1780,7 +1780,7 @@ Helper method for rendering unhandled exceptions correctly
 sub unhandled_innreach_exception {
     my ( $self, $exception ) = @_;
 
-    innreach_warn($exception);
+    Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn($exception);
 
     return $self->render(
         status  => 500,
