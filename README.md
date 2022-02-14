@@ -84,6 +84,7 @@ Install the missing deps:
 ### Required patches
 
 The following patches need to be backported for this plugin to work:
+* [Bug 30072 - Add after_hold_action plugin hook](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=30072)
 * [Bug 25855 - Add post_renewal_hook in circulation](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=25855) (Required for renewal actions)
 * [Bug 21468 - Plugins need hooks for checkin and checkout actions](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=21468) (Required for item update actions)
 * [Bug 26470 - Store the item before calling the after action hook](https://bugs.koha-community.org/bugzilla3/show_bug.cgi?id=26470) (Required for item update actions)
