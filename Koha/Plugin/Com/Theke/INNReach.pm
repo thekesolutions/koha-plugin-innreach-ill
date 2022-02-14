@@ -25,6 +25,8 @@ use Mojo::JSON qw(decode_json encode_json);
 use YAML::XS;
 
 use Koha::Biblioitems;
+use Koha::Illrequestattributes;
+use Koha::Illrequests;
 use Koha::Items;
 
 use Koha::Plugin::Com::Theke::INNReach::Contribution;
@@ -623,7 +625,12 @@ sub after_circ_action {
 
         my $checkout_id = $checkout->id;
 
-        my $req = $self->get_ill_request_from_checkout_id($checkout_id);
+        my $req = $self->get_ill_request_from_attribute(
+            {
+                type  => 'checkout_id',
+                value => $checkout_id,
+            }
+        );
 
         if ($req) {
 
@@ -962,9 +969,9 @@ sub central_servers {
     return ();
 }
 
-=head3 get_ill_request_from_item_id
+=head3 get_ill_request_from_biblio_id
 
-This method retrieves the Koha::ILLRequest using a item_id.
+This method retrieves the Koha::ILLRequest using a biblio_id.
 
 =cut
 
@@ -980,7 +987,7 @@ sub get_ill_request_from_biblio_id {
     my $reqs = Koha::Illrequests->search({ biblio_id => $biblio_id });
 
     if ( $reqs->count > 1 ) {
-        warn "More than one ILL request for biblio_id ($biblio_id). Beware!";
+        warn "innreach_plugin_warn: more than one ILL request for biblio_id ($biblio_id). Beware!";
     }
 
     return unless $reqs->count > 0;
@@ -988,6 +995,43 @@ sub get_ill_request_from_biblio_id {
     my $req = $reqs->next;
 
     return $req;
+}
+
+=head3 get_ill_request_from_checkout_id
+
+    my $req = $plugin->get_ill_request_from_checkout_id( $checkout_id );
+
+Retrieve an ILL request using a checkout id.
+
+=cut
+
+sub get_ill_request_from_attribute {
+    my ( $self, $args ) = @_;
+
+    my @mandatory_params = qw(type value);
+    foreach my $param ( @mandatory_params ) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $args->{$param};
+    }
+
+    my $type  = $args->{type};
+    my $value = $args->{value};
+
+    my $requests_rs = Koha::Illrequests->search(
+        {
+            'illrequestattributes.type'  => $type,
+            'illrequestattributes.value' => $value
+        },
+        { join => ['illrequestattributes'] }
+    );
+
+    my $count = $requests_rs->count;
+
+    warn "innreach_plugin_warn: more than one result searching requests with type='$type' value='$value'"
+      if $count > 1;
+
+    return $requests_rs->next
+        if $count > 0;
 }
 
 1;
