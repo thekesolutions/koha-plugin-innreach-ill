@@ -78,7 +78,8 @@ Install the missing deps:
   $ sudo apt install \
            libnet-oauth2-authorizationserver-perl \
            libcryptx-perl \
-           libdata-printer-perl
+           libdata-printer-perl \
+           libmodule-metadata-perl
 ```
 
 ### Required patches
