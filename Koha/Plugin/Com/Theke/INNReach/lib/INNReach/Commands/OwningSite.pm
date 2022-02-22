@@ -17,6 +17,10 @@ package INNReach::Commands::OwningSite;
 
 use Modern::Perl;
 
+use C4::Circulation qw(AddIssue);
+
+use Koha::Patrons;
+
 use base qw(INNReach::Commands::Base);
 
 =head1 INNReach::Commands::OwningSite
@@ -30,7 +34,7 @@ to INN-Reach central servers
 
 =head3 final_checkin
 
-    $command->final_checkin( $ill_request );
+    $command->final_checkin( $request );
 
 Given a I<Koha::Illrequest> object, notifies the final check-in took place.
 
@@ -57,6 +61,81 @@ sub final_checkin {
         unless $response->is_success;
 
     $request->status('O_ITEM_CHECKED_IN')->store;
+
+    return $self;
+}
+
+=head3 item_shipped
+
+    $command->item_shipped( $request );
+
+Given a I<Koha::Illrequest> object, notifies the item has been shipped.
+
+=cut
+
+sub item_shipped {
+    my ( $self, $request ) = @_;
+
+    INNReach::Ill::InconsistentStatus->throw( "Status is not correct: " . $request->status )
+        unless $request->status =~ m/^O_ITEM_REQUESTED/;
+
+    my $attributes = $request->illrequestattributes;
+
+    my $trackingId  = $attributes->find({ type => 'trackingId'  })->value;
+    my $centralCode = $attributes->find({ type => 'centralCode' })->value;
+    my $item_id     = $attributes->find({ type => 'itemId'      })->value;
+
+    INNReach::Ill::MissingParameter->throw( param => 'item_id' )
+        unless $item_id;
+
+    Koha::Database->schema->storage->txn_do(
+        sub {
+
+            my $item = Koha::Items->find( $item_id );
+
+            my $patron   = Koha::Patrons->find( $request->borrowernumber );
+
+            # If calling this from the UI, things are set.
+            unless ( C4::Context->userenv ) {
+
+                # CLI => set userenv
+                C4::Context->_new_userenv(1);
+                C4::Context->set_userenv( undef, undef, undef, 'CLI', 'CLI',
+                    $request->branchcode, undef, undef, undef, undef );
+
+                # Set interface
+                C4::Context->interface('commandline');
+            }
+
+            my $checkout = AddIssue( $patron->unblessed, $item->barcode );
+
+            # record checkout_id
+            Koha::Illrequestattribute->new(
+                {
+                    illrequest_id => $request->illrequest_id,
+                    type          => 'checkout_id',
+                    value         => $checkout->id,
+                    readonly      => 0
+                }
+            )->store;
+
+            # update status
+            $request->status('O_ITEM_SHIPPED')->store;
+
+            my $response = $self->oauth2( $centralCode )->post_request(
+                {   endpoint    => "/innreach/v2/circ/itemshipped/$trackingId/$centralCode",
+                    centralCode => $centralCode,
+                    data        => {
+                        callNumber  => $item->itemcallnumber // q{},
+                        itemBarcode => $item->barcode // q{},
+                    }
+                }
+            );
+
+            INNReach::Ill::RequestFailed->throw( method => 'item_shipped', response => $response )
+                unless $response->is_success;
+        }
+    );
 
     return $self;
 }
