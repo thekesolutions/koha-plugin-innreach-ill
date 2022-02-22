@@ -19,7 +19,7 @@ use Modern::Perl;
 
 use Try::Tiny;
 
-use Koha::Plugin::Com::Theke::INNReach;
+use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 use Koha::Plugin::Com::Theke::INNReach::OAuth2;
 
 =head1 INNReach::Commands::Base
@@ -37,9 +37,13 @@ Class constructor
 =cut
 
 sub new {
-    my ($class) = @_;
+    my ($class, $params) = @_;
 
-    my $plugin          = Koha::Plugin::Com::Theke::INNReach->new;
+    my $plugin = $params->{plugin};
+
+    INNReach::Ill::MissingParameter->throw( param => 'plugin' )
+      unless $plugin and ref($plugin) eq 'Koha::Plugin::Com::Theke::INNReach';
+
     my $configuration   = $plugin->configuration;
     my @central_servers = $plugin->central_servers;
 

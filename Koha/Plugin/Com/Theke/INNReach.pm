@@ -30,18 +30,12 @@ use Koha::Illrequests;
 use Koha::Items;
 
 use Koha::Plugin::Com::Theke::INNReach::Contribution;
-use Koha::Plugin::Com::Theke::INNReach::Exceptions;
-use Koha::Plugin::Com::Theke::INNReach::Utils
-  qw(get_ill_request_from_attribute innreach_warn);
+use Koha::Plugin::Com::Theke::INNReach::Utils;
 
 BEGIN {
     my $path = Module::Metadata->find_module_by_name(__PACKAGE__);
     $path =~ s!\.pm$!/lib!;
     unshift @INC, $path;
-
-    require INNReach::Commands::Base;
-    require INNReach::Commands::BorrowingSite;
-    require INNReach::Commands::OwningSite;
 }
 
 our $VERSION = "{VERSION}";
