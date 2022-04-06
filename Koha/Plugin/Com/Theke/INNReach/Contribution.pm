@@ -235,6 +235,14 @@ sub contribute_batch_items {
 
     for my $central_server (@central_servers) {
 
+        unless ( $self->is_bib_contributed( { biblio_id => $bibId, central_server => $central_server } ) ) {
+            $self->contribute_bib(
+                {   bibId         => $bibId,
+                    centralServer => $central_server,
+                }
+            );
+        }
+
         my @itemInfo;
 
         foreach my $item ( @items ) {
@@ -1516,6 +1524,38 @@ sub unmark_item_as_contributed {
     });
 
     return $self;
+}
+
+=head3 is_bib_contributed
+
+    if ( $self->is_bib_contributed(
+        {
+            central_server => $central_server,
+            biblio_id      => $biblio_id,
+         } )
+    ) { ... }
+
+=cut
+
+sub is_bib_contributed {
+    my ( $self, $params ) = @_;
+
+    my $central_server = $params->{central_server};
+    my $biblio_id      = $params->{biblio_id};
+
+    my $dbh = C4::Context->dbh;
+    my $contributed_biblios = $self->plugin->get_qualified_table_name('contributed_biblios');
+
+    my $sth = $dbh->prepare(qq{
+        SELECT COUNT(*) FROM $contributed_biblios
+        WHERE central_server = ?
+          AND biblio_id = ?;
+    });
+
+    $sth->execute($central_server, $biblio_id);
+    my ($count) = $sth->fetchrow_array;
+
+    return ($count) ? 1 : 0;
 }
 
 1;
