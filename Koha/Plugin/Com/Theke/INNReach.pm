@@ -613,7 +613,7 @@ sub after_item_action {
 
                 if (    $biblio
                     and $contribution->filter_items_by_contributable(
-                        {   items          => $biblio->items,
+                        {   items          => scalar $biblio->items,
                             central_server => $central_server,
                         }
                     )->count = 0
