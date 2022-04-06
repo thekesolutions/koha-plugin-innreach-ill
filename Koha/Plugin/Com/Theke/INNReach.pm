@@ -565,7 +565,6 @@ sub after_item_action {
     my $item_id = $args->{item_id};
     my $item    = $args->{item};
 
-    my $task_queue    = $self->get_qualified_table_name('task_queue');
     my $configuration = $self->configuration;
     my $contribution  = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
 
@@ -596,12 +595,40 @@ sub after_item_action {
               );
         }
 
-        C4::Context->dbh->do(qq{
-            INSERT INTO $task_queue
-                ( central_server, object_type, object_id, action, status, attempts )
-            VALUES
-                ( '$central_server', 'item', $item_id, '$action', 'queued', 0 )
-        });
+        $self->schedule_task(
+            {
+                action         => $action,
+                central_server => $central_server,
+                object_id      => $item_id,
+                object_type    => 'item',
+                status         => 'queued',
+            }
+        );
+
+        # Do it after inserting the item de-contribution
+        if ( $action eq 'delete' ) {
+            if ( $configuration->{$central_server}->{contribution}->{exclude_empty_biblios} ) {
+
+                my $biblio = Koha::Biblios->find( $item->biblionumber );
+
+                if (    $biblio
+                    and $contribution->filter_items_by_contributable(
+                        {   items          => $biblio->items,
+                            central_server => $central_server,
+                        }
+                    )->count = 0
+                ) {
+                    $self->schedule_task(
+                        {   action         => 'delete',
+                            central_server => $central_server,
+                            object_id      => $biblio->id,
+                            object_type    => 'biblio',
+                            status         => 'queued',
+                        }
+                    );
+                }
+            }
+        }
     }
 }
 
