@@ -541,6 +541,28 @@ sub after_biblio_action {
                     )->count > 0;
                 }
             }
+            elsif ( $action eq 'modify' ) {
+                if (     $exclude_empty_biblios
+                     and $contribution->filter_items_by_contributable(
+                            {   items          => scalar $biblio->items,
+                                central_server => $central_server }
+                         )->count == 0
+                     and $contribution->is_bib_contributed(
+                            { biblio_id      => $biblio_id,
+                              central_server => $central_server })
+                ) {
+                    # decontribute
+                    $self->schedule_task(
+                        {   action         => 'delete',
+                            central_server => $central_server,
+                            object_id      => $biblio_id,
+                            object_type    => 'biblio',
+                            status         => 'queued',
+                        }
+                    );
+                    next;
+                }
+            }
         }
 
         $self->schedule_task(
@@ -624,7 +646,7 @@ sub after_item_action {
                         {   items          => scalar $biblio->items,
                             central_server => $central_server,
                         }
-                    )->count = 0
+                    )->count == 0
                 ) {
                     $self->schedule_task(
                         {   action         => 'delete',
