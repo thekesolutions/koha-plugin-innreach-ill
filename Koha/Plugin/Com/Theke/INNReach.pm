@@ -524,9 +524,9 @@ sub after_biblio_action {
                    or !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type};
 
             my $exclude_empty_biblios =
-              ( !exists $configuration->{contribution} )
+              ( !exists $configuration->{$central_server}->{contribution} )
               ? 1
-              : $configuration->{contribution}->{exclude_empty_biblios};
+              : $configuration->{$central_server}->{contribution}->{exclude_empty_biblios};
 
             if ( $action eq 'create' ) {
                 ## We are adding, check some configurations
@@ -535,7 +535,7 @@ sub after_biblio_action {
                     next
                       unless $contribution->filter_items_by_contributable(
                         {
-                            items          => $biblio->items,
+                            items          => scalar $biblio->items,
                             central_server => $central_server
                         }
                     )->count > 0;
@@ -543,12 +543,14 @@ sub after_biblio_action {
             }
         }
 
-        C4::Context->dbh->do(qq{
-            INSERT INTO $task_queue
-                ( central_server, object_type, object_id, action, status, attempts )
-            VALUES
-                ( '$central_server', 'biblio', $biblio_id, '$action', 'queued', 0 )
-        });
+        $self->schedule_task(
+            {   action         => $action,
+                central_server => $central_server,
+                object_id      => $biblio_id,
+                object_type    => 'biblio',
+                status         => 'queued',
+            }
+        );
     }
 }
 
@@ -607,7 +609,13 @@ sub after_item_action {
 
         # Do it after inserting the item de-contribution
         if ( $action eq 'delete' ) {
-            if ( $configuration->{$central_server}->{contribution}->{exclude_empty_biblios} ) {
+
+            my $exclude_empty_biblios =
+              ( !exists $configuration->{$central_server}->{contribution} )
+              ? 1
+              : $configuration->{$central_server}->{contribution}->{exclude_empty_biblios};
+
+            if ( $exclude_empty_biblios ) {
 
                 my $biblio = Koha::Biblios->find( $item->biblionumber );
 
