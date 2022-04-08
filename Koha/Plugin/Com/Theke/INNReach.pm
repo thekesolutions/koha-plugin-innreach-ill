@@ -564,6 +564,12 @@ sub after_biblio_action {
                 }
             }
         }
+        else { # $action eq 'delete'
+            next
+              unless $contribution->is_bib_contributed(
+                  {  biblio_id => $biblio_id,
+                      central_server => $central_server, });
+        }
 
         $self->schedule_task(
             {   action         => $action,
