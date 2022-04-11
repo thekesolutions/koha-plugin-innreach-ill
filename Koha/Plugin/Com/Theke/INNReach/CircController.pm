@@ -154,7 +154,15 @@ sub itemhold {
                     }
                 }
 
-                my $can_item_be_reserved = CanItemBeReserved( $patron_id, $item->itemnumber, $library_id )->{status};
+                my $can_item_be_reserved;
+
+                if ( C4::Context->preference('Version') ge '21.120000' ) {
+                    my $patron = Koha::Patrons->find( $patron_id );
+                    $can_item_be_reserved = CanItemBeReserved( $patron, $item, $library_id )->{status};
+                }
+                else {
+                    $can_item_be_reserved = CanItemBeReserved( $patron_id, $item->itemnumber, $library_id )->{status};
+                }
 
                 unless ( $can_item_be_reserved eq 'OK' ) {
                     Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("Placing the hold, but rules woul've prevented it. FIXME! (patron_id=$patron_id, item_id="
