@@ -358,7 +358,24 @@ sub item_shipped {
         Koha::Database->schema->storage->txn_do(
             sub {
                 my $patron   = Koha::Patrons->find( $req->borrowernumber );
-                my $checkout = AddIssue( $patron->unblessed, $item->barcode );
+                my $checkout = Koha::Checkouts->find( { itemnumber => $itemId } );
+
+                if ( $checkout ) {
+                    if ( $checkout->borrowernumber != $req->borrowernumber ) {
+                        return {
+                            error   => 1,
+                            status  => 'error_on_checkout',
+                            message => "Item checked out to another patron.",
+                            method  => 'item_shipped',
+                            stage   => 'commit',
+                            value   => q{},
+                        };
+                    }
+                    # else {} # The item is already checked out to the right patron
+                }
+                else { # no checkout, proceed
+                    $checkout = AddIssue( $patron->unblessed, $item->barcode );
+                }
 
                 # record checkout_id
                 Koha::Illrequestattribute->new(
