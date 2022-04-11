@@ -627,32 +627,50 @@ sub item_in_transit {
         }
     );
 
-    Koha::Database->new->schema->txn_do(
-        sub {
-            # Return the item first
-            my $barcode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemBarcode' })->value;
+    return try {
+        Koha::Database->new->schema->txn_do(
+            sub {
+                # Return the item first
+                my $barcode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemBarcode' })->value;
 
-            AddReturn( $barcode );
-            # Is there a hold still?
-            # Should we? There's no ON DELETE NULL...
-            # $req->biblio_id(undef)->store;
-            my $biblio = Koha::Biblios->find( $req->biblio_id );
-            # Remove the virtual item
-            $biblio->items->delete;
-            $biblio->delete;
-        }
-    );
+                my $item     = Koha::Items->find( { barcode => $barcode } );
+                my $checkout = Koha::Checkouts->find( { itemnumber => $item->id } );
 
-    $req->status('B_ITEM_IN_TRANSIT')->store;
+                unless ($checkout) {
+                    AddReturn($barcode);
+                }
 
-    return {
-        error   => 0,
-        status  => '',
-        message => '',
-        method  => 'item_in_transit',
-        stage   => 'commit',
-        next    => 'illview',
-        value   => '',
+                # FIXME: who's this checked out to?
+                # FIXME: should we cancel any holds?
+
+                my $biblio = Koha::Biblios->find( $req->biblio_id );
+                # Remove the virtual item
+                $biblio->items->delete;
+                $biblio->delete;
+            }
+        );
+
+        $req->status('B_ITEM_IN_TRANSIT')->store;
+
+        return {
+            error   => 0,
+            status  => '',
+            message => '',
+            method  => 'item_in_transit',
+            stage   => 'commit',
+            next    => 'illview',
+            value   => '',
+        };
+    }
+    catch {
+        return {
+            error   => 1,
+            status  => 'item_in_transit_error',
+            message => "$_",
+            method  => 'item_in_transit',
+            stage   => 'commit',
+            value   => q{},
+        };
     };
 }
 
