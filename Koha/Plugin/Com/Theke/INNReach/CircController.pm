@@ -904,18 +904,36 @@ sub itemshipped {
         $schema->txn_do(
             sub {
 
-                # Create the MARC record and item
-                my ($biblio_id, $item_id, $biblioitemnumber) = $c->add_virtual_record_and_item(
-                    { req         => $req,
-                      config      => $config,
-                      call_number => $attributes->{callNumber},
-                      barcode     => $attributes->{itemBarcode},
-                    }
-                );
+                my ($biblio_id, $item_id, $biblioitemnumber);
+
+                # check if already catalogued. INN-Reach requires no barcode collision
+                my $item = Koha::Items->find({ barcode => $attributes->{itemBarcode} });
+
+                if ( $item ) {
+                    # already catalogued
+                    my $biblio = $item->biblio;
+                    $biblio_id = $biblio->id;
+                    $item_id   = $item->id;
+                    # FIXME: not needed anymore
+                    $biblioitemnumber = $item->biblioitemnumber;
+                }
+                else {
+                    # Create the MARC record and item
+                    ( $biblio_id, $item_id, $biblioitemnumber ) =
+                      $c->add_virtual_record_and_item(
+                        {
+                            req         => $req,
+                            config      => $config,
+                            call_number => $attributes->{callNumber},
+                            barcode     => $attributes->{itemBarcode},
+                        }
+                      );
+
+                    $item = Koha::Items->find( $item_id );
+                }
 
                 # Place a hold on the item
                 my $patron_id = $req->borrowernumber;
-                my $item      = Koha::Items->find( $item_id );
                 my $hold_id;
 
                 if ( C4::Context->preference('Version') ge '20.050000' ) {
