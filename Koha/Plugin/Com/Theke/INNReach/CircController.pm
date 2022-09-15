@@ -886,6 +886,8 @@ sub itemshipped {
         itemBarcode => $body->{itemBarcode},
     };
 
+    my $barcode = $body->{itemBarcode};
+
     return try {
 
         # Get/validate the request
@@ -907,30 +909,26 @@ sub itemshipped {
                 my ($biblio_id, $item_id, $biblioitemnumber);
 
                 # check if already catalogued. INN-Reach requires no barcode collision
-                my $item = Koha::Items->find({ barcode => $attributes->{itemBarcode} });
+                my $item = Koha::Items->find({ barcode => $barcode });
 
                 if ( $item ) {
-                    # already catalogued
-                    my $biblio = $item->biblio;
-                    $biblio_id = $biblio->id;
-                    $item_id   = $item->id;
-                    # FIXME: not needed anymore
-                    $biblioitemnumber = $item->biblioitemnumber;
+                    # already exists, add suffix
+                    $barcode .= '-1';
+                    $attributes->{barcode_collision} = 1;
                 }
-                else {
-                    # Create the MARC record and item
-                    ( $biblio_id, $item_id, $biblioitemnumber ) =
-                      $c->add_virtual_record_and_item(
-                        {
-                            req         => $req,
-                            config      => $config,
-                            call_number => $attributes->{callNumber},
-                            barcode     => $attributes->{itemBarcode},
-                        }
-                      );
 
-                    $item = Koha::Items->find( $item_id );
-                }
+                # Create the MARC record and item
+                ( $biblio_id, $item_id, $biblioitemnumber ) =
+                    $c->add_virtual_record_and_item(
+                    {
+                        req         => $req,
+                        config      => $config,
+                        call_number => $attributes->{callNumber},
+                        barcode     => $barcode,
+                    }
+                    );
+
+                $item = Koha::Items->find( $item_id );
 
                 # Place a hold on the item
                 my $patron_id = $req->borrowernumber;
