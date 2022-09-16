@@ -31,7 +31,7 @@ use Koha::Biblios;
 use Koha::DateUtils qw(dt_from_string);
 use Koha::Illrequests;
 use Koha::Illrequestattributes;
-use Koha::Patron;
+use Koha::Patrons;
 
 use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::OAuth2;
@@ -716,20 +716,28 @@ sub return_uncirculated {
         sub {
             # Cleanup!
             my $biblio = Koha::Biblios->find( $req->biblio_id );
-            my $holds  = $biblio->holds;
 
-            # Remove hold(s)
-            while ( my $hold = $holds->next ) {
-                $hold->cancel;
+            if ($biblio) {
+                my $holds  = $biblio->holds;
+
+                # Remove hold(s)
+                while ( my $hold = $holds->next ) {
+                    $hold->cancel;
+                }
+
+                # Remove item(s)
+                my $items  = $biblio->items;
+                while ( my $item = $items->next ) {
+                    $item->safe_delete;
+                }
+
+                DelBiblio( $req->biblio_id );
             }
-
-            # Remove item(s)
-            my $items  = $biblio->items;
-            while ( my $item = $items->next ) {
-                $item->safe_delete;
+            else {
+                Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn(
+                    'Linked biblio_id (' . $req->biblio_id . ') not on the DB for ILL request (' . $req->id . ')'
+                );
             }
-
-            DelBiblio( $req->biblio_id );
         }
     );
 
