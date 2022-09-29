@@ -18,7 +18,7 @@
 use Modern::Perl;
 
 use Getopt::Long;
-use JSON qw(decode_json);
+use JSON qw(decode_json encode_json);
 use Pod::Usage;
 use Try::Tiny;
 
@@ -82,12 +82,15 @@ sub run_queued_tasks {
             action,
             attempts,
             timestamp,
-            central_server
+            central_server,
+	    status
         FROM
             $table
         WHERE
             status='queued' OR
             status='retry'
+	ORDER BY timestamp DESC
+	LIMIT 100
     });
 
     $query->execute;
@@ -153,7 +156,7 @@ sub do_task {
         }
     }
     else {
-        warn "Unhandled object_type: $object_type";
+        mark_task({ task => $task, status => 'skipped', error => "Unhandled object_type ($object_type)" });
     }
 }
 
@@ -171,11 +174,11 @@ sub do_biblio_contribute {
     try {
         my $result = $contribution->contribute_bib({ bibId => $biblio_id, centralServer => $task->{central_server} });
         if ( $result ) {
-            if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
-                mark_task({ task => $task, status => 'retry' });
+            if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
+                mark_task({ task => $task, status => 'retry', error => $result });
             }
             else {
-                mark_task({ task => $task, status => 'error' });
+                mark_task({ task => $task, status => 'error', error => $result });
             }
         }
         else {
@@ -184,12 +187,10 @@ sub do_biblio_contribute {
     }
     catch {
         if ( ref($_) eq 'INNReach::Ill::UnknownBiblioId' ) {
-            warn "do_biblio_contribute: biblio not found ($biblio_id) [skipped]";
             mark_task( { task => $task, status => 'skipped', error => 'Biblio not found' } );
             return 1;
         }
         else {
-            warn "do_biblio_contribute: $_";
             mark_task({ task => $task, status => 'error', error => "$_" });
         }
     };
@@ -211,11 +212,11 @@ sub do_biblio_decontribute {
     try {
         my $result = $contribution->decontribute_bib({ bibId => $biblio_id, centralServer => $task->{central_server} });
         if ( $result ) {
-            if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
-                mark_task({ task => $task, status => 'retry' });
+            if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
+                mark_task({ task => $task, status => 'retry', error => $result });
             }
             else {
-                mark_task({ task => $task, status => 'error' });
+                mark_task({ task => $task, status => 'error', error => $result });
             }
         }
         else {
@@ -223,7 +224,6 @@ sub do_biblio_decontribute {
         }
     }
     catch {
-        warn "do_biblio_decontribute: $_";
         mark_task({ task => $task, status => 'error', error => "$_" });
     };
 
@@ -244,7 +244,6 @@ sub do_item_contribute {
     my $item = Koha::Items->find( $item_id );
 
     unless ( $item ) {
-        warn "do_item_contribute: item not found ($item_id) [skipped]";
         mark_task( { task => $task, status => 'skipped', error => 'Item not found' } );
     }
 
@@ -253,11 +252,11 @@ sub do_item_contribute {
     try {
         my $result = $contribution->contribute_batch_items({ item => $item, bibId => $biblio_id, centralServer => $task->{central_server} });
         if ( $result ) {
-            if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
-                mark_task({ task => $task, status => 'retry' });
+            if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
+                mark_task({ task => $task, status => 'retry', error => $result });
             }
             else {
-                mark_task({ task => $task, status => 'error' });
+                mark_task({ task => $task, status => 'error', error => $result });
             }
         }
         else {
@@ -265,7 +264,6 @@ sub do_item_contribute {
         }
     }
     catch {
-        warn "do_item_decontribute: $_";
         mark_task({ task => $task, status => 'error', error => "$_" });
     };
 
@@ -286,11 +284,11 @@ sub do_item_decontribute {
     try {
         my $result = $contribution->decontribute_item({ itemId => $item_id, centralServer => $task->{central_server} });
         if ( $result ) {
-            if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
-                mark_task({ task => $task, status => 'retry' });
+            if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
+                mark_task({ task => $task, status => 'retry', error => $result });
             }
             else {
-                mark_task({ task => $task, status => 'error' });
+                mark_task({ task => $task, status => 'error', error => $result });
             }
         }
         else {
@@ -298,7 +296,6 @@ sub do_item_decontribute {
         }
     }
     catch {
-        warn "do_item_decontribute: $_";
         mark_task({ task => $task, status => 'error', error => "$_" });
     };
 
@@ -321,11 +318,11 @@ sub handle_item_renewal {
             }
         );
         if ( $result ) {
-            if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
-                mark_task({ task => $task, status => 'retry' });
+            if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
+                mark_task({ task => $task, status => 'retry', error => $result });
             }
             else {
-                mark_task({ task => $task, status => 'error' });
+                mark_task({ task => $task, status => 'error', error => $result });
             }
         }
         else {
@@ -344,6 +341,8 @@ sub handle_checkin {
     my $contribution = $args->{contribution};
     my $plugin       = $args->{plugin};
     my $task         = $args->{task};
+
+    mark_task({ task => $task, status => 'skipped' });
 
     # try {
     #     my $result = $contribution->notify_borrower_renew(
@@ -375,7 +374,7 @@ sub mark_task {
     my $status   = $args->{status};
     my $task_id  = $task->{id};
     my $attempts = $task->{attempts} // 0;
-    my $error    = $task->{error};
+    my $error    = $args->{error};
 
     my $dbh = C4::Context->dbh;
 
@@ -386,18 +385,27 @@ sub mark_task {
 
     my $query;
     if ( defined $error ) {
+	my $encoded_error;
+        if ( ref($error) eq 'HASH' ) {
+	    $encoded_error = encode_json($error);
+	}
+	else {
+	    $encoded_error = $error;
+	}
+	print STDERR "[innreach][ERROR] Task ($task_id) failed | $task->{action} $task->{object_type} $task->{object_id} ($status): " . $encoded_error . "\n";
         $query = $dbh->prepare(qq{
             UPDATE
                 $table
             SET
                 status='$status',
                 attempts=$attempts,
-                last_error='$error'
+                last_error='$encoded_error'
             WHERE
                 id=$task_id
         });
     }
     else {
+	print STDOUT "[innreach][DEBUG] Task ($task_id) success | $task->{action} $task->{object_type} $task->{object_id}\n";
         $query = $dbh->prepare(qq{
             UPDATE
                 $table

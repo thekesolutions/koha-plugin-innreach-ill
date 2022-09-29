@@ -289,15 +289,13 @@ sub contribute_batch_items {
             $errors->{$central_server} = $response->status_line;
         } else {                           # III encoding errors in the response body of a 2xx
             my $response_content = decode_json( $response->decoded_content );
-            # TODO: temporary debugging of response format. Remove
-            use Data::Printer colored => 1;
-            p($response_content);
+
             if ( $response_content->{status} eq 'failed' ) {
                 my @iii_errors = $response_content->{errors};
 
                 # we pick the first one
-                my $THE_error = $iii_errors[0][0];
-                $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+                my $THE_error = $iii_errors[0]->[0];
+                $errors->{$central_server} = $THE_error->{reason} . q{: } . join( ' | ', map {$_->{messages}} @{$THE_error->{errors}} );
             }
             else {
                 foreach my $item (@items) {
