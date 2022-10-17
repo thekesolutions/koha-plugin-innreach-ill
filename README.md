@@ -289,10 +289,19 @@ updates to be notified to central servers, but also some other circulation notif
 To run it:
 
 ```shell
-  $ sudo koha-shell <instance>
-  $ cd /var/lib/koha/<instance>/plugins
-  $ PERL5LIB=/usr/share/koha/lib:. perl \
-                Koha/Plugin/Com/Theke/INNReach/scripts/task_queue_daemon.pl --sleep 5
+# copy unit file
+$ cp /var/lib/koha/<instance>/plugins/Koha/Plugin/Com/Theke/INNReach/scripts/innreach_task_queue.service \
+     /etc/systemd/system/innreach_task_queue.service
+# set KOHA_INSTANCE to match what you need (default: kohadev)
+$ vim /etc/systemd/system/innreach_task_queue.service
+# reload unit files, including the new one
+$ systemctl daemon-reload
+# enable service
+$ systemctl enable innreach_task_queue.service
+Created symlink /etc/systemd/system/multi-user.target.wants/innreach_task_queue.service → /etc/systemd/system/innreach_task_queue.service
+# check the logs :-D
+$ journalctl -u innreach_task_queue.service -f
+
 ```
 
 ## Caveats
