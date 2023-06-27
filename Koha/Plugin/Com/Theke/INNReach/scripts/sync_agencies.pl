@@ -26,6 +26,8 @@ use Getopt::Long;
 use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::Contribution;
 
+use Koha::Script qw(-cron);
+
 binmode(STDOUT,':encoding(utf8)');
 
 my $verbose;

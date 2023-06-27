@@ -27,6 +27,8 @@ use C4::Context;
 use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::Contribution;
 
+use Koha::Script;
+
 my $daemon_sleep    = 5;
 my $verbose_logging = 0;
 my $help       = 0;

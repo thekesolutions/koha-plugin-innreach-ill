@@ -23,6 +23,7 @@ use Modern::Perl;
 use Data::Printer colored => 1;
 
 use Getopt::Long;
+use Koha::Script;
 use List::MoreUtils qw(any);
 
 use Koha::Plugin::Com::Theke::INNReach::Contribution;

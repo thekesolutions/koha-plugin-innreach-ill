@@ -22,7 +22,9 @@ use Modern::Perl;
 
 use Data::Printer colored => 1;
 use Getopt::Long;
+
 use Koha::Plugin::Com::Theke::INNReach::Contribution;
+use Koha::Script;
 
 binmode(STDOUT,':encoding(utf8)');
 
