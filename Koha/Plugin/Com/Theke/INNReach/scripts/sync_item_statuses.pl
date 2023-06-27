@@ -23,6 +23,7 @@ use Data::Printer colored => 1;
 
 use Getopt::Long;
 use List::MoreUtils qw(any);
+use Try::Tiny;
 
 use Koha::Plugin::Com::Theke::INNReach::Contribution;
 
