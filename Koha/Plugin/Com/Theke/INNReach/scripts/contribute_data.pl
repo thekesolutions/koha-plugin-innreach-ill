@@ -25,6 +25,7 @@ use Data::Printer colored => 1;
 use Getopt::Long;
 use Koha::Script;
 use List::MoreUtils qw(any);
+use Try::Tiny;
 
 use Koha::Plugin::Com::Theke::INNReach::Contribution;
 
@@ -204,13 +205,19 @@ if ( $biblio_id or $biblios ) {
                     print STDOUT " - Items:\n"
                         unless $noout;
                     while ( my $item = $items->next ) {
-                        my $errors = $contribution->contribute_batch_items(
-                            {
-                                bibId         => $biblio->biblionumber,
-                                centralServer => $central_server,
-                                item          => $item,
-                            }
-                        );
+                        my $errors = {};
+                        try {
+                            my $errors = $contribution->contribute_batch_items(
+                                {
+                                    bibId         => $biblio->biblionumber,
+                                    centralServer => $central_server,
+                                    item          => $item,
+                                }
+                            );
+                        }
+                        catch {
+                            $errors->{$central_server} = "$_";
+                        };
                         if ( $errors->{$central_server} ) {
                             print STDOUT "        > " . $item->id . ": Error (" . $errors->{$central_server} . ")\n"
                                 unless $noout;
