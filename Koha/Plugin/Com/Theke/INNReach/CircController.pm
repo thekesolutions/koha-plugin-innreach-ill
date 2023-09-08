@@ -913,7 +913,22 @@ sub itemshipped {
 
                 if ( $item ) {
                     # already exists, add suffix
-                    $barcode .= '-1';
+                    my $i = 1;
+                    my $done;
+
+                    while (!$done) {
+                        my $tmp_barcode = $barcode . "-$i";
+                        $item = Koha::Items->find({ barcode => $tmp_barcode });
+
+                        if ( !$item ) {
+                            $barcode = $tmp_barcode;
+                            $done = 1;
+                        }
+                        else {
+                            $i++;
+                        }
+                    }
+
                     $attributes->{barcode_collision} = 1;
                 }
 
