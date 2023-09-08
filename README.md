@@ -178,6 +178,7 @@ d2ir:
     default_item_type: ILL
     default_item_ccode: GENERAL_STACKS
     default_notforloan: -1
+    materials_specified: true
     default_materials_specified: Additional processing required (ILL)
     default_location:
     default_checkin_note: Additional processing required (ILL)
