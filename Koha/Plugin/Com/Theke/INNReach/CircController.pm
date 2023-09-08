@@ -817,12 +817,15 @@ sub patronhold {
         $schema->txn_do(
             sub {
                 my $configuration   = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
+                use Data::Printer colored => 1;
+                p($attributes);
+                p($configuration);
                 my $pickup_location = $c->pickup_location_to_library_id(
                     { pickupLocation => $attributes->{pickupLocation},
                       configuration  => $configuration
                     }
                 );
-
+                p($pickup_location);
                 # Create the request
                 my $req = Koha::Illrequest->new({
                     branchcode     => $pickup_location,

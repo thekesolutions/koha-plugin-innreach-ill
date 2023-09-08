@@ -26,6 +26,7 @@ use Koha::Database;
 
 use C4::Biblio qw(DelBiblio);
 use C4::Circulation qw(AddIssue AddReturn);
+use C4::Reserves qw(AddReserve);
 
 use Koha::Biblios;
 use Koha::DateUtils qw(dt_from_string);
@@ -35,6 +36,9 @@ use Koha::Patrons;
 
 use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::OAuth2;
+use Koha::Plugin::Com::Theke::INNReach::Utils qw(add_or_update_attributes add_virtual_record_and_item innreach_warn);
+
+use INNReach::Commands::BorrowingSite;
 
 =head1 NAME
 
@@ -248,7 +252,7 @@ sub status_graph {
             name           => 'Item requested to owning library',
             ui_method_name => 'Item requested to owning library',
             method         => '',
-            next_actions   => [ 'B_ITEM_CANCELLED_BY_US' ],
+            next_actions   => [ 'B_ITEM_CANCELLED_BY_US', 'B_RECEIVE_UNSHIPPED' ],
             ui_method_icon => '',
         },
         B_ITEM_CANCELLED => {
@@ -277,6 +281,15 @@ sub status_graph {
             method         => '',
             next_actions   => [ 'B_ITEM_RECEIVED' ],
             ui_method_icon => '',
+        },
+        B_RECEIVE_UNSHIPPED => { # will never be set. Only used to present a form
+            prev_actions   => [ 'B_ITEM_REQUESTED' ],
+            id             => 'B_RECEIVE_UNSHIPPED',
+            name           => 'Item received (unshipped)',
+            ui_method_name => 'Receive item (unshipped)',
+            method         => 'receive_unshipped',
+            next_actions   => [],
+            ui_method_icon => 'fa-inbox',
         },
         B_ITEM_RECEIVED => {
             prev_actions => [ 'B_ITEM_SHIPPED' ],
@@ -622,6 +635,139 @@ sub item_received {
         value   => '',
     };
 }
+
+=head3 receive_unshipped
+
+Method triggered by the UI, to notify the owning site that the item has been
+received.
+
+=cut
+
+sub receive_unshipped {
+    my ( $self, $params ) = @_;
+
+    my $stage = $params->{other}->{stage};
+
+    if ( !$stage || $stage eq 'init' ) {    # initial form, allow choosing date
+        return {
+            error   => 0,
+            status  => '',
+            message => '',
+            method  => 'receive_unshipped',
+            stage   => 'form'
+        };
+    } else {                                # confirm
+        my $req = $params->{request};
+
+        my $req_attributes = $req->extended_attributes;
+
+        my $trackingId  = $req_attributes->find( { illrequest_id => $req->id, type => 'trackingId' } )->value;
+        my $centralCode = $req_attributes->find( { illrequest_id => $req->id, type => 'centralCode' } )->value;
+
+        my $attributes = {
+            callNumber  => $params->{other}->{item_callnumber},
+            itemBarcode => $params->{other}->{item_barcode},
+        };
+
+        my $barcode = $params->{other}->{item_barcode};
+
+        my $config = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
+
+        my $schema = Koha::Database->new->schema;
+        try {
+            $schema->txn_do(
+                sub {
+                    # check if already catalogued. INN-Reach requires no barcode collision
+                    my $item = Koha::Items->find( { barcode => $barcode } );
+
+                    if ($item) {
+
+                        # already exists, add suffix
+                        my $i = 1;
+                        my $done;
+
+                        while ( !$done ) {
+                            my $tmp_barcode = $barcode . "-$i";
+                            $item = Koha::Items->find( { barcode => $tmp_barcode } );
+
+                            if ( !$item ) {
+                                $barcode = $tmp_barcode;
+                                $done    = 1;
+                            } else {
+                                $i++;
+                            }
+                        }
+
+                        $attributes->{barcode_collision} = 1;
+                    }
+
+                    # Create the MARC record and item
+                    $item = add_virtual_record_and_item(
+                        {
+                            req         => $req,
+                            config      => $config,
+                            call_number => $attributes->{callNumber},
+                            barcode     => $barcode,
+                        }
+                    );
+
+                    # Place a hold on the item
+                    my $patron_id = $req->borrowernumber;
+
+                    my $hold_id = AddReserve(
+                        {
+                            branchcode       => $req->branchcode,
+                            borrowernumber   => $patron_id,
+                            biblionumber     => $item->biblionumber,
+                            priority         => 1,
+                            reservation_date => undef,
+                            expiration_date  => undef,
+                            notes            => $config->{default_hold_note} // 'Placed by ILL',
+                            title            => '',
+                            itemnumber       => $item_id,
+                            found            => undef,
+                            itemtype         => $item->effective_itemtype
+                        }
+                    );
+
+                    $attributes->{hold_id} = $hold_id;
+
+                    # Update request
+                    $req->biblio_id( $item->biblionumber )->status('B_ITEM_RECEIVED')->store;
+
+                    add_or_update_attributes(
+                        {
+                            attributes => $attributes,
+                            request    => $req,
+                        }
+                    );
+
+                    INNReach::Commands::BorrowingSite->new( { plugin => $self->{plugin} } )->receive_unshipped($req);
+                }
+            );
+        } catch {
+            innreach_warn("$_");
+            return {
+                error   => 1,
+                status  => '',
+                message => "$_",
+                method  => 'receive_unshipped',
+                stage   => 'form'
+            };
+        };
+    }
+
+    return {
+        error   => 0,
+        status  => '',
+        message => '',
+        method  => 'receive_unshipped',
+        stage   => 'commit',
+        next    => 'illview',
+        value   => '',
+    };
+}
+
 
 =head3 item_in_transit
 

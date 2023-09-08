@@ -65,4 +65,40 @@ sub item_received {
     return $self;
 }
 
+=head3 receive_unshipped
+
+    $command->receive_unshipped( $ill_request );
+
+Given a I<Koha::Illrequest> object, notifies the item has been received but no
+I<itemshipped> message was received.
+
+=cut
+
+sub receive_unshipped {
+    my ( $self, $request ) = @_;
+
+    INNReach::Ill::InconsistentStatus->throw(
+        "Status is not correct: " . $request->status )
+      unless $request->status =~ m/^B/; # needs to be borrowing site flow
+
+    my $attributes = $request->extended_attributes;
+
+    my $trackingId  = $attributes->find( { type => 'trackingId' } )->value;
+    my $centralCode = $attributes->find( { type => 'centralCode' } )->value;
+
+    my $response = $self->oauth2($centralCode)->post_request(
+        {
+            endpoint => "/innreach/v2/circ/receiveunshipped/$trackingId/$centralCode",
+            centralCode => $centralCode,
+        }
+    );
+
+    INNReach::Ill::RequestFailed->throw(
+        method   => 'receive_unshipped',
+        response => $response
+    ) unless $response->is_success;
+
+    return $self;
+}
+
 1;
