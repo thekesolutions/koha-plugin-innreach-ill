@@ -1603,7 +1603,7 @@ sub add_virtual_record_and_item {
     my $framework_code = $config->{default_marc_framework} || 'FA';
     my $ccode          = $config->{default_item_ccode};
     my $location       = $config->{default_location};
-    my $notforloan     = $config->{default_notforloan} // -1;
+    my $notforloan     = $config->{default_notforloan};
     my $checkin_note   = $config->{default_checkin_note} || 'Additional processing required (ILL)';
 
     my $materials;
