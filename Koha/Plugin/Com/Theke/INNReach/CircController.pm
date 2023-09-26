@@ -1747,12 +1747,12 @@ sub pickup_location_to_library_id {
         $pickup_location = $+{pickup_location};
     }
     else {
-        INNReach::Circ::BadPickupLocation->throw( value => $args->{pickupLocation} );
+        INNReach::Ill::BadPickupLocation->throw( "Couldn't parse 'pickupLocation' parameter: '$args->{pickupLocation}'" );
     }
 
     $library_id = $configuration->{location_to_library}->{$pickup_location};
 
-    INNReach::Ill::MissingMapping->throw( section => 'location_to_library', key => $args->{pickupLocation} )
+    INNReach::Ill::MissingMapping->throw( "Configuration section 'location_to_library' doesn't contain a mapping for '$pickup_location'" )
         unless $library_id;
 
     return $library_id;
