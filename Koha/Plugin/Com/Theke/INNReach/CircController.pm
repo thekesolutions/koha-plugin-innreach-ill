@@ -1752,6 +1752,9 @@ sub pickup_location_to_library_id {
 
     $library_id = $configuration->{location_to_library}->{$pickup_location};
 
+    INNReach::Ill::MissingMapping->throw( section => 'location_to_library', key => $args->{pickupLocation} )
+        unless $library_id;
+
     return $library_id;
 }
 

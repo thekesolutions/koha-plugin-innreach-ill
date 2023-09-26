@@ -19,6 +19,11 @@ use Modern::Perl;
 
 use Exception::Class (
     'INNReach::Ill',
+    'INNReach::Ill::BadPickupLocation' => {
+        isa         => 'INNReach::Ill',
+        description => 'The passed pickupLocation attribute does not contain a valid structure',
+        fields      => ['value']
+    },
     'INNReach::Ill::InconsistentStatus' => {
         isa         => 'INNReach::Ill',
         description => 'Request status inconsistent with the requested action',
@@ -28,6 +33,11 @@ use Exception::Class (
         isa         => 'INNReach::Ill',
         description => 'Passed central server is invalid',
         fields      => ['central_server']
+    },
+    'INNReach::Ill::MissingMapping' => {
+        isa         => 'INNReach::Ill',
+        description => 'Mapping returns undef',
+        fields      => ['section', 'key']
     },
     'INNReach::Ill::MissingParameter' => {
         isa         => 'INNReach::Ill',
@@ -50,5 +60,27 @@ use Exception::Class (
         fields      => [ 'method', 'response' ]
     },
 );
+
+sub full_message {
+    my $self = shift;
+
+    # If a message was passed manually, use it
+    return sprintf "Exception '%s' thrown '%s'\n", ref($self), $self->message
+      if $self->message;
+
+    my $field_hash = $self->field_hash;
+
+    my $description = $self->description;
+    my @fields;
+
+    foreach my $key ( sort keys %$field_hash ) {
+        push @fields, $key . " => " . $field_hash->{$key}
+          if defined $field_hash->{$key};
+    }
+
+    return
+      sprintf "Exception '%s' thrown '%s'" . ( @fields ? " with %s" : "" ) . "\n",
+      ref($self), $description, ( @fields ? join ', ', @fields : () );
+}
 
 1;
