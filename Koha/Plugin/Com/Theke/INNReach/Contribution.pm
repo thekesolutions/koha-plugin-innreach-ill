@@ -263,16 +263,14 @@ sub contribute_batch_items {
                 agencyCode        => $self->config->{$central_server}->{mainAgency},
                 centralItemType   => $centralItemType,
                 locationKey       => $locationKey,
-                itemCircStatus    => $self->item_circ_status({ item => $item }),
+                itemCircStatus    => $self->item_circ_status( { item => $item } ),
                 holdCount         => 0,
-                dueDateTime       => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
+                dueDateTime       => ( $item->onloan ) ? dt_from_string( $item->onloan )->epoch : undef,
                 callNumber        => $item->itemcallnumber,
                 volumeDesignation => $item->enumchron,
                 copyNumber        => $item->copynumber,
-            # marc856URI        => undef, # We really don't have this concept in Koha
-            # marc856PublicNote => undef, # We really don't have this concept in Koha
-                itemNote          => $item->itemnotes,
-                suppress          => 'n' # TODO: revisit
+                itemNote          => substr( $item->itemnotes, 0, 256 ),
+                suppress          => 'n',                                                                # TODO: revisit
             };
 
             push @itemInfo, $itemInfo;
