@@ -284,7 +284,7 @@ This helper method tests if the current token is expired.
 sub is_token_expired {
     my ($self) = @_;
 
-    return $self->{expiration} < DateTime->now();
+    return !defined $self->{expiration} || $self->{expiration} < DateTime->now();
 }
 
 1;
