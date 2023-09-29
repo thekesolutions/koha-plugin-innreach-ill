@@ -1284,6 +1284,14 @@ sub cancelrequest {
             }
         ) unless $req->status eq 'B_ITEM_REQUESTED';
 
+        my $notice_result   = $req->send_patron_notice("ILL_REQUEST_UNAVAIL");
+        my @notice_failures = $notice_result->{result}->{fail};
+        if ( scalar @notice_failures ) {
+            Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn( "Error sending notificaiton for request "
+                    . $req->id
+                    . ". Transports: "
+                    . join( ', ', @{ $notice_failures[0] } ) );
+        }
         $req->status('B_ITEM_CANCELLED')->store;
 
         return $c->render(
