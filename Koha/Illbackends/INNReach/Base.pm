@@ -724,7 +724,7 @@ sub receive_unshipped {
                             expiration_date  => undef,
                             notes            => $config->{default_hold_note} // 'Placed by ILL',
                             title            => '',
-                            itemnumber       => $item_id,
+                            itemnumber       => $item->id,
                             found            => undef,
                             itemtype         => $item->effective_itemtype
                         }
