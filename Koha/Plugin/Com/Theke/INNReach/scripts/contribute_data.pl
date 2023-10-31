@@ -34,6 +34,7 @@ binmode STDERR, ':encoding(UTF-8)';
 
 my $biblio_id;
 my $biblios       = 0;
+my $items         = 0;
 my $where;
 my $noout         = 0;
 my $exclude_items = 0;
@@ -51,6 +52,7 @@ my $help;
 my $result = GetOptions(
     'biblio_id=s'         => \$biblio_id,
     'biblios'             => \$biblios,
+    'items'               => \$items,
     'where=s'             => \$where,
     'exclude_items'       => \$exclude_items,
     'force'               => \$force,
@@ -89,6 +91,12 @@ if ( $biblio_id and $where ) {
     exit 1;
 }
 
+if ( $biblios and $items ) {
+    prunt_usage();
+    say "--biblios and --items are mutually exclussive";
+    exit 1;
+}
+
 sub print_usage {
     print <<_USAGE_;
 
@@ -99,9 +107,10 @@ Options:
     --force                Force action (check the code for cases)
     --recontribution       Work in recontribution mode
 
-Record contribution actions:
+Record/item contribution actions:
 
-    --biblios              Triggers biblio contribution
+    --biblios              Triggers biblio (de)contribution
+    --items                Triggers item (de)contribution
     --biblio_id  id        Only contribute the specified biblio_id
     --where                SQL WHERE conditions on biblios
     --exclude_items        Exclude items from this batch update
@@ -120,7 +129,7 @@ Locations actions:
     --delete_location id   Sends a request to remove library id from the locations list
     --update_location id   Sends a request to update library id from the locations list
 
-Note: --biblio_id and --all_biblios are mutually exclussive
+Note: --biblio_id, --items and --all_biblios are mutually exclussive
 
 _USAGE_
 }
@@ -131,6 +140,72 @@ unless ( any { $_ eq $central_server } @{$contribution->{centralServers}} ) { # 
     print_usage();
     say "$central_server is not a valid configured central server!";
     exit 1;
+}
+
+if ($items) {
+
+    unless ($decontribute) {
+        print_usage();
+        say "For --items, only decontribution is implemented";
+        exit 1;
+    }
+
+    unless ($where) {
+        print_usage();
+        say "--where is mandatory for --items";
+        exit 1;
+    }
+
+    # normal flow
+    my $configuration = $contribution->config->{$central_server};
+    my $exclude_empty_biblios =
+        $configuration->{contribution} ? $configuration->{contribution}->{exclude_empty_biblios} : 0;
+
+    my $query    = \[$where];
+    my $items_rs = Koha::Items->search($query);
+
+    while ( my $item = $items_rs->next ) {
+        my $biblio              = $item->biblio;
+        my $contributable_items = $contribution->filter_items_by_contributable(
+            {
+                central_server => $central_server,
+                items          => $biblio->items
+            }
+        );
+
+        if ( $contributable_items->count == 0 && $exclude_empty_biblios ) {
+            print STDOUT "# Decontributing empty biblio: " . $biblio->id . "\n";
+            my $errors = $contribution->decontribute_bib(
+                {
+                    bibId         => $biblio->id,
+                    centralServer => $central_server,
+                }
+            );
+            if ( $errors->{$central_server} ) {
+                print STDOUT " - Status: Error (" . $errors->{$central_server} . ")\n"
+                    unless $noout;
+            } else {
+                print STDOUT " - Status: OK\n"
+                    unless $noout;
+            }
+
+        } else {
+            print STDOUT "# Decontributing item: " . $item->id . "\n";
+            my $errors = $contribution->decontribute_item(
+                {
+                    itemId        => $item->id,
+                    centralServer => $central_server,
+                }
+            );
+            if ( $errors->{$central_server} ) {
+                print STDOUT " - Status: Error (" . $errors->{$central_server} . ")\n"
+                    unless $noout;
+            } else {
+                print STDOUT " - Status: OK\n"
+                    unless $noout;
+            }
+        }
+    }
 }
 
 if ( $biblio_id or $biblios ) {
