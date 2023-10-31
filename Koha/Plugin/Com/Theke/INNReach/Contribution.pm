@@ -435,6 +435,18 @@ sub decontribute_bib {
                         central_server => $central_server,
                     }
                 );
+		my $biblio = Koha::Biblios->find($bibId);
+		if ($biblio) {
+                    my $items = $biblio->items;
+		    while (my $item = $items->next) {
+		        $self->unmark_item_as_contributed(
+			    {
+			        central_server => $central_server,
+				item_id        => $item->id,
+			    }
+			);
+		    }
+		}
             }
         }
     }
