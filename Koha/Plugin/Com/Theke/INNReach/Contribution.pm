@@ -394,17 +394,16 @@ DELETE /innreach/v2/contribution/bib/<bibId>
 =cut
 
 sub decontribute_bib {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $bibId = $args->{bibId};
-    INNReach::Ill::MissingParameter->throw( param =>  "bibId" )
+    INNReach::Ill::MissingParameter->throw( param => "bibId" )
         unless $bibId;
 
     my @central_servers;
     if ( $args->{centralServer} ) {
         push @central_servers, $args->{centralServer};
-    }
-    else {
+    } else {
         @central_servers = @{ $self->{centralServers} };
     }
 
@@ -412,7 +411,8 @@ sub decontribute_bib {
 
     for my $central_server (@central_servers) {
         my $response = $self->oauth2->{$central_server}->delete_request(
-            {   endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
+            {
+                endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
                 centralCode => $central_server
             }
         );
@@ -427,26 +427,25 @@ sub decontribute_bib {
                 # we pick the first one
                 my $THE_error = $iii_errors[0][0];
                 $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
-            }
-            else {
+            } else {
                 $self->unmark_biblio_as_contributed(
                     {
                         biblio_id      => $bibId,
                         central_server => $central_server,
                     }
                 );
-		my $biblio = Koha::Biblios->find($bibId);
-		if ($biblio) {
+                my $biblio = Koha::Biblios->find($bibId);
+                if ($biblio) {
                     my $items = $biblio->items;
-		    while (my $item = $items->next) {
-		        $self->unmark_item_as_contributed(
-			    {
-			        central_server => $central_server,
-				item_id        => $item->id,
-			    }
-			);
-		    }
-		}
+                    while ( my $item = $items->next ) {
+                        $self->unmark_item_as_contributed(
+                            {
+                                central_server => $central_server,
+                                item_id        => $item->id,
+                            }
+                        );
+                    }
+                }
             }
         }
     }
