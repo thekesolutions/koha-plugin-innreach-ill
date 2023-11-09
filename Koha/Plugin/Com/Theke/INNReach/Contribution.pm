@@ -235,6 +235,8 @@ sub contribute_batch_items {
 
     for my $central_server (@central_servers) {
 
+        my $configuration = $self->config->{$central_server};
+
         unless ( $self->is_bib_contributed( { biblio_id => $bibId, central_server => $central_server } ) ) {
             $self->contribute_bib(
                 {   bibId         => $bibId,
@@ -243,6 +245,9 @@ sub contribute_batch_items {
             );
         }
 
+        my $use_holding_library = exists $configuration->{contribution}->{use_holding_library}
+            && $configuration->{contribution}->{use_holding_library};
+
         my @itemInfo;
 
         foreach my $item ( @items ) {
@@ -250,8 +255,10 @@ sub contribute_batch_items {
                 die "Item (" . $item->itemnumber . ") doesn't belong to bib record ($bibId)";
             }
 
-            my $centralItemType = $self->config->{$central_server}->{local_to_central_itype}->{$item->effective_itemtype};
-            my $locationKey = $self->config->{$central_server}->{library_to_location}->{$item->homebranch}->{location};
+            my $branch_to_use = $use_holding_library ? $item->holdingbranch : $item->homebranch;
+
+            my $centralItemType = $configuration->{local_to_central_itype}->{$item->effective_itemtype};
+            my $locationKey = $configuration->{library_to_location}->{$branch_to_use}->{location};
 
             # Skip the item if has unmapped values (that are relevant)
             unless ( $centralItemType && $locationKey ) {
@@ -260,7 +267,7 @@ sub contribute_batch_items {
 
             my $itemInfo = {
                 itemId            => $item->itemnumber,
-                agencyCode        => $self->config->{$central_server}->{mainAgency},
+                agencyCode        => $configuration->{mainAgency},
                 centralItemType   => $centralItemType,
                 locationKey       => $locationKey,
                 itemCircStatus    => $self->item_circ_status( { item => $item } ),

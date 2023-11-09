@@ -162,6 +162,7 @@ d2ir:
     contribution:
         max_retries: 10
         exclude_empty_biblios: true
+        use_holding_library: false # if true, holding library will be used for the location
         included_items:
             biblionumber: [ 1, 2, 3 ]
             ccode: [ a, b, c ]
