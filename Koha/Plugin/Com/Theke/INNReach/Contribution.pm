@@ -284,7 +284,7 @@ sub contribute_batch_items {
                 callNumber        => $item->itemcallnumber,
                 volumeDesignation => $item->enumchron,
                 copyNumber        => $item->copynumber,
-                itemNote          => substr( $item->itemnotes, 0, 256 ),
+                itemNote          => substr( $item->itemnotes // '', 0, 256 ),
                 suppress          => 'n',                                                                # TODO: revisit
             };
 
