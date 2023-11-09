@@ -262,6 +262,14 @@ sub contribute_batch_items {
 
             # Skip the item if has unmapped values (that are relevant)
             unless ( $centralItemType && $locationKey ) {
+                unless ($centralItemType) {
+                    warn "$central_server: missing mapping for item type (" . $item->effective_itemtype // 'null' . ")";
+                }
+                unless ($locationKey) {
+                    warn "$central_server: missing mapping for branch ("
+                        . $branch_to_use . "). "
+                        . ($use_holding_library) ? 'NOTE: using holding library' : 'NOTE: using home library';
+                }
                 next;
             }
 
