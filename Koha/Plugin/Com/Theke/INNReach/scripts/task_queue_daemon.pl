@@ -91,7 +91,7 @@ sub run_queued_tasks {
         WHERE
             status='queued' OR
             status='retry'
-	ORDER BY timestamp DESC
+	ORDER BY timestamp ASC
 	LIMIT 100
     });
 
