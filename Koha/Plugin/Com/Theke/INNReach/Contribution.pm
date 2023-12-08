@@ -308,9 +308,10 @@ sub contribute_batch_items {
 
                 # we pick the first one
                 my $THE_error = $iii_errors[0]->[0];
-                $errors->{$central_server} = $THE_error->{reason} . q{: } . join( ' | ', map {$_->{messages}} @{$THE_error->{errors}} );
-                $errors->{$central_server} .= " " . p(@itemInfo)
-                  if $errors->{$central_server} =~ m/400 Bad Request/;
+                $errors->{$central_server} =
+                      $THE_error->{reason} . q{: }
+                    . join( ' | ', map { $_->{messages} } @{ $THE_error->{errors} } ) . " "
+                    . p(@itemInfo);
             }
             else {
                 foreach my $item (@items) {
