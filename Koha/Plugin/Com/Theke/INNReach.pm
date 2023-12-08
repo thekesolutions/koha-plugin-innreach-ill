@@ -30,7 +30,7 @@ use Koha::Illrequests;
 use Koha::Items;
 
 use Koha::Plugin::Com::Theke::INNReach::Contribution;
-use Koha::Plugin::Com::Theke::INNReach::Utils;
+use Koha::Plugin::Com::Theke::INNReach::Utils qw(innreach_warn);
 
 BEGIN {
     my $path = Module::Metadata->find_module_by_name(__PACKAGE__);
@@ -616,13 +616,15 @@ sub after_item_action {
               exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type};
 
             # Skip if rules say so
-            next
-              if !$contribution->should_item_be_contributed(
-                {
-                    item           => $item,
-                    central_server => $central_server
-                }
-              );
+            if (!$contribution->should_item_be_contributed(
+            {
+                item           => $item,
+                central_server => $central_server
+            }
+            )) {
+                innreach_warn( "No 'local_to_central_itype' mapping for $item_type ($central_server)" );
+                next;
+            }
         }
 
         $self->schedule_task(
@@ -1123,7 +1125,7 @@ sub get_ill_request_from_biblio_id {
     my $reqs = Koha::Illrequests->search({ biblio_id => $biblio_id });
 
     if ( $reqs->count > 1 ) {
-        warn "innreach_plugin_warn: more than one ILL request for biblio_id ($biblio_id). Beware!";
+        innreach_warn( "More than one ILL request for biblio_id ($biblio_id). Beware!");
     }
 
     return unless $reqs->count > 0;
