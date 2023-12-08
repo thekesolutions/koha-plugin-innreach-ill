@@ -29,7 +29,7 @@ use Koha::Plugin::Com::Theke::INNReach::Contribution;
 
 use Koha::Script;
 
-my $daemon_sleep    = 5;
+my $daemon_sleep    = 1;
 my $verbose_logging = 0;
 my $help       = 0;
 
