@@ -139,11 +139,8 @@ sub do_task {
         }
     }
     elsif ( $object_type eq 'item' ) {
-        if ( $action eq 'create' ) {
-            do_item_contribute({ item_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
-        }
-        elsif ( $action eq 'modify' ) {
-            do_item_contribute({ item_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
+        if ( $action eq 'create' || $action eq 'modify' ) {
+            handle_item_action({ item_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
         }
         elsif ( $action eq 'delete' ) {
             do_item_decontribute({ item_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
@@ -228,6 +225,52 @@ sub do_biblio_decontribute {
     catch {
         mark_task({ task => $task, status => 'error', error => "$_" });
     };
+
+    return 1;
+}
+
+=head3 handle_item_action
+
+This sub handles item actions.
+
+=cut
+
+sub handle_item_action {
+    my ($args) = @_;
+
+    my $item_id        = $args->{item_id};
+    my $contribution   = $args->{contribution};
+    my $task           = $args->{task};
+    my $central_server = $task->{central_server};
+
+    if ( $task->{action} eq 'modify' || $task->{action} eq 'create' ) {
+
+        # should item be contributed?
+        my $item = Koha::Items->find($item_id);
+
+        unless ($item) {
+            mark_task( { task => $task, status => 'skipped', error => 'Item not found' } );
+            return 1;
+        }
+
+        if ( $contribution->should_item_be_contributed( { item => $item, central_server => $central_server } ) ) {
+
+            # It is contributable.
+            return do_item_contribute($args);
+        } else {
+
+            # Decontribute if necessary
+            if ( $task->{action} eq 'modify' ) {
+                return do_item_decontribute($args);
+            } else {
+
+                # New, and not contributable.
+                mark_task(
+                    { task => $task, status => 'skipped', error => "Item not contributable based on configuration" } );
+
+            }
+        }
+    }
 
     return 1;
 }
