@@ -211,11 +211,16 @@ sub do_biblio_decontribute {
     try {
         my $result = $contribution->decontribute_bib({ bibId => $biblio_id, centralServer => $task->{central_server} });
         if ( $result ) {
-            if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
-                mark_task({ task => $task, status => 'retry', error => $result });
+            if ( $result->{$task->{central_server}} =~ m/No bib record found with specified recid/ ) {
+                mark_task({ task => $task, status => 'skipped', error => $result });
             }
             else {
-                mark_task({ task => $task, status => 'error', error => $result });
+                if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
+                    mark_task({ task => $task, status => 'retry', error => $result });
+                }
+                else {
+                    mark_task({ task => $task, status => 'error', error => $result });
+                }
             }
         }
         else {
@@ -329,11 +334,16 @@ sub do_item_decontribute {
     try {
         my $result = $contribution->decontribute_item({ itemId => $item_id, centralServer => $task->{central_server} });
         if ( $result ) {
-            if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
-                mark_task({ task => $task, status => 'retry', error => $result });
+            if ( $result->{$task->{central_server}} =~ m/No item record found with specified recid/ ) {
+                mark_task({ task => $task, status => 'skipped', error => $result });
             }
             else {
-                mark_task({ task => $task, status => 'error', error => $result });
+                if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
+                    mark_task({ task => $task, status => 'retry', error => $result });
+                }
+                else {
+                    mark_task({ task => $task, status => 'error', error => $result });
+                }
             }
         }
         else {
