@@ -18,7 +18,6 @@ package Koha::Plugin::Com::Theke::INNReach::Contribution;
 use Modern::Perl;
 
 use Encode qw{ encode decode };
-use HTTP::Request::Common qw{ DELETE GET POST PUT };
 use List::MoreUtils qw(any);
 use Mojo::JSON qw(decode_json encode_json);
 use MARC::Record;
