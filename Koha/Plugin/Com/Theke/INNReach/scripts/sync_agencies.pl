@@ -61,8 +61,8 @@ _USAGE_
 }
 
 my $response;
-my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
-my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
+my $plugin       = Koha::Plugin::Com::Theke::INNReach->new;
+my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $plugin } );
 
 my @central_servers = @{ $contribution->centralServers };
 @central_servers = grep { $_ eq $central_server } @central_servers
