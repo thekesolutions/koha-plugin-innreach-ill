@@ -99,7 +99,7 @@ _USAGE_
 }
 
 my $plugin       = Koha::Plugin::Com::Theke::INNReach->new;
-my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
+my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $plugin } );
 
 my $query      = {};
 my $attributes = {};
