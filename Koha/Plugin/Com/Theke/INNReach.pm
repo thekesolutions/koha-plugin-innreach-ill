@@ -608,23 +608,24 @@ sub after_item_action {
 
             # We don't contribute ILL-generated items
             next
-              if $item_type eq $configuration->{$central_server}->{default_item_type};
+                if $item_type eq $configuration->{$central_server}->{default_item_type};
 
             # Skip if item type is not mapped
-            next
-              if !
-              exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type};
-
-            # Skip if rules say so
-            if (!$contribution->should_item_be_contributed(
-            {
-                item           => $item,
-                central_server => $central_server
-            }
-            )) {
-                innreach_warn( "No 'local_to_central_itype' mapping for $item_type ($central_server)" );
+            if ( !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type} ) {
+                innreach_warn("No 'local_to_central_itype' mapping for $item_type ($central_server)");
                 next;
             }
+
+            # Skip if rules say so
+            next
+                if (
+                !$contribution->should_item_be_contributed(
+                    {
+                        item           => $item,
+                        central_server => $central_server
+                    }
+                )
+                );
         }
 
         $self->schedule_task(
