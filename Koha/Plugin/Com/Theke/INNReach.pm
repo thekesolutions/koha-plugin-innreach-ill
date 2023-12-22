@@ -507,7 +507,7 @@ sub after_biblio_action {
 
     my $task_queue    = $self->get_qualified_table_name('task_queue');
     my $configuration = $self->configuration;
-    my $contribution  = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
+    my $contribution  = Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $self } );
 
     my @central_servers = $self->central_servers;
 
@@ -596,7 +596,7 @@ sub after_item_action {
     my $item    = $args->{item};
 
     my $configuration = $self->configuration;
-    my $contribution  = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
+    my $contribution  = Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $self } );
 
     my @central_servers = $self->central_servers;
 
