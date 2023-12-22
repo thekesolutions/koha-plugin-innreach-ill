@@ -59,7 +59,7 @@ sub new {
 
     my $args;
 
-    my $plugin = $args->{plugin};
+    my $plugin = $params->{plugin};
     INNReach::Ill::MissingParameter->throw( param => "plugin" )
         unless $plugin && ref($plugin) eq 'Koha::Plugin::Com::Theke::INNReach';
 
