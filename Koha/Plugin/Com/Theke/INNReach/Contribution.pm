@@ -57,12 +57,12 @@ Class constructor
 =cut
 
 sub new {
-    my ($class) = @_;
+    my ($class, $params) = @_;
 
     my $args;
 
     try {
-        my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+        my $plugin = $params->{plugin} // Koha::Plugin::Com::Theke::INNReach->new;
         $args->{plugin} = $plugin;
         $args->{config} = $plugin->configuration;
         my @centralServers = $plugin->central_servers;
