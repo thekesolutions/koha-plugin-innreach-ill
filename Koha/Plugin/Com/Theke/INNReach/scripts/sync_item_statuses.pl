@@ -25,6 +25,7 @@ use Getopt::Long;
 use List::MoreUtils qw(any);
 use Try::Tiny;
 
+use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::Contribution;
 
 binmode STDOUT, ':encoding(UTF-8)';
@@ -68,7 +69,8 @@ Options:
 _USAGE_
 }
 
-my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
+my $plugin       = Koha::Plugin::Com::Theke::INNReach->new;
+my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $plugin } );
 
 unless ( any { $_ eq $central_server } @{$contribution->{centralServers}} ) { # valid?
     print_usage();
