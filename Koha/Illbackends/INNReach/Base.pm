@@ -120,7 +120,7 @@ that we do not consider to be metadata
 
 sub metadata {
     my ( $self, $request ) = @_;
-    my $attrs       = $request->illrequestattributes;
+    my $attrs       = $request->extended_attributes;
     my $metadata    = {};
     my @ignore      = ('requested_partners');
 	my $core_fields = _get_core_fields();

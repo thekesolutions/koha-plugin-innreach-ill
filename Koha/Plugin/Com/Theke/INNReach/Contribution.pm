@@ -1017,8 +1017,8 @@ sub notify_borrower_renew {
 
     return try {
 
-        my $trackingId  = $req->illrequestattributes->search({ type => 'trackingId'  })->next->value;
-        my $centralCode = $req->illrequestattributes->search({ type => 'centralCode' })->next->value;
+        my $trackingId  = $req->extended_attributes->search({ type => 'trackingId'  })->next->value;
+        my $centralCode = $req->extended_attributes->search({ type => 'centralCode' })->next->value;
 
         $response = $self->oauth2->{$centralCode}->post_request(
             {

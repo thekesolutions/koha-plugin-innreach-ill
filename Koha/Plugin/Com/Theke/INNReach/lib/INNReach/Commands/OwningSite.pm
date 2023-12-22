@@ -46,7 +46,7 @@ sub final_checkin {
     INNReach::Ill::InconsistentStatus->throw( "Status is not correct: " . $request->status )
         unless $request->status =~ m/^O/; # needs to be owning site flow
 
-    my $attributes = $request->illrequestattributes;
+    my $attributes = $request->extended_attributes;
 
     my $trackingId  = $attributes->find({ type => 'trackingId'  })->value;
     my $centralCode = $attributes->find({ type => 'centralCode' })->value;
@@ -79,7 +79,7 @@ sub item_shipped {
     INNReach::Ill::InconsistentStatus->throw( "Status is not correct: " . $request->status )
         unless $request->status =~ m/^O_ITEM_REQUESTED/;
 
-    my $attributes = $request->illrequestattributes;
+    my $attributes = $request->extended_attributes;
 
     my $trackingId  = $attributes->find({ type => 'trackingId'  })->value;
     my $centralCode = $attributes->find({ type => 'centralCode' })->value;

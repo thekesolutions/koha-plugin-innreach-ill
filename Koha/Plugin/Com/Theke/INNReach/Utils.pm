@@ -133,7 +133,7 @@ sub add_virtual_record_and_item {
             : 'Additional processing required (ILL)';
     }
 
-    my $attributes      = $req->illrequestattributes;
+    my $attributes      = $req->extended_attributes;
     my $centralItemType = $attributes->search( { type => 'centralItemType' } )->next->value;
 
     if ( any { $centralItemType eq $_ } @{$no_barcode_central_itypes} ) {

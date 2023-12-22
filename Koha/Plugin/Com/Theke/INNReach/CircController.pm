@@ -1196,7 +1196,7 @@ sub borrowerrenew {
     return try {
 
         # the current status is valid, retrieve the checkout object
-        my $checkout_attribute = $req->illrequestattributes->find({ type => 'checkout_id' });
+        my $checkout_attribute = $req->extended_attributes->find({ type => 'checkout_id' });
         my $checkout;
 
         if ( $checkout_attribute ) {
@@ -1380,7 +1380,7 @@ sub transferrequest {
 
         while ( my ($type, $value) = each %{$attributes} ) {
             # Update all attributes
-            my $attr = $req->illrequestattributes->find({ type => $type });
+            my $attr = $req->extended_attributes->find({ type => $type });
             $attr->set({ value => $value })->store;
         }
 
@@ -1428,14 +1428,14 @@ sub get_print_slip {
         }
 
         my $illrequestattributes = {};
-        my $attributes = $req->illrequestattributes;
+        my $attributes = $req->extended_attributes;
         while ( my $attribute = $attributes->next ) {
             $illrequestattributes->{$attribute->type} = $attribute->value;
         }
 
         # Koha::Illrequest->get_notice with hardcoded letter_code
-        my $title     = $req->illrequestattributes->find({ type => 'title' });
-        my $author    = $req->illrequestattributes->find({ type => 'author' });
+        my $title     = $req->extended_attributes->find({ type => 'title' });
+        my $author    = $req->extended_attributes->find({ type => 'author' });
         my $metahash  = $req->metadata;
         my @metaarray = ();
 
@@ -1448,12 +1448,12 @@ sub get_print_slip {
         my $item_id;
         if ( $req->status =~ /^O_/ ) {
             # 'lending'
-            my $item_id_attr = $req->illrequestattributes->find({ type => 'itemId' });
+            my $item_id_attr = $req->extended_attributes->find({ type => 'itemId' });
             $item_id = ($item_id_attr) ? $item_id_attr->value : '';
         }
         elsif ( $req->status =~ /^B_/ ) {
             # 'borrowing' (itemId is the lending system's, use itemBarcode instead)
-            my $barcode_attr = $req->illrequestattributes->find({ type => 'itemBarcode' });
+            my $barcode_attr = $req->extended_attributes->find({ type => 'itemBarcode' });
             my $barcode = ($barcode_attr) ? $barcode_attr->value : '';
             if ( $barcode ) {
                 if ( Koha::Items->search({ barcode => $barcode })->count > 0 ) {
@@ -1606,7 +1606,7 @@ sub add_virtual_record_and_item {
     my $call_number = $args->{call_number};
     my $barcode     = $args->{barcode};
 
-    my $attributes  = $req->illrequestattributes;
+    my $attributes  = $req->extended_attributes;
 
     my $centralItemType = $attributes->search({ type => 'centralItemType' })->next->value;
 

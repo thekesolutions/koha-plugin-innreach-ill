@@ -43,7 +43,7 @@ sub item_received {
         "Status is not correct: " . $request->status )
       unless $request->status =~ m/^B/; # needs to be borrowing site flow
 
-    my $attributes = $request->illrequestattributes;
+    my $attributes = $request->extended_attributes;
 
     my $trackingId  = $attributes->find( { type => 'trackingId' } )->value;
     my $centralCode = $attributes->find( { type => 'centralCode' } )->value;
