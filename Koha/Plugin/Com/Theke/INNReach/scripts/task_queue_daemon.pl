@@ -48,8 +48,7 @@ my $dbh;
 while (1) {
     try {
 
-        my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new;
-        run_queued_tasks({ contribution => $contribution });
+        run_queued_tasks();
 
     }
     catch {
@@ -68,11 +67,11 @@ while (1) {
 sub run_queued_tasks {
     my ($args) = @_;
 
-    my $contribution = $args->{contribution};
-
     my $dbh = C4::Context->dbh;
 
-    my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+    my $plugin       = Koha::Plugin::Com::Theke::INNReach->new;
+    my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $plugin } );
+
     my $table  = $plugin->get_qualified_table_name('task_queue');
 
     my $query = $dbh->prepare(qq{
