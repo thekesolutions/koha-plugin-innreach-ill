@@ -132,10 +132,10 @@ while ( my $biblio = $biblios->next ) {
                 }
             );
             print STDOUT "Record: " . $biblio->id . "\tdecontribute\n"
-                if $verbose;
+                unless $noout;
         } else {
             print STDOUT "Record: " . $biblio->id . "\tkeep\n"
-                if $verbose;
+                unless $noout;
 
             my @to_decontribute_item_ids = $contribution->filter_items_by_to_be_decontributed(
                 { central_server => $central_server, items => $biblio->items } )->get_column('itemnumber');
@@ -150,7 +150,7 @@ while ( my $biblio = $biblios->next ) {
                 { items => $biblio->items, central_server => $central_server } )->get_column('itemnumber');
 
             print STDOUT "\t> items\n"
-                if $verbose and ( scalar @to_decontribute_item_ids > 0 || scalar @to_contribute_item_ids > 0 );
+                unless $noout and ( scalar @to_decontribute_item_ids > 0 || scalar @to_contribute_item_ids > 0 );
             foreach my $item_id (@to_decontribute_item_ids) {
                 $plugin->schedule_task(
                     {
@@ -161,7 +161,7 @@ while ( my $biblio = $biblios->next ) {
                         status         => 'queued',
                     }
                 );
-                print STDOUT "\t\t * $item_id (decontribute)\n" if $verbose;
+                print STDOUT "\t\t * $item_id (decontribute)\n" unless $noout;
             }
 
             foreach my $item_id (@to_contribute_item_ids) {
@@ -174,7 +174,7 @@ while ( my $biblio = $biblios->next ) {
                         status         => 'queued',
                     }
                 );
-                print STDOUT "\t\t * $item_id (contribute)\n" if $verbose;
+                print STDOUT "\t\t * $item_id (contribute)\n" unless $noout;
             }
         }
     } else {
@@ -190,7 +190,7 @@ while ( my $biblio = $biblios->next ) {
         if ( $items->count > 0 ) {
 
             print STDOUT $biblio->id . "\tcontribute\n"
-                if $verbose;
+                unless $noout;
             $plugin->schedule_task(
                 {
                     action         => 'create',
@@ -202,7 +202,7 @@ while ( my $biblio = $biblios->next ) {
             );
 
             print STDOUT "\t> items\n"
-                if $verbose;
+                unless $noout;
 
             while ( my $item = $items->next ) {
                 $plugin->schedule_task(
@@ -214,7 +214,7 @@ while ( my $biblio = $biblios->next ) {
                         status         => 'queued',
                     }
                 );
-                print STDOUT "\t\t * " . $item->id . " (contribute)\n" if $verbose;
+                print STDOUT "\t\t * " . $item->id . " (contribute)\n" unless $noout;
             }
         }
     }
