@@ -31,7 +31,6 @@ use Koha::DateUtils qw(dt_from_string);
 use Koha::Items;
 use Koha::Libraries;
 
-use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 use Koha::Plugin::Com::Theke::INNReach::OAuth2;
 
@@ -60,19 +59,23 @@ sub new {
 
     my $args;
 
+    my $plugin = $args->{plugin};
+    INNReach::Ill::MissingParameter->throw( param => "plugin" )
+        unless $plugin && ref($plugin) eq 'Koha::Plugin::Com::Theke::INNReach';
+
     try {
-        my $plugin = $params->{plugin} // Koha::Plugin::Com::Theke::INNReach->new;
         $args->{plugin} = $plugin;
         $args->{config} = $plugin->configuration;
         my @centralServers = $plugin->central_servers;
         $args->{centralServers} = \@centralServers;
-        foreach my $centralCode ( @centralServers ) {
+        foreach my $centralCode (@centralServers) {
             $args->{oauth2}->{$centralCode} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new(
-                {   client_id          => $args->{config}->{$centralCode}->{client_id},
-                    client_secret      => $args->{config}->{$centralCode}->{client_secret},
+                {
                     api_base_url       => $args->{config}->{$centralCode}->{api_base_url},
                     api_token_base_url => $args->{config}->{$centralCode}->{api_token_base_url},
-                    local_server_code  => $args->{config}->{$centralCode}->{localServerCode}
+                    client_id          => $args->{config}->{$centralCode}->{client_id},
+                    client_secret      => $args->{config}->{$centralCode}->{client_secret},
+                    local_server_code  => $args->{config}->{$centralCode}->{localServerCode},
                 }
             );
         }
