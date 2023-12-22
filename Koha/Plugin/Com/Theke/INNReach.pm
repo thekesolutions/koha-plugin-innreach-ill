@@ -610,12 +610,6 @@ sub after_item_action {
             next
                 if $item_type eq $configuration->{$central_server}->{default_item_type};
 
-            # Skip if item type is not mapped
-            if ( !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type} ) {
-                innreach_warn("No 'local_to_central_itype' mapping for $item_type ($central_server)");
-                next;
-            }
-
             # Skip if rules say so
             next
                 if (
@@ -626,6 +620,12 @@ sub after_item_action {
                     }
                 )
                 );
+
+            # Skip if item type is not mapped
+            if ( !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type} ) {
+                innreach_warn("No 'local_to_central_itype' mapping for $item_type ($central_server)");
+                next;
+            }
         }
 
         $self->schedule_task(
