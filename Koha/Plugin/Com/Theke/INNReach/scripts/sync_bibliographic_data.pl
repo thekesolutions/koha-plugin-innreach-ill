@@ -1,6 +1,6 @@
 #/usr/bin/perl
 
-# Copyright 2021 Theke Solutions
+# Copyright 2023 Theke Solutions
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,8 +18,6 @@
 # This program comes with ABSOLUTELY NO WARRANTY;
 
 use Modern::Perl;
-
-use Data::Printer colored => 1;
 
 use Getopt::Long;
 use List::MoreUtils qw(any);
@@ -117,94 +115,51 @@ my $biblios = Koha::Biblios->search( $query, $attributes );
 
 while ( my $biblio = $biblios->next ) {
 
+    print STDOUT "Record: " . $biblio->id . "\n"
+        unless $noout;
+
     if ( $contribution->is_bib_contributed( { biblio_id => $biblio->id, central_server => $central_server } ) ) {
-        my $contributable_items = $contribution->filter_items_by_contributable(
-            { items => $biblio->items, central_server => $central_server } );
-
-        if ( $contributable_items->count == 0 ) {
-            $plugin->schedule_task(
-                {
-                    action         => 'delete',
-                    central_server => $central_server,
-                    object_id      => $biblio->id,
-                    object_type    => 'biblio',
-                    status         => 'queued',
-                }
-            );
-            print STDOUT "Record: " . $biblio->id . "\tdecontribute\n"
-                unless $noout;
-        } else {
-            print STDOUT "Record: " . $biblio->id . "\tkeep\n"
-                unless $noout;
-
-            my @to_decontribute_item_ids = $contribution->filter_items_by_to_be_decontributed(
-                { central_server => $central_server, items => $biblio->items } )->get_column('itemnumber');
-            my @contributed_item_ids = $contribution->filter_items_by_contributed(
-                { central_server => $central_server, items => $biblio->items } )->get_column('itemnumber');
-            my @to_contribute_item_ids =
-                scalar @contributed_item_ids
-                ? $contribution->filter_items_by_contributable(
-                { central_server => $central_server, items => $biblio->items } )
-                ->search( { itemnumber => { not_in => \@contributed_item_ids } } )->get_column('itemnumber')
-                : $contribution->filter_items_by_contributable(
-                { items => $biblio->items, central_server => $central_server } )->get_column('itemnumber');
-
-            print STDOUT "\t> items\n"
-                unless $noout and ( scalar @to_decontribute_item_ids > 0 || scalar @to_contribute_item_ids > 0 );
-            foreach my $item_id (@to_decontribute_item_ids) {
-                $plugin->schedule_task(
-                    {
-                        action         => 'delete',
-                        central_server => $central_server,
-                        object_id      => $item_id,
-                        object_type    => 'item',
-                        status         => 'queued',
-                    }
-                );
-                print STDOUT "\t\t * $item_id (decontribute)\n" unless $noout;
-            }
-
-            foreach my $item_id (@to_contribute_item_ids) {
-                $plugin->schedule_task(
-                    {
-                        action         => 'create',
-                        central_server => $central_server,
-                        object_id      => $item_id,
-                        object_type    => 'item',
-                        status         => 'queued',
-                    }
-                );
-                print STDOUT "\t\t * $item_id (contribute)\n" unless $noout;
-            }
-        }
-    } else {
-
-        # Not yet contributed, check
-        my $items = $contribution->filter_items_by_contributable(
+        $contribution->decontribute_bib(
             {
-                central_server => $central_server,
-                items          => $biblio->items
+                bibId         => $biblio->id,
+                centralServer => $central_server,
             }
         );
 
-        if ( $items->count > 0 ) {
+        print STDOUT "\t* decontributed\n"
+            unless $noout;
+    }
 
-            print STDOUT $biblio->id . "\tcontribute\n"
+    my $contributable_items = $contribution->filter_items_by_contributable(
+        {
+            items          => $biblio->items,
+            central_server => $central_server
+        }
+    );
+
+    if ( $contributable_items->count > 0
+        || !$plugin->configuration->{$central_server}->{contribution}->{exclude_empty_biblios} )
+    {
+
+        $plugin->schedule_task(
+            {
+                action         => 'create',
+                central_server => $central_server,
+                object_id      => $biblio->id,
+                object_type    => 'biblio',
+                status         => 'queued',
+            }
+        );
+
+        print STDOUT "\t* contributed\n"
+            unless $noout;
+
+        if ( $contributable_items->count > 0 ) {
+            print STDOUT "\t* items:\n"
                 unless $noout;
-            $plugin->schedule_task(
-                {
-                    action         => 'create',
-                    central_server => $central_server,
-                    object_id      => $biblio->id,
-                    object_type    => 'biblio',
-                    status         => 'queued',
-                }
-            );
 
-            print STDOUT "\t> items\n"
-                unless $noout;
+            while ( my $item = $contributable_items->next ) {
 
-            while ( my $item = $items->next ) {
                 $plugin->schedule_task(
                     {
                         action         => 'create',
@@ -214,7 +169,9 @@ while ( my $biblio = $biblios->next ) {
                         status         => 'queued',
                     }
                 );
-                print STDOUT "\t\t * " . $item->id . " (contribute)\n" unless $noout;
+
+                print STDOUT "\t\t * " . $item->id . " (contribute)\n"
+                    unless $noout;
             }
         }
     }
