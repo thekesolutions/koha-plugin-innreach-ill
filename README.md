@@ -306,6 +306,31 @@ $ journalctl -u innreach_task_queue.service -f
 
 ```
 
+## Initial record contribution
+
+Once the contribution rules are set (either `included_items` or `excluded_items`) it is time to
+perform the first contribution.
+
+For that, we will use the `sync_bibliographic_data.pl` script:
+
+```shell
+  $ sudo koha-shell <instance>
+  $ cd /var/lib/koha/<instance>/plugins
+  $ PERL5LIB=/usr/share/koha/lib:. perl \
+                Koha/Plugin/Com/Theke/INNReach/scripts/sync_bibliographic_data.pl \
+                --central_server d2ir \
+                --limit 10 \
+                --where "SOME_SQL_CONDITION"
+```
+
+Both `--limit` and `--where` can be handy for some initial testing.
+
+### Recontribution
+
+The `sync_bibliographic_data.pl` script first decontributes the biblios inside the main loop
+so for recontribution (for example, when rules are changed) you should just run the script
+with the needed constraints.
+
 ## Caveats
 
 The following endpoints have no clear fit in the documented flows and require further conversations to get implemented properly.
