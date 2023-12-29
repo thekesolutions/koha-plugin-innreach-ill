@@ -872,6 +872,20 @@ sub background_tasks {
     };
 }
 
+=head3 template_include_paths
+
+Plugin hook used to register paths to find templates
+
+=cut
+
+sub template_include_paths {
+    my ($self) = @_;
+
+    return [
+        $self->mbf_path('templates'),
+    ];
+}
+
 =head2 Business methods
 
 =head3 generate_patron_for_agency

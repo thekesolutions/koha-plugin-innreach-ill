@@ -61,7 +61,6 @@ sub process {
 
     my @messages;
 
-    my $report   = { total_success => 0, };
     my $commands = INNReach::Commands::OwningSite->new( { plugin => Koha::Plugin::Com::Theke::INNReach->new } );
 
     # ill_request_id param required by ->enqueue()
@@ -69,7 +68,6 @@ sub process {
 
     try {
         $commands->item_shipped( $req );
-        $report->{ total_success }++;
     }
     catch {
         push @messages, "Error: $_";
@@ -79,7 +77,6 @@ sub process {
 
     my $data = $self->decoded_data;
     $data->{messages} = \@messages;
-    $data->{report}   = $report;
 
     $self->finish($data);
 }
