@@ -781,11 +781,13 @@ sub after_hold_action {
 
         if ( $req->status eq 'O_ITEM_REQUESTED' ) {
 
+            my $central_server = $self->get_req_central_server($req);
+
             INNReach::BackgroundJobs::OwningSite::ItemShipped->new->enqueue(
                 {
                     ill_request_id => $req->id,
                 }
-            );
+            ) if $self->configuration->{$central_server}->{lending}->{automatic_item_shipped};
         }
     }
 }
@@ -1177,6 +1179,22 @@ sub get_ua {
     }
 
     return $self->{_oauth2}->{$central_server};
+}
+
+
+=head3 get_req_central_server
+
+This method returns the central server code a Koha::Illrequest is linked to.
+
+=cut
+
+sub get_req_central_server {
+    my ( $self, $req ) = @_;
+
+    my $attr = $req->extended_attributes->find( { type => 'centralCode' } );
+
+    return $attr->value
+        if $attr;
 }
 
 1;

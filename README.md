@@ -176,6 +176,8 @@ d2ir:
         - trim
         - ltrim
         - rtrim
+    lending:
+        automatic_item_shipped: false
     default_item_type: ILL
     default_item_ccode: GENERAL_STACKS
     default_notforloan: -1 | null
