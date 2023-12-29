@@ -20,7 +20,6 @@ use Modern::Perl;
 use Try::Tiny;
 
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
-use Koha::Plugin::Com::Theke::INNReach::OAuth2;
 
 =head1 INNReach::Commands::Base
 
@@ -45,43 +44,14 @@ sub new {
         unless $plugin and ref($plugin) eq 'Koha::Plugin::Com::Theke::INNReach';
 
     my $configuration   = $plugin->configuration;
-    my @central_servers = $plugin->central_servers;
-
-    my $oauth2;
-    foreach my $centralServer (@central_servers) {
-        $oauth2->{$centralServer} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new(
-            {
-                client_id          => $configuration->{$centralServer}->{client_id},
-                client_secret      => $configuration->{$centralServer}->{client_secret},
-                api_base_url       => $configuration->{$centralServer}->{api_base_url},
-                api_token_base_url => $configuration->{$centralServer}->{api_token_base_url},
-                local_server_code  => $configuration->{$centralServer}->{localServerCode}
-            }
-        );
-    }
 
     my $self = {
         configuration => $configuration,
         plugin        => $plugin,
-        _oauth2       => $oauth2
     };
 
     bless $self, $class;
     return $self;
-}
-
-=head2 Internal methods
-
-=head3 oauth2
-
-Return the initialized OAuth2 object
-
-=cut
-
-sub oauth2 {
-    my ( $self, $centralServer ) = @_;
-
-    return $self->{_oauth2}->{$centralServer};
 }
 
 1;

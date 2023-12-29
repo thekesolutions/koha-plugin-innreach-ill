@@ -19,7 +19,7 @@ use Modern::Perl;
 
 use base qw(Class::Accessor);
 
-__PACKAGE__->mk_accessors(qw( ua access_token ));
+__PACKAGE__->mk_accessors(qw( ua access_token dev_mode ));
 
 use DateTime;
 use HTTP::Request::Common qw{ DELETE GET POST PUT };
@@ -45,10 +45,10 @@ A class implementing the OAuth2 authentication with INN-Reach central servers.
 
     my $oauth = Koha::Plugin::Com::Theke::INNReach::OAuth2->new(
         {
-            client_id     => 'a_client_id',
-            client_secret => 'a_client_secret',
-            api_base_url  => 'https://api.base.url',
-            localServerCode => 'localServerCode'
+            client_id         => 'a_client_id',
+            client_secret     => 'a_client_secret',
+            api_base_url      => 'https://api.base.url',
+            local_server_code => 'local_server_code'
         }
     );
 
@@ -83,7 +83,7 @@ sub new {
     my $credentials = encode_base64url( "$client_id:$client_secret" );
 
     my $self = $class->SUPER::new($args);
-    $self->{localServerCode}    = $local_server_code;
+    $self->{local_server_code}  = $local_server_code;
     $self->{api_base_url}       = $api_base_url;
     $self->{api_token_base_url} = $args->{api_token_base_url} // $api_base_url;
     $self->{token_endpoint}     = $self->{api_token_base_url} . "/auth/v1/oauth2/token";
@@ -108,7 +108,8 @@ sub new {
     bless $self, $class;
 
     # Get the first token we will use
-    $self->refresh_token;
+    $self->refresh_token
+        unless $self->dev_mode;
 
     return $self;
 }
@@ -236,8 +237,10 @@ access token as needed.
 sub get_token {
     my ($self) = @_;
 
-    $self->refresh_token
-      if $self->is_token_expired;
+    unless ($self->dev_mode) {
+        $self->refresh_token
+        if $self->is_token_expired;
+    }
 
     return $self->{access_token};
 }

@@ -30,12 +30,15 @@ use Koha::Illrequests;
 use Koha::Items;
 
 use Koha::Plugin::Com::Theke::INNReach::Contribution;
+use Koha::Plugin::Com::Theke::INNReach::OAuth2;
 use Koha::Plugin::Com::Theke::INNReach::Utils qw(innreach_warn);
 
 BEGIN {
     my $path = Module::Metadata->find_module_by_name(__PACKAGE__);
     $path =~ s!\.pm$!/lib!;
     unshift @INC, $path;
+
+    require INNReach::BackgroundJobs::OwningSite::ItemShipped;
 }
 
 our $VERSION = "{VERSION}";
@@ -48,7 +51,8 @@ our $metadata = {
     minimum_version => '22.1100000',
     maximum_version => undef,
     version         => $VERSION,
-    description     => 'INN-Reach ILL integration module.'
+    description     => 'INN-Reach ILL integration module.',
+    namespace       => 'innreach',
 };
 
 =head1 Koha::Plugin::Com::Theke::INNReach
@@ -757,12 +761,12 @@ sub after_hold_action {
 
     my $action = $params->{action};
 
-    if ( $action eq 'fill' ) {
+    my $payload = $params->{payload};
+    my $hold    = $payload->{hold};
 
-        my $payload = $params->{payload};
-        my $hold    = $payload->{hold};
+    my $hold_id = $hold->id;
 
-        my $hold_id = $hold->id;
+    if ( $action eq 'fill' || $action eq 'waiting' || $action eq 'transfer' ) {
 
         my $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
             {
@@ -771,18 +775,15 @@ sub after_hold_action {
             }
         );
 
-        if ($req) {
+        # skip actions if this is not an ILL request
+        return
+            unless $req;
 
-            my $central_server = Koha::Illrequestattributes->find(
-                { illrequest_id => $req->id, type => 'centralCode' } )->value;
+        if ( $req->status eq 'O_ITEM_REQUESTED' ) {
 
-            $self->schedule_task(
+            INNReach::BackgroundJobs::OwningSite::ItemShipped->new->enqueue(
                 {
-                    action         => $action,
-                    central_server => $central_server,
-                    object_id      => $hold_id,
-                    object_type    => 'holds',
-                    status         => 'queued',
+                    ill_request_id => $req->id,
                 }
             );
         }
@@ -857,6 +858,18 @@ sub api_namespace {
     return 'innreach';
 }
 
+=head3 background_tasks
+
+Plugin hook used to register new background_job types
+
+=cut
+
+sub background_tasks {
+    return {
+        itemshipped => 'INNReach::BackgroundJobs::OwningSite::ItemShipped'
+    };
+}
+
 =head2 Business methods
 
 =head3 generate_patron_for_agency
@@ -878,6 +891,12 @@ place a hold on the requested items.
 
 sub generate_patron_for_agency {
     my ( $self, $args ) = @_;
+
+    my @mandatory_params = qw(central_server local_server description agency_id);
+    foreach my $param ( @mandatory_params ) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $args->{$param};
+    }
 
     my $central_server = $args->{central_server};
     my $local_server   = $args->{local_server};
@@ -1134,6 +1153,30 @@ sub get_ill_request_from_biblio_id {
     my $req = $reqs->next;
 
     return $req;
+}
+
+=head3 get_ua
+
+This method retrieves a user agent to contact a central server.
+
+=cut
+
+sub get_ua {
+    my ( $self, $central_server ) = @_;
+
+    my $configuration = $self->configuration->{$central_server};
+
+    unless ( $self->{_oauth2}->{$central_server} ) {
+        $self->{_oauth2}->{$central_server} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new({
+            client_id          => $configuration->{client_id},
+            client_secret      => $configuration->{client_secret},
+            api_base_url       => $configuration->{api_base_url},
+            api_token_base_url => $configuration->{api_token_base_url},
+            local_server_code  => $configuration->{localServerCode}
+        });
+    }
+
+    return $self->{_oauth2}->{$central_server};
 }
 
 1;

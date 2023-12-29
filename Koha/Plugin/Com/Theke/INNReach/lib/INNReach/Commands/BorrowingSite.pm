@@ -48,7 +48,7 @@ sub item_received {
     my $trackingId  = $attributes->find( { type => 'trackingId' } )->value;
     my $centralCode = $attributes->find( { type => 'centralCode' } )->value;
 
-    my $response = $self->oauth2($centralCode)->post_request(
+    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
         {
             endpoint => "/innreach/v2/circ/intransit/$trackingId/$centralCode",
             centralCode => $centralCode,
@@ -86,7 +86,7 @@ sub receive_unshipped {
     my $trackingId  = $attributes->find( { type => 'trackingId' } )->value;
     my $centralCode = $attributes->find( { type => 'centralCode' } )->value;
 
-    my $response = $self->oauth2($centralCode)->post_request(
+    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
         {
             endpoint => "/innreach/v2/circ/receiveunshipped/$trackingId/$centralCode",
             centralCode => $centralCode,

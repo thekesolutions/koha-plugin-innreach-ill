@@ -51,7 +51,7 @@ sub final_checkin {
     my $trackingId  = $attributes->find({ type => 'trackingId'  })->value;
     my $centralCode = $attributes->find({ type => 'centralCode' })->value;
 
-    my $response = $self->oauth2( $centralCode )->post_request(
+    my $response = $self->{plugin}->get_ua( $centralCode )->post_request(
         {   endpoint    => "/innreach/v2/circ/finalcheckin/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
@@ -91,9 +91,8 @@ sub item_shipped {
     Koha::Database->schema->storage->txn_do(
         sub {
 
-            my $item = Koha::Items->find( $item_id );
-
-            my $patron   = Koha::Patrons->find( $request->borrowernumber );
+            my $item   = Koha::Items->find( $item_id );
+            my $patron = Koha::Patrons->find( $request->borrowernumber );
 
             # If calling this from the UI, things are set.
             unless ( C4::Context->userenv ) {
@@ -107,7 +106,11 @@ sub item_shipped {
                 C4::Context->interface('commandline');
             }
 
-            my $checkout = AddIssue( $patron->unblessed, $item->barcode );
+            # update status first, to avoid doubled jobs which could
+            # happen if the item needs a transfer, etc
+            $request->status('O_ITEM_SHIPPED')->store;
+
+            my $checkout = AddIssue( $patron, $item->barcode );
 
             # record checkout_id
             Koha::Illrequestattribute->new(
@@ -119,21 +122,21 @@ sub item_shipped {
                 }
             )->store;
 
-            # update status
-            $request->status('O_ITEM_SHIPPED')->store;
-
-            my $response = $self->oauth2( $centralCode )->post_request(
-                {   endpoint    => "/innreach/v2/circ/itemshipped/$trackingId/$centralCode",
-                    centralCode => $centralCode,
-                    data        => {
-                        callNumber  => $item->itemcallnumber // q{},
-                        itemBarcode => $item->barcode // q{},
+            # skip actual INN-Reach interactions in dev_mode
+            unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
+                my $response = $self->{plugin}->get_ua( $centralCode )->post_request(
+                    {   endpoint    => "/innreach/v2/circ/itemshipped/$trackingId/$centralCode",
+                        centralCode => $centralCode,
+                        data        => {
+                            callNumber  => $item->itemcallnumber // q{},
+                            itemBarcode => $item->barcode // q{},
+                        }
                     }
-                }
-            );
+                );
 
-            INNReach::Ill::RequestFailed->throw( method => 'item_shipped', response => $response )
-                unless $response->is_success;
+                INNReach::Ill::RequestFailed->throw( method => 'item_shipped', response => $response )
+                    unless $response->is_success;
+            }
         }
     );
 
