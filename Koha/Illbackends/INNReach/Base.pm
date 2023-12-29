@@ -549,23 +549,23 @@ sub cancel_request {
 
     my $req = $params->{request};
 
-    my $result = { error => 0,
+    my $result = {
         status  => '',
         message => '',
-        method  => 'cancel_request',
+        method  => 'illview',
         stage   => 'commit',
-        next    => 'illview',
-        value   => '',
     };
 
     try {
         Koha::Database->schema->storage->txn_do(
             sub {
-                my $trackingId  = $req->extended_attributes->find( { type => 'trackingId' } )->value;
-                my $centralCode = $req->extended_attributes->find( { type => 'centralCode' } )->value;
-                my $patronName  = $req->extended_attributes->find( { type => 'patronName' } )->value;
+                my $extended_attributes = $req->extended_attributes;
 
-                my $hold = Koha::Holds->find( $req->extended_attributes->find( { type => 'hold_id' } )->value );
+                my $trackingId  = $extended_attributes->find( { type => 'trackingId' } )->value;
+                my $centralCode = $extended_attributes->find( { type => 'centralCode' } )->value;
+                my $patronName  = $extended_attributes->find( { type => 'patronName' } )->value;
+
+                my $hold = Koha::Holds->find( $extended_attributes->find( { type => 'hold_id' } )->value );
                 $hold->cancel;
 
                 # Make sure we notify the item status
@@ -601,8 +601,12 @@ sub cancel_request {
             }
         );
     } catch {
-        $result->{error}   = 1;
-        $result->{message} = "$_";
+        $result->{status}   = 'innreach_error';
+        $result->{error}    = 1;
+        $result->{message}  = "$_ | " . $_->method . " - " . $_->response->decoded_content;
+        $result->{stage}    = 'init';
+        $result->{method}   = 'cancel_request';
+        $result->{template} = 'cancel_request';
     };
 
     return $result;
