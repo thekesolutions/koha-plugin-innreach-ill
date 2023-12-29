@@ -549,48 +549,7 @@ sub cancel_request {
 
     my $req = $params->{request};
 
-    my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
-    my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
-    my $patronName  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'patronName'  })->value;
-
-    my $response = $self->oauth2( $centralCode )->post_request(
-        {   endpoint    => "/innreach/v2/circ/owningsitecancel/$trackingId/$centralCode",
-            centralCode => $centralCode,
-            data        => {
-                localBibId => $req->biblio_id,
-                reason     => '',
-                reasonCode => '7',
-                patronName => $patronName
-            }
-        }
-    );
-
-    my $item_id = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemId' })->value;
-    my $patron_id = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'patronId' })->value;
-
-    my $holds = Koha::Holds->search({
-        borrowernumber => $patron_id,
-        itemnumber     => $item_id
-    });
-
-    while ( my $hold = $holds->next ) {
-        $hold->cancel;
-    }
-
-    # Make sure we notify the item status
-    $self->{plugin}->schedule_task(
-        {
-            action         => 'modify',
-            central_server => $centralCode,
-            object_type    => 'item',
-            object_id      => $item_id,
-        }
-    );
-
-    $req->status('O_ITEM_CANCELLED_BY_US')->store;
-
-    return {
-        error   => 0,
+    my $result = { error => 0,
         status  => '',
         message => '',
         method  => 'cancel_request',
@@ -598,6 +557,55 @@ sub cancel_request {
         next    => 'illview',
         value   => '',
     };
+
+    try {
+        Koha::Database->schema->storage->txn_do(
+            sub {
+                my $trackingId  = $req->extended_attributes->find( { type => 'trackingId' } )->value;
+                my $centralCode = $req->extended_attributes->find( { type => 'centralCode' } )->value;
+                my $patronName  = $req->extended_attributes->find( { type => 'patronName' } )->value;
+
+                my $hold = Koha::Holds->find( $req->extended_attributes->find( { type => 'hold_id' } )->value );
+                $hold->cancel;
+
+                # Make sure we notify the item status
+                $self->{plugin}->schedule_task(
+                    {
+                        action         => 'modify',
+                        central_server => $centralCode,
+                        object_type    => 'item',
+                        object_id      => $hold->itemnumber,
+                    }
+                );
+
+                $req->status('O_ITEM_CANCELLED_BY_US')->store;
+
+                # skip actual INN-Reach interactions in dev_mode
+                unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
+                    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
+                        {
+                            endpoint    => "/innreach/v2/circ/owningsitecancel/$trackingId/$centralCode",
+                            centralCode => $centralCode,
+                            data        => {
+                                localBibId => $req->biblio_id,
+                                reason     => '',
+                                reasonCode => '7',
+                                patronName => $patronName
+                            }
+                        }
+                    );
+
+                    INNReach::Ill::RequestFailed->throw( method => 'cancel_request', response => $response )
+                        unless $response->is_success;
+                }
+            }
+        );
+    } catch {
+        $result->{error}   = 1;
+        $result->{message} = "$_";
+    };
+
+    return $result;
 }
 
 =head2 Requesting site methods
