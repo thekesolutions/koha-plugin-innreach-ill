@@ -922,7 +922,8 @@ sub generate_patron_for_agency {
     my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
 
     my $library_id    = $self->configuration->{$central_server}->{partners_library_id};
-    my $category_code = C4::Context->config("interlibrary_loans")->{partner_code};
+    my $category_code = $self->configuration->{$central_server}->{partners_category}
+        // C4::Context->config("interlibrary_loans")->{partner_code};
 
     my $patron;
 

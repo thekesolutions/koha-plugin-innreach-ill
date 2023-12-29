@@ -128,6 +128,7 @@ d2ir:
     mainAgency: code2
     require_patron_auth: true
     partners_library_id: ILL
+    partners_category: IL
     library_to_location:
         CPL:
             location: code1
