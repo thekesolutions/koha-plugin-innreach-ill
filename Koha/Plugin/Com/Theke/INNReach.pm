@@ -65,7 +65,7 @@ INN-Reach connector plugin for Koha
 
 Constructor:
 
-    $my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+    my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
 
 =cut
 
