@@ -32,6 +32,55 @@ to INN-Reach central servers
 
 =head2 Class methods
 
+
+=head3 cancel_request
+
+    $command->cancel_request( $request );
+
+Given a I<Koha::Illrequest> object, notifies it got cancelled by the owning site.
+
+=cut
+
+sub cancel_request {
+    my ( $self, $request ) = @_;
+
+    INNReach::Ill::InconsistentStatus->throw( "Status is not correct: " . $request->status )
+        unless $request->status =~ m/^O/;    # needs to be owning site flow
+
+    Koha::Database->schema->storage->txn_do(
+        sub {
+            my $attributes = $request->extended_attributes;
+
+            my $trackingId  = $attributes->find( { type => 'trackingId' } )->value;
+            my $centralCode = $attributes->find( { type => 'centralCode' } )->value;
+            my $patronName  = $attributes->find( { type => 'patronName' } )->value;
+
+            $request->status('O_ITEM_CANCELLED_BY_US')->store;
+
+            # skip actual INN-Reach interactions in dev_mode
+            unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
+                my $response = $self->{plugin}->get_ua($centralCode)->post_request(
+                    {
+                        endpoint    => "/innreach/v2/circ/owningsitecancel/$trackingId/$centralCode",
+                        centralCode => $centralCode,
+                        data        => {
+                            localBibId => $request->biblio_id,
+                            reason     => '',
+                            reasonCode => '7',
+                            patronName => $patronName
+                        }
+                    }
+                );
+
+                INNReach::Ill::RequestFailed->throw( method => 'cancel_request', response => $response )
+                    unless $response->is_success;
+            }
+        }
+    );
+
+    return $self;
+}
+
 =head3 final_checkin
 
     $command->final_checkin( $request );
