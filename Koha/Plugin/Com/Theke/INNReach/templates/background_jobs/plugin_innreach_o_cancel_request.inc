@@ -5,7 +5,7 @@
     [% IF job.status == 'finished' %]
         [% IF report %]
             <div class="dialog message">
-                The request has been notified as shipped correctly.
+                Request successfully cancelled.
             </div>
         [% ELSE %]
             <div class="dialog message">

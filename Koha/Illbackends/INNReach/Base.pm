@@ -565,6 +565,9 @@ sub cancel_request {
                 my $centralCode = $extended_attributes->find( { type => 'centralCode' } )->value;
                 my $patronName  = $extended_attributes->find( { type => 'patronName' } )->value;
 
+                $req->status('O_ITEM_CANCELLED_BY_US')->store;
+
+                # Cancel after the request status change, so the condition for the hook is not met
                 my $hold = Koha::Holds->find( $extended_attributes->find( { type => 'hold_id' } )->value );
                 $hold->cancel;
 
@@ -577,8 +580,6 @@ sub cancel_request {
                         object_id      => $hold->itemnumber,
                     }
                 );
-
-                $req->status('O_ITEM_CANCELLED_BY_US')->store;
 
                 # skip actual INN-Reach interactions in dev_mode
                 unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {

@@ -38,6 +38,7 @@ BEGIN {
     $path =~ s!\.pm$!/lib!;
     unshift @INC, $path;
 
+    require INNReach::BackgroundJobs::OwningSite::CancelRequest;
     require INNReach::BackgroundJobs::OwningSite::ItemShipped;
 }
 
@@ -764,20 +765,18 @@ sub after_hold_action {
     my $payload = $params->{payload};
     my $hold    = $payload->{hold};
 
-    my $hold_id = $hold->id;
+    my $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
+        {
+            type  => 'hold_id',
+            value => $hold->id,
+        }
+    );
+
+    # skip actions if this is not an ILL request
+    return
+        unless $req;
 
     if ( $action eq 'fill' || $action eq 'waiting' || $action eq 'transfer' ) {
-
-        my $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
-            {
-                type  => 'hold_id',
-                value => $hold_id,
-            }
-        );
-
-        # skip actions if this is not an ILL request
-        return
-            unless $req;
 
         if ( $req->status eq 'O_ITEM_REQUESTED' ) {
 
@@ -788,6 +787,16 @@ sub after_hold_action {
                     ill_request_id => $req->id,
                 }
             ) if $self->configuration->{$central_server}->{lending}->{automatic_item_shipped};
+        }
+    } elsif ( $action eq 'cancel' ) {
+
+        if ( $req->status eq 'O_ITEM_REQUESTED' ) {
+
+            INNReach::BackgroundJobs::OwningSite::CancelRequest->new->enqueue(
+                {
+                    ill_request_id => $req->id,
+                }
+            );
         }
     }
 }
@@ -868,7 +877,8 @@ Plugin hook used to register new background_job types
 
 sub background_tasks {
     return {
-        itemshipped => 'INNReach::BackgroundJobs::OwningSite::ItemShipped'
+        o_cancel_request => 'INNReach::BackgroundJobs::OwningSite::CancelRequest',
+        itemshipped      => 'INNReach::BackgroundJobs::OwningSite::ItemShipped',
     };
 }
 
