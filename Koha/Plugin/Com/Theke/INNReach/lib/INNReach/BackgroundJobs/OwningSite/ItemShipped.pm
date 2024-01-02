@@ -22,7 +22,6 @@ use base 'Koha::BackgroundJob';
 use Try::Tiny;
 
 use Koha::Illrequests;
-use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 
 use INNReach::Commands::OwningSite;
@@ -61,6 +60,7 @@ sub process {
 
     my @messages;
 
+    require Koha::Plugin::Com::Theke::INNReach;
     my $commands = INNReach::Commands::OwningSite->new( { plugin => Koha::Plugin::Com::Theke::INNReach->new } );
 
     # ill_request_id param required by ->enqueue()
