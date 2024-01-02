@@ -90,18 +90,19 @@ Given a I<Koha::Illrequest> object, notifies the final check-in took place.
 =cut
 
 sub final_checkin {
-    my ($self, $request) = @_;
+    my ( $self, $request ) = @_;
 
     INNReach::Ill::InconsistentStatus->throw( "Status is not correct: " . $request->status )
-        unless $request->status =~ m/^O/; # needs to be owning site flow
+        unless $request->status =~ m/^O/;    # needs to be owning site flow
 
     my $attributes = $request->extended_attributes;
 
-    my $trackingId  = $attributes->find({ type => 'trackingId'  })->value;
-    my $centralCode = $attributes->find({ type => 'centralCode' })->value;
+    my $trackingId  = $attributes->find( { type => 'trackingId' } )->value;
+    my $centralCode = $attributes->find( { type => 'centralCode' } )->value;
 
-    my $response = $self->{plugin}->get_ua( $centralCode )->post_request(
-        {   endpoint    => "/innreach/v2/circ/finalcheckin/$trackingId/$centralCode",
+    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
+        {
+            endpoint    => "/innreach/v2/circ/finalcheckin/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
     );
@@ -130,9 +131,9 @@ sub item_shipped {
 
     my $attributes = $request->extended_attributes;
 
-    my $trackingId  = $attributes->find({ type => 'trackingId'  })->value;
-    my $centralCode = $attributes->find({ type => 'centralCode' })->value;
-    my $item_id     = $attributes->find({ type => 'itemId'      })->value;
+    my $trackingId  = $attributes->find( { type => 'trackingId' } )->value;
+    my $centralCode = $attributes->find( { type => 'centralCode' } )->value;
+    my $item_id     = $attributes->find( { type => 'itemId' } )->value;
 
     INNReach::Ill::MissingParameter->throw( param => 'item_id' )
         unless $item_id;
@@ -140,7 +141,7 @@ sub item_shipped {
     Koha::Database->schema->storage->txn_do(
         sub {
 
-            my $item   = Koha::Items->find( $item_id );
+            my $item   = Koha::Items->find($item_id);
             my $patron = Koha::Patrons->find( $request->borrowernumber );
 
             # If calling this from the UI, things are set.
@@ -148,8 +149,10 @@ sub item_shipped {
 
                 # CLI => set userenv
                 C4::Context->_new_userenv(1);
-                C4::Context->set_userenv( undef, undef, undef, 'CLI', 'CLI',
-                    $request->branchcode, undef, undef, undef, undef );
+                C4::Context->set_userenv(
+                    undef,                undef, undef, 'CLI', 'CLI',
+                    $request->branchcode, undef, undef, undef, undef
+                );
 
                 # Set interface
                 C4::Context->interface('commandline');
@@ -173,12 +176,13 @@ sub item_shipped {
 
             # skip actual INN-Reach interactions in dev_mode
             unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
-                my $response = $self->{plugin}->get_ua( $centralCode )->post_request(
-                    {   endpoint    => "/innreach/v2/circ/itemshipped/$trackingId/$centralCode",
+                my $response = $self->{plugin}->get_ua($centralCode)->post_request(
+                    {
+                        endpoint    => "/innreach/v2/circ/itemshipped/$trackingId/$centralCode",
                         centralCode => $centralCode,
                         data        => {
                             callNumber  => $item->itemcallnumber // q{},
-                            itemBarcode => $item->barcode // q{},
+                            itemBarcode => $item->barcode        // q{},
                         }
                     }
                 );
