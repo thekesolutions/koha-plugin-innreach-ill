@@ -160,7 +160,7 @@ sub item_shipped {
             # happen if the item needs a transfer, etc
             $request->status('O_ITEM_SHIPPED')->store;
 
-            my $checkout = $self->{plugin}->add_issue( { $patron, $item->barcode } );
+            my $checkout = $self->{plugin}->add_issue( { patron => $patron, barcode => $item->barcode } );
 
             # record checkout_id
             Koha::Illrequestattribute->new(

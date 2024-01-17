@@ -25,7 +25,6 @@ use Try::Tiny;
 use Koha::Database;
 
 use C4::Biblio qw(DelBiblio);
-use C4::Circulation qw(AddReturn);
 use C4::Reserves qw(AddReserve);
 
 use Koha::Biblios;
@@ -387,7 +386,7 @@ sub item_shipped {
                     # else {} # The item is already checked out to the right patron
                 }
                 else { # no checkout, proceed
-                    $checkout = $self->{plugin}->add_issue( { $patron, $item->barcode } );
+                    $checkout = $self->{plugin}->add_issue( { patron => $patron, barcode => $item->barcode } );
                 }
 
                 # record checkout_id
@@ -813,7 +812,7 @@ sub item_in_transit {
                 my $checkout = Koha::Checkouts->find( { itemnumber => $item->id } );
 
                 unless ($checkout) {
-                    AddReturn($barcode);
+                    $self->{plugin}->add_return( { barcode => $barcode } );
                 }
 
                 # FIXME: who's this checked out to?

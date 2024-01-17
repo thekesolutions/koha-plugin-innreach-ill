@@ -1267,4 +1267,33 @@ sub add_issue {
         : C4::Circulation::AddIssue( $params->{patron}->unblessed, $params->{barcode} );
 }
 
+=head3 add_return
+
+    $plugin->add_return( { barcode => $barcode } );
+
+Wrapper for I<C4::Circulation::AddReturn>. The return value is the
+same as C4::Circulation::AddReturn.
+
+Parameters:
+
+=over
+
+=item B<barcode>: a I<string> containing an item barcode.
+
+=back
+
+=cut
+
+sub add_return {
+    my ( $self, $params ) = @_;
+
+    my @mandatory_params = qw(barcode);
+    foreach my $param (@mandatory_params) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $params->{$param};
+    }
+
+    return C4::Circulation::AddReturn( $params->{barcode} );
+}
+
 1;
