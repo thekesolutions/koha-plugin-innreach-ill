@@ -17,8 +17,6 @@ package INNReach::Commands::OwningSite;
 
 use Modern::Perl;
 
-use C4::Circulation qw(AddIssue);
-
 use Koha::Patrons;
 
 use base qw(INNReach::Commands::Base);
@@ -162,7 +160,7 @@ sub item_shipped {
             # happen if the item needs a transfer, etc
             $request->status('O_ITEM_SHIPPED')->store;
 
-            my $checkout = AddIssue( $patron, $item->barcode );
+            my $checkout = $self->{plugin}->add_issue( { $patron, $item->barcode } );
 
             # record checkout_id
             Koha::Illrequestattribute->new(

@@ -24,6 +24,8 @@ use List::MoreUtils qw(any);
 use Mojo::JSON qw(decode_json encode_json);
 use YAML::XS;
 
+use C4::Circulation;
+
 use Koha::Biblioitems;
 use Koha::Illrequestattributes;
 use Koha::Illrequests;
@@ -1220,6 +1222,49 @@ sub get_req_central_server {
 
     return $attr->value
         if $attr;
+}
+
+
+=head2 Wrappers for Koha functions
+
+This methods deal with changes to the ABI of the underlying methods
+across different Koha versions.
+
+=head3 add_issue
+
+    my $checkout = $plugin->add_issue(
+        {
+            patron  => $patron,
+            barcode => $barcode
+        }
+    );
+
+Wrapper for I<C4::Circulation::AddIssue>.
+
+Parameters:
+
+=over
+
+=item B<patron>: a I<Koha::Patron> object.
+
+=item B<barcode>: a I<string> containing an item barcode.
+
+=back
+
+=cut
+
+sub add_issue {
+    my ( $self, $params ) = @_;
+
+    my @mandatory_params = qw(barcode patron);
+    foreach my $param (@mandatory_params) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $params->{$param};
+    }
+
+    return ( C4::Context->preference('Version') ge '23.110000' )
+        ? C4::Circulation::AddIssue( $params->{patron},            $params->{barcode} )
+        : C4::Circulation::AddIssue( $params->{patron}->unblessed, $params->{barcode} );
 }
 
 1;
