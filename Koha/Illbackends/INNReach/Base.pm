@@ -34,7 +34,6 @@ use Koha::Illrequestattributes;
 use Koha::Patrons;
 
 use Koha::Plugin::Com::Theke::INNReach;
-use Koha::Plugin::Com::Theke::INNReach::OAuth2;
 use Koha::Plugin::Com::Theke::INNReach::Utils qw(add_or_update_attributes add_virtual_record_and_item innreach_warn);
 
 use INNReach::Commands::BorrowingSite;
@@ -76,25 +75,14 @@ sub new {
 
     # -> instantiate the backend
     my ($class) = @_;
-    my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
-    my $configuration   = $plugin->configuration;
-    my @central_servers = $plugin->central_servers;
 
-    my $oauth2;
-    foreach my $centralServer ( @central_servers ) {
-        $oauth2->{$centralServer} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new({
-            client_id          => $configuration->{$centralServer}->{client_id},
-            client_secret      => $configuration->{$centralServer}->{client_secret},
-            api_base_url       => $configuration->{$centralServer}->{api_base_url},
-            api_token_base_url => $configuration->{$centralServer}->{api_token_base_url},
-            local_server_code  => $configuration->{$centralServer}->{localServerCode}
-        });
-    }
+    my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
     my $self = {
-        configuration => $configuration,
+        configuration => $plugin->configuration,
         plugin        => $plugin,
-        _oauth2       => $oauth2
     };
+
     bless( $self, $class );
     return $self;
 }
@@ -359,11 +347,13 @@ shipped.
 sub item_shipped {
     my ( $self, $params ) = @_;
 
-    my $req = $params->{request};
+    my $req   = $params->{request};
+    my $attrs = $req->extended_attributes;
 
-    my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId' })->value;
-    my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
-    my $itemId      = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemId' })->value;
+    my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
+    my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
+    my $itemId      = $attrs->find( { type => 'itemId' } )->value;
+
     my $item = Koha::Items->find( $itemId );
 
     return try {
@@ -404,7 +394,7 @@ sub item_shipped {
             }
         );
 
-        my $response = $self->oauth2( $centralCode )->post_request(
+        my $response = $self->{plugin}->get_ua($centralCode)->post_request(
             {   endpoint    => "/innreach/v2/circ/itemshipped/$trackingId/$centralCode",
                 centralCode => $centralCode,
                 data        => {
@@ -458,17 +448,18 @@ sub item_recalled {
         };
     }
     else {
-        my $req = $params->{request};
+        my $req   = $params->{request};
+        my $attrs = $req->extended_attributes;
 
-        my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId' })->value;
-        my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
-        my $itemId      = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemId' })->value;
+        my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
+        my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
+        my $itemId      = $attrs->find( { type => 'itemId' } )->value;
 
         my $recall_due_date = dt_from_string( $params->{other}->{recall_due_date} );
 
         return try {
 
-            my $response = $self->oauth2( $centralCode )->post_request(
+            my $response = $self->{plugin}->get_ua($centralCode)->post_request(
                 {   endpoint    => "/innreach/v2/circ/recall/$trackingId/$centralCode",
                     centralCode => $centralCode,
                     data        => {
@@ -512,12 +503,13 @@ item check-in has taken place.
 sub item_checkin {
     my ( $self, $params ) = @_;
 
-    my $req = $params->{request};
+    my $req   = $params->{request};
+    my $attrs = $req->extended_attributes;
 
-    my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId' })->value;
-    my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
+    my $trackingId  = $attrs->find({ type => 'trackingId' })->value;
+    my $centralCode = $attrs->find({ type => 'centralCode' })->value;
 
-    my $response = $self->oauth2( $centralCode )->post_request(
+    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
         {   endpoint    => "/innreach/v2/circ/finalcheckin/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
@@ -558,16 +550,16 @@ sub cancel_request {
     try {
         Koha::Database->schema->storage->txn_do(
             sub {
-                my $extended_attributes = $req->extended_attributes;
+                my $attrs = $req->extended_attributes;
 
-                my $trackingId  = $extended_attributes->find( { type => 'trackingId' } )->value;
-                my $centralCode = $extended_attributes->find( { type => 'centralCode' } )->value;
-                my $patronName  = $extended_attributes->find( { type => 'patronName' } )->value;
+                my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
+                my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
+                my $patronName  = $attrs->find( { type => 'patronName' } )->value;
 
                 $req->status('O_ITEM_CANCELLED_BY_US')->store;
 
                 # Cancel after the request status change, so the condition for the hook is not met
-                my $hold = Koha::Holds->find( $extended_attributes->find( { type => 'hold_id' } )->value );
+                my $hold = Koha::Holds->find( $attrs->find( { type => 'hold_id' } )->value );
                 $hold->cancel;
 
                 # Make sure we notify the item status
@@ -624,12 +616,13 @@ received.
 sub item_received {
     my ( $self, $params ) = @_;
 
-    my $req = $params->{request};
+    my $req   = $params->{request};
+    my $attrs = $req->extended_attributes;
 
-    my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
-    my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
+    my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
+    my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
 
-    my $response = $self->oauth2( $centralCode )->post_request(
+    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
         {   endpoint    => "/innreach/v2/circ/itemreceived/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
@@ -669,12 +662,12 @@ sub receive_unshipped {
             stage   => 'form'
         };
     } else {                                # confirm
-        my $req = $params->{request};
 
-        my $req_attributes = $req->extended_attributes;
+        my $req   = $params->{request};
+        my $attrs = $req->extended_attributes;
 
-        my $trackingId  = $req_attributes->find( { illrequest_id => $req->id, type => 'trackingId' } )->value;
-        my $centralCode = $req_attributes->find( { illrequest_id => $req->id, type => 'centralCode' } )->value;
+        my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
+        my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
 
         my $attributes = {
             callNumber  => $params->{other}->{item_callnumber},
@@ -682,8 +675,7 @@ sub receive_unshipped {
         };
 
         my $barcode = $params->{other}->{item_barcode};
-
-        my $config = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
+        my $config  = $self->{configuration}->{$centralCode};
 
         my $schema = Koha::Database->new->schema;
         try {
@@ -791,12 +783,13 @@ sent back to them and is in transit.
 sub item_in_transit {
     my ( $self, $params ) = @_;
 
-    my $req = $params->{request};
+    my $req   = $params->{request};
+    my $attrs = $req->extended_attributes;
 
-    my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
-    my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
+    my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
+    my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
 
-    my $response = $self->oauth2( $centralCode )->post_request(
+    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
         {   endpoint    => "/innreach/v2/circ/intransit/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
@@ -806,7 +799,7 @@ sub item_in_transit {
         Koha::Database->new->schema->txn_do(
             sub {
                 # Return the item first
-                my $barcode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemBarcode' })->value;
+                my $barcode = $attrs->find({ type => 'itemBarcode' })->value;
 
                 my $item     = Koha::Items->find( { barcode => $barcode } );
                 my $checkout = Koha::Checkouts->find( { itemnumber => $item->id } );
@@ -859,12 +852,13 @@ sent back to them and is in transit.
 sub return_uncirculated {
     my ( $self, $params ) = @_;
 
-    my $req = $params->{request};
+    my $req   = $params->{request};
+    my $attrs = $req->extended_attributes;
 
-    my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
-    my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
+    my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
+    my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
 
-    my $response = $self->oauth2( $centralCode )->post_request(
+    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
         {   endpoint    => "/innreach/v2/circ/returnuncirculated/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
@@ -922,12 +916,13 @@ is on B_ITEM_REQUESTED status.
 sub cancel_request_by_us {
     my ( $self, $params ) = @_;
 
-    my $req = $params->{request};
+    my $req   = $params->{request};
+    my $attrs = $req->extended_attributes;
 
-    my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
-    my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
+    my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
+    my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
 
-    my $response = $self->oauth2( $centralCode )->post_request(
+    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
         {   endpoint    => "/innreach/v2/circ/cancelitemhold/$trackingId/$centralCode",
             centralCode => $centralCode,
         }
@@ -935,13 +930,15 @@ sub cancel_request_by_us {
 
     $req->status('B_ITEM_CANCELLED_BY_US')->store;
 
-    my $item_id = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'itemId' })->value;
-    my $patron_id = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'patronId' })->value;
+    my $item_id   = $attrs->find( { type => 'itemId' } )->value;
+    my $patron_id = $attrs->find( { type => 'patronId' } )->value;
 
-    my $holds = Koha::Holds->search({
-        borrowernumber => $patron_id,
-        itemnumber     => $item_id
-    });
+    my $holds = Koha::Holds->search(
+        {
+            borrowernumber => $patron_id,
+            itemnumber     => $item_id
+        }
+    );
 
     while ( my $hold = $holds->next ) {
         $hold->cancel;
@@ -968,12 +965,13 @@ claimed returned.
 sub claims_returned {
     my ( $self, $params ) = @_;
 
-    my $req = $params->{request};
+    my $req   = $params->{request};
+    my $attrs = $req->extended_attributes;
 
-    my $trackingId  = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'trackingId'  })->value;
-    my $centralCode = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
+    my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
+    my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
 
-    my $response = $self->oauth2( $centralCode )->post_request(
+    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
         {   endpoint    => "/innreach/v2/circ/claimsreturned/$trackingId/$centralCode",
             centralCode => $centralCode,
             data        => {
@@ -1054,18 +1052,6 @@ sub _get_core_fields {
         article_author  => 'Part Author',
         article_pages   => 'Part Pages',
     };
-}
-
-=head3 oauth2
-
-Return the initialized OAuth2 object
-
-=cut
-
-sub oauth2 {
-    my ( $self, $centralServer ) = @_;
-
-    return $self->{_oauth2}->{$centralServer};
 }
 
 =head1 AUTHORS
