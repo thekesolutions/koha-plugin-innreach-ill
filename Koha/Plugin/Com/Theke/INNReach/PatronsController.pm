@@ -42,7 +42,7 @@ Method that validates a patron's password
 sub verifypatron {
     my $c = shift->openapi->valid_input or return;
 
-    my $body               = $c->validation->param('body');
+    my $body               = $c->req->json;
     my $patron_id          = $body->{visiblePatronId};
     my $patron_agency_code = $body->{patronAgencyCode};
     my $patronName         = $body->{patronName};

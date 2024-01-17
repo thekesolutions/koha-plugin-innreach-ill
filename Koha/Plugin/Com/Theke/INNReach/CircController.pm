@@ -66,15 +66,15 @@ sub itemhold {
 
     my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
 
-    my $trackingId  = $c->validation->param('trackingId');
-    my $centralCode = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+    my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
-    return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+    return $c->invalid_request_id( { trackingId => $trackingId, centralCode => $centralCode } )
         if $req;
 
-    my $body = $c->validation->param('body');
+    my $body = $c->req->json;
 
     my $attributes = {
         transactionTime   => $body->{transactionTime},
@@ -93,7 +93,7 @@ sub itemhold {
     my $item = Koha::Items->find( $attributes->{itemId} );
 
     return $c->render(
-        status   => 400,
+        status  => 400,
         openapi => {
             status => 'error',
             reason => 'Requested a non-existent item',
@@ -114,35 +114,40 @@ sub itemhold {
                 my $agency_id  = $attributes->{patronAgencyCode};
                 my $config     = $plugin->configuration->{$centralCode};
                 my $library_id = $config->{partners_library_id};
-                my $patron_id  = $plugin->get_patron_id_from_agency({
-                    agency_id      => $agency_id,
-                    central_server => $centralCode
-                });
+                my $patron_id  = $plugin->get_patron_id_from_agency(
+                    {
+                        agency_id      => $agency_id,
+                        central_server => $centralCode
+                    }
+                );
 
-                unless ( $patron_id ) {
+                unless ($patron_id) {
                     return $c->render(
                         status  => 500,
                         openapi => {
                             status => 'error',
-                            reason => "ILL library not loaded in the system. Try again later or contact the administrator ($agency_id).",
+                            reason =>
+                                "ILL library not loaded in the system. Try again later or contact the administrator ($agency_id).",
                             errors => []
                         }
                     );
                 }
 
                 # Create the request
-                my $req = Koha::Illrequest->new({
-                    branchcode     => $library_id,
-                    borrowernumber => $patron_id,
-                    biblio_id      => $item->biblionumber,
-                    status         => 'O_ITEM_REQUESTED',
-                    backend        => 'INNReach',
-                    placed         => \'NOW()',
-                })->store;
+                my $req = Koha::Illrequest->new(
+                    {
+                        branchcode     => $library_id,
+                        borrowernumber => $patron_id,
+                        biblio_id      => $item->biblionumber,
+                        status         => 'O_ITEM_REQUESTED',
+                        backend        => 'INNReach',
+                        placed         => \'NOW()',
+                    }
+                )->store;
 
                 # Add the custom attributes
                 while ( my ( $type, $value ) = each %{$attributes} ) {
-                    if ($value && length $value > 0) {
+                    if ( $value && length $value > 0 ) {
                         Koha::Illrequestattribute->new(
                             {
                                 illrequest_id => $req->illrequest_id,
@@ -157,17 +162,17 @@ sub itemhold {
                 my $can_item_be_reserved;
 
                 if ( C4::Context->preference('Version') ge '21.120000' ) {
-                    my $patron = Koha::Patrons->find( $patron_id );
+                    my $patron = Koha::Patrons->find($patron_id);
                     $can_item_be_reserved = CanItemBeReserved( $patron, $item, $library_id )->{status};
-                }
-                else {
+                } else {
                     $can_item_be_reserved = CanItemBeReserved( $patron_id, $item->itemnumber, $library_id )->{status};
                 }
 
                 unless ( $can_item_be_reserved eq 'OK' ) {
-                    Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("Placing the hold, but rules woul've prevented it. FIXME! (patron_id=$patron_id, item_id="
-                         . $item->itemnumber
-                         . ", library_id=$library_id, status=$can_item_be_reserved)");
+                    Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn(
+                              "Placing the hold, but rules woul've prevented it. FIXME! (patron_id=$patron_id, item_id="
+                            . $item->itemnumber
+                            . ", library_id=$library_id, status=$can_item_be_reserved)" );
                 }
 
                 my $hold_id;
@@ -187,20 +192,19 @@ sub itemhold {
                             itemtype         => undef
                         }
                     );
-                }
-                else {
+                } else {
                     $hold_id = AddReserve(
-                        $req->branchcode,          # branch
-                        $patron_id,                # borrowernumber
-                        $biblio->biblionumber,     # biblionumber
-                        undef,                     # biblioitemnumber
-                        1,                         # priority
-                        undef,                     # resdate
-                        undef,                     # expdate
-                        $config->{default_hold_note} // 'Placed by ILL', # notes
-                        '',                        # title
-                        $item->itemnumber,         # checkitem
-                        undef                      # found
+                        $req->branchcode,                                   # branch
+                        $patron_id,                                         # borrowernumber
+                        $biblio->biblionumber,                              # biblionumber
+                        undef,                                              # biblioitemnumber
+                        1,                                                  # priority
+                        undef,                                              # resdate
+                        undef,                                              # expdate
+                        $config->{default_hold_note} // 'Placed by ILL',    # notes
+                        '',                                                 # title
+                        $item->itemnumber,                                  # checkitem
+                        undef                                               # found
                     );
                 }
 
@@ -223,8 +227,7 @@ sub itemhold {
                 );
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -240,15 +243,15 @@ sub localhold {
 
     my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
 
-    my $trackingId  = $c->validation->param('trackingId');
-    my $centralCode = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+    my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
-    return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+    return $c->invalid_request_id( { trackingId => $trackingId, centralCode => $centralCode } )
         if $req;
 
-    my $body = $c->validation->param('body');
+    my $body = $c->req->json;
 
     my $attributes = {
         transactionTime   => $body->{transactionTime},
@@ -269,7 +272,7 @@ sub localhold {
     my $item = Koha::Items->find( $attributes->{itemId} );
 
     return $c->render(
-        status   => 400,
+        status  => 400,
         openapi => {
             status => 'error',
             reason => 'Requested a non-existent item',
@@ -280,7 +283,7 @@ sub localhold {
     my $biblio = $item->biblio;
 
     my $user_id = $attributes->{patronId};
-    my $patron  = Koha::Patrons->find( $user_id );
+    my $patron  = Koha::Patrons->find($user_id);
 
     unless ($patron) {
         return $c->render(
@@ -301,23 +304,26 @@ sub localhold {
                 my $agency_id = $attributes->{patronAgencyCode};
                 my $patron_id = $attributes->{patronId};
                 my $config    = $plugin->configuration->{$centralCode};
+
                 # We make this kind of hold subject to ILL circulation rules, and thus
                 # use the configured 'partners_library_id' entry for placing the hold.
                 my $library_id = $config->{partners_library_id};
 
                 # Create the request
-                my $req = Koha::Illrequest->new({
-                    branchcode     => $library_id,
-                    borrowernumber => $patron_id,
-                    biblio_id      => $item->biblionumber,
-                    updated        => dt_from_string(),
-                    status         => 'O_LOCAL_HOLD',
-                    backend        => 'INNReach'
-                })->store;
+                my $req = Koha::Illrequest->new(
+                    {
+                        branchcode     => $library_id,
+                        borrowernumber => $patron_id,
+                        biblio_id      => $item->biblionumber,
+                        updated        => dt_from_string(),
+                        status         => 'O_LOCAL_HOLD',
+                        backend        => 'INNReach'
+                    }
+                )->store;
 
                 # Add the custom attributes
                 while ( my ( $type, $value ) = each %{$attributes} ) {
-                    if ($value && length $value > 0) {
+                    if ( $value && length $value > 0 ) {
                         Koha::Illrequestattribute->new(
                             {
                                 illrequest_id => $req->illrequest_id,
@@ -340,8 +346,10 @@ sub localhold {
 
                 $c->tx->on(
                     finish => sub {
-                        my $can_item_be_reserved = CanItemBeReserved( $patron->borrowernumber, $item->itemnumber, $library_id )->{status};
+                        my $can_item_be_reserved =
+                            CanItemBeReserved( $patron->borrowernumber, $item->itemnumber, $library_id )->{status};
                         if ( $can_item_be_reserved eq 'OK' ) {
+
                             # hold can be placed, just do it
                             my $hold_id;
                             if ( C4::Context->preference('Version') ge '20.050000' ) {
@@ -360,34 +368,32 @@ sub localhold {
                                         itemtype         => undef
                                     }
                                 );
-                            }
-                            else {
+                            } else {
                                 $hold_id = AddReserve(
-                                    $req->branchcode,          # branch
-                                    $patron->borrowernumber,   # borrowernumber
-                                    $biblio->biblionumber,     # biblionumber
-                                    undef,                     # biblioitemnumber
-                                    1,                         # priority
-                                    undef,                     # resdate
-                                    undef,                     # expdate
-                                    $config->{default_hold_note} // 'Placed by ILL', # notes
-                                    '',                        # title
-                                    undef,                     # checkitem
-                                    undef                      # found
+                                    $req->branchcode,                                   # branch
+                                    $patron->borrowernumber,                            # borrowernumber
+                                    $biblio->biblionumber,                              # biblionumber
+                                    undef,                                              # biblioitemnumber
+                                    1,                                                  # priority
+                                    undef,                                              # resdate
+                                    undef,                                              # expdate
+                                    $config->{default_hold_note} // 'Placed by ILL',    # notes
+                                    '',                                                 # title
+                                    undef,                                              # checkitem
+                                    undef                                               # found
                                 );
                             }
-                        }
-                        else {
+                        } else {
+
                             # hold cannot be placed, notify them
                             my $ill = Koha::Illbackends::INNReach::Base->new;
-                            $ill->cancel_request({ request => $req });
+                            $ill->cancel_request( { request => $req } );
                         }
                     }
                 );
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -402,10 +408,10 @@ know the item has been reported at destination.
 sub itemreceived {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId  = $c->validation->param('trackingId');
-    my $centralCode = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    my $body = $c->validation->param('body');
+    my $body = $c->req->json;
 
     ## TODO: we are supposed to receive all this data, but: what for?
     ## all we do here is changing the request status
@@ -426,9 +432,9 @@ sub itemreceived {
     return try {
 
         # Get/validate the request
-        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
-        return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+        return $c->invalid_request_id( { trackingId => $trackingId, centralCode => $centralCode } )
             unless $req;
 
         $req->status('O_ITEM_RECEIVED_DESTINATION')->store;
@@ -441,8 +447,7 @@ sub itemreceived {
                 errors => []
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -457,10 +462,10 @@ know the item has been sent back from requesting site.
 sub intransit {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId  = $c->validation->param('trackingId');
-    my $centralCode = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    my $body = $c->validation->param('body');
+    my $body = $c->req->json;
 
     ## TODO: we are supposed to receive all this data, but: what for?
     ## all we do here is changing the request status
@@ -481,9 +486,9 @@ sub intransit {
     return try {
 
         # Get/validate the request
-        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
-        return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+        return $c->invalid_request_id( { trackingId => $trackingId, centralCode => $centralCode } )
             unless $req;
 
         $req->status('O_ITEM_IN_TRANSIT')->store;
@@ -496,8 +501,7 @@ sub intransit {
                 errors => []
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -513,10 +517,10 @@ not circulated.
 sub returnuncirculated {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId  = $c->validation->param('trackingId');
-    my $centralCode = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    my $body = $c->validation->param('body');
+    my $body = $c->req->json;
 
     ## TODO: we are supposed to receive all this data, but: what for?
     ## all we do here is changing the request status
@@ -537,9 +541,9 @@ sub returnuncirculated {
     return try {
 
         # Get/validate the request
-        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
-        return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+        return $c->invalid_request_id( { trackingId => $trackingId, centralCode => $centralCode } )
             unless $req;
 
         $req->status('O_ITEM_RETURN_UNCIRCULATED')->store;
@@ -552,8 +556,7 @@ sub returnuncirculated {
                 errors => []
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -570,10 +573,10 @@ This can only happen when the ILL request status is O_ITEM_REQUESTED.
 sub cancelitemhold {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId  = $c->validation->param('trackingId');
-    my $centralCode = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    my $body = $c->validation->param('body');
+    my $body = $c->req->json;
 
     my $attributes = {
         transactionTime  => $body->{transactionTime},
@@ -585,10 +588,10 @@ sub cancelitemhold {
 
     return try {
 
-        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
-        return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
-          unless $req;
+        return $c->invalid_request_id( { trackingId => $trackingId, centralCode => $centralCode } )
+            unless $req;
 
         return $c->render(
             status  => 409,
@@ -601,16 +604,17 @@ sub cancelitemhold {
 
         my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
 
-        my $agency_id  = $attributes->{patronAgencyCode};
-        my $patron_id  = $plugin->get_patron_id_from_agency({
-            agency_id      => $agency_id,
-            central_server => $centralCode
-        });
+        my $agency_id = $attributes->{patronAgencyCode};
+        my $patron_id = $plugin->get_patron_id_from_agency(
+            {
+                agency_id      => $agency_id,
+                central_server => $centralCode
+            }
+        );
 
-
-        my $patron = Koha::Patrons->find( $patron_id );
-        if ( $patron ) {
-            my $holds = $patron->holds->search({ itemnumber => $attributes->{itemId} });
+        my $patron = Koha::Patrons->find($patron_id);
+        if ($patron) {
+            my $holds = $patron->holds->search( { itemnumber => $attributes->{itemId} } );
             while ( my $hold = $holds->next ) {
                 $hold->cancel;
             }
@@ -626,8 +630,7 @@ sub cancelitemhold {
                 errors => []
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -642,28 +645,29 @@ server.
 sub ownerrenew {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId  = $c->validation->param('trackingId');
-    my $centralCode = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+    my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
-    return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+    return $c->invalid_request_id( { trackingId => $trackingId, centralCode => $centralCode } )
         unless $req;
 
-    my $body = $c->validation->param('body');
+    my $body = $c->req->json;
 
-    my $transactionTime   = $body->{transactionTime};
-    my $dueDateTime       = $body->{dueDateTime};
-    my $patronId          = $body->{patronId};
-    my $patronAgencyCode  = $body->{patronAgencyCode};
-    my $itemAgencyCode    = $body->{itemAgencyCode};
-    my $itemId            = $body->{itemId};
+    my $transactionTime  = $body->{transactionTime};
+    my $dueDateTime      = $body->{dueDateTime};
+    my $patronId         = $body->{patronId};
+    my $patronAgencyCode = $body->{patronAgencyCode};
+    my $itemAgencyCode   = $body->{itemAgencyCode};
+    my $itemId           = $body->{itemId};
 
     return try {
 
-        my $item = Koha::Items->find( $itemId );
+        my $item = Koha::Items->find($itemId);
+
         # We are not processing this through AddRenewal
-        my $checkout = Koha::Checkouts->search({ itemnumber => $item->itemnumber })->next;
+        my $checkout = Koha::Checkouts->search( { itemnumber => $item->itemnumber } )->next;
         $checkout->set(
             {
                 date_due        => DateTime->from_epoch( epoch => $dueDateTime ),
@@ -680,8 +684,7 @@ sub ownerrenew {
                 errors => []
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -697,10 +700,10 @@ This can only happen when the ILL request status is O_ITEM_RECEIVED_DESTINATION.
 sub claimsreturned {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId = $c->validation->param('trackingId');
-    my $centralCode   = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    my $body = $c->validation->param('body');
+    my $body = $c->req->json;
 
     my $transactionTime    = $body->{transactionTime};
     my $claimsReturnedDate = $body->{claimsReturnedDate};
@@ -711,7 +714,7 @@ sub claimsreturned {
 
     return try {
 
-        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
         return $c->render(
             status  => 404,
@@ -754,8 +757,7 @@ sub claimsreturned {
                 );
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -771,34 +773,34 @@ This method creates an ILLRequest and sets its status to B_ITEM_REQUESTED
 sub patronhold {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId  = $c->validation->param('trackingId');
-    my $centralCode = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+    my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
-    return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+    return $c->invalid_request_id( { trackingId => $trackingId, centralCode => $centralCode } )
         if $req;
 
-    my $body = $c->validation->param('body');
+    my $body = $c->req->json;
 
     my $attributes = {
-        transactionTime   => $body->{transactionTime},
-        pickupLocation    => $body->{pickupLocation},
-        patronId          => $body->{patronId},
-        patronAgencyCode  => $body->{patronAgencyCode},
-        itemAgencyCode    => $body->{itemAgencyCode},
-        itemId            => $body->{itemId},
-        centralItemType   => $body->{centralItemType},
-        title             => $body->{title}  // '',
-        author            => $body->{author} // '',
-        callNumber        => $body->{callNumber},
-        needBefore        => $body->{needBefore},
-        trackingId        => $trackingId,
-        centralCode       => $centralCode
+        transactionTime  => $body->{transactionTime},
+        pickupLocation   => $body->{pickupLocation},
+        patronId         => $body->{patronId},
+        patronAgencyCode => $body->{patronAgencyCode},
+        itemAgencyCode   => $body->{itemAgencyCode},
+        itemId           => $body->{itemId},
+        centralItemType  => $body->{centralItemType},
+        title            => $body->{title}  // '',
+        author           => $body->{author} // '',
+        callNumber       => $body->{callNumber},
+        needBefore       => $body->{needBefore},
+        trackingId       => $trackingId,
+        centralCode      => $centralCode
     };
 
     my $user_id = $attributes->{patronId};
-    my $patron  = Koha::Patrons->find( $user_id );
+    my $patron  = Koha::Patrons->find($user_id);
 
     unless ($patron) {
         return $c->render(
@@ -816,29 +818,33 @@ sub patronhold {
         my $schema = Koha::Database->new->schema;
         $schema->txn_do(
             sub {
-                my $configuration   = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
+                my $configuration = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
                 use Data::Printer colored => 1;
                 p($attributes);
                 p($configuration);
                 my $pickup_location = $c->pickup_location_to_library_id(
-                    { pickupLocation => $attributes->{pickupLocation},
-                      configuration  => $configuration
+                    {
+                        pickupLocation => $attributes->{pickupLocation},
+                        configuration  => $configuration
                     }
                 );
                 p($pickup_location);
+
                 # Create the request
-                my $req = Koha::Illrequest->new({
-                    branchcode     => $pickup_location,
-                    borrowernumber => $user_id,
-                    biblio_id      => undef,
-                    status         => 'B_ITEM_REQUESTED',
-                    backend        => 'INNReach',
-                    placed         => \'NOW()',
-                })->store;
+                my $req = Koha::Illrequest->new(
+                    {
+                        branchcode     => $pickup_location,
+                        borrowernumber => $user_id,
+                        biblio_id      => undef,
+                        status         => 'B_ITEM_REQUESTED',
+                        backend        => 'INNReach',
+                        placed         => \'NOW()',
+                    }
+                )->store;
 
                 # Add the custom attributes
                 while ( my ( $type, $value ) = each %{$attributes} ) {
-                    if ($value && length $value > 0) {
+                    if ( $value && length $value > 0 ) {
                         Koha::Illrequestattribute->new(
                             {
                                 illrequest_id => $req->illrequest_id,
@@ -860,8 +866,7 @@ sub patronhold {
                 );
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -879,10 +884,10 @@ for the patron. This virtual records are not visible in the OPAC.
 sub itemshipped {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId  = $c->validation->param('trackingId');
-    my $centralCode = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    my $body = $c->validation->param('body');
+    my $body = $c->req->json;
 
     my $attributes = {
         callNumber  => $body->{callNumber},
@@ -894,13 +899,13 @@ sub itemshipped {
     return try {
 
         # Get/validate the request
-        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
-        return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+        return $c->invalid_request_id( { trackingId => $trackingId, centralCode => $centralCode } )
             unless $req;
 
         # catch duplicate itemshipped requests found in the wild.
-        return $c->out_of_sequence({ current_status => 'B_ITEM_SHIPPED', requested_status => 'B_ITEM_SHIPPED' })
+        return $c->out_of_sequence( { current_status => 'B_ITEM_SHIPPED', requested_status => 'B_ITEM_SHIPPED' } )
             unless $req->status eq 'B_ITEM_REQUESTED';
 
         my $config = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
@@ -909,25 +914,25 @@ sub itemshipped {
         $schema->txn_do(
             sub {
 
-                my ($biblio_id, $item_id, $biblioitemnumber);
+                my ( $biblio_id, $item_id, $biblioitemnumber );
 
                 # check if already catalogued. INN-Reach requires no barcode collision
-                my $item = Koha::Items->find({ barcode => $barcode });
+                my $item = Koha::Items->find( { barcode => $barcode } );
 
-                if ( $item ) {
+                if ($item) {
+
                     # already exists, add suffix
                     my $i = 1;
                     my $done;
 
-                    while (!$done) {
+                    while ( !$done ) {
                         my $tmp_barcode = $barcode . "-$i";
-                        $item = Koha::Items->find({ barcode => $tmp_barcode });
+                        $item = Koha::Items->find( { barcode => $tmp_barcode } );
 
                         if ( !$item ) {
                             $barcode = $tmp_barcode;
-                            $done = 1;
-                        }
-                        else {
+                            $done    = 1;
+                        } else {
                             $i++;
                         }
                     }
@@ -936,17 +941,16 @@ sub itemshipped {
                 }
 
                 # Create the MARC record and item
-                ( $biblio_id, $item_id, $biblioitemnumber ) =
-                    $c->add_virtual_record_and_item(
+                ( $biblio_id, $item_id, $biblioitemnumber ) = $c->add_virtual_record_and_item(
                     {
                         req         => $req,
                         config      => $config,
                         call_number => $attributes->{callNumber},
                         barcode     => $barcode,
                     }
-                    );
+                );
 
-                $item = Koha::Items->find( $item_id );
+                $item = Koha::Items->find($item_id);
 
                 # Place a hold on the item
                 my $patron_id = $req->borrowernumber;
@@ -968,37 +972,35 @@ sub itemshipped {
                             itemtype         => $item->effective_itemtype
                         }
                     );
-                }
-                else {
+                } else {
                     $hold_id = AddReserve(
-                        $req->branchcode,          # branch
-                        $patron_id,                # borrowernumber
-                        $biblio_id,                # biblionumber
-                        $biblioitemnumber,         # biblioitemnumber
-                        1,                         # priority
-                        undef,                     # resdate
-                        undef,                     # expdate
-                        $config->{default_hold_note} // 'Placed by ILL', # notes
-                        '',                        # title
-                        $item_id,                  # checkitem
-                        undef                      # found
+                        $req->branchcode,                                   # branch
+                        $patron_id,                                         # borrowernumber
+                        $biblio_id,                                         # biblionumber
+                        $biblioitemnumber,                                  # biblioitemnumber
+                        1,                                                  # priority
+                        undef,                                              # resdate
+                        undef,                                              # expdate
+                        $config->{default_hold_note} // 'Placed by ILL',    # notes
+                        '',                                                 # title
+                        $item_id,                                           # checkitem
+                        undef                                               # found
                     );
                 }
 
                 # Update request
-                $req->biblio_id($biblio_id)
-                    ->status('B_ITEM_SHIPPED')
-                    ->store;
+                $req->biblio_id($biblio_id)->status('B_ITEM_SHIPPED')->store;
 
                 # Add new attributes for tracking
                 while ( my ( $type, $value ) = each %{$attributes} ) {
-                    if ($value && length $value > 0) {
+                    if ( $value && length $value > 0 ) {
                         my $attribute = Koha::Illrequestattributes->find(
                             {
                                 illrequest_id => $req->illrequest_id,
                                 type          => $type
                             }
                         );
+
                         # If already exists, overwrite
                         $attribute->delete if $attribute;
 
@@ -1032,8 +1034,7 @@ sub itemshipped {
                 );
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -1048,15 +1049,15 @@ know the item has been reported at destination.
 sub finalcheckin {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId  = $c->validation->param('trackingId');
-    my $centralCode = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
     return try {
 
         # Get/validate the request
-        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
-        return $c->invalid_request_id({ trackingId => $trackingId, centralCode => $centralCode })
+        return $c->invalid_request_id( { trackingId => $trackingId, centralCode => $centralCode } )
             unless $req;
 
         $req->status('B_ITEM_CHECKED_IN')->store;
@@ -1069,8 +1070,7 @@ sub finalcheckin {
                 errors => []
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -1085,19 +1085,19 @@ due date and changes the status.
 sub recall {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId  = $c->validation->param('trackingId');
-    my $centralCode = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+    my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
-    my $body = $c->validation->param('body');
+    my $body = $c->req->json;
 
-    my $transactionTime   = $body->{transactionTime};
-    my $dueDateTime       = $body->{dueDateTime};
-    my $patronId          = $body->{patronId};
-    my $patronAgencyCode  = $body->{patronAgencyCode};
-    my $itemAgencyCode    = $body->{itemAgencyCode};
-    my $itemId            = $body->{itemId};
+    my $transactionTime  = $body->{transactionTime};
+    my $dueDateTime      = $body->{dueDateTime};
+    my $patronId         = $body->{patronId};
+    my $patronAgencyCode = $body->{patronAgencyCode};
+    my $itemAgencyCode   = $body->{itemAgencyCode};
+    my $itemId           = $body->{itemId};
 
     return try {
 
@@ -1122,8 +1122,7 @@ sub recall {
                 errors => []
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -1141,22 +1140,22 @@ actions.
 sub local_checkin {
     my $c = shift->openapi->valid_input or return;
 
-    my $barcode = $c->validation->param('barcode');
+    my $barcode = $c->param('barcode');
 
     return try {
-        my $req = $c->get_ill_request_from_barcode({ barcode => $barcode });
+        my $req = $c->get_ill_request_from_barcode( { barcode => $barcode } );
 
         if ( $req->status eq 'B_ITEM_SHIPPED' ) {
+
             # We were waiting for this! Notify them we got the item!
             my $ill = Koha::Illbackends::INNReach::Base->new;
-            $ill->item_received({ request => $req });
+            $ill->item_received( { request => $req } );
         }
         return $c->render(
             status  => 200,
             openapi => {}
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -1171,10 +1170,10 @@ recording the new due date.
 sub borrowerrenew {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId  = $c->validation->param('trackingId');
-    my $centralCode = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+    my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
     # eary exit if wrong status
     return $c->out_of_sequence(
@@ -1184,30 +1183,30 @@ sub borrowerrenew {
         }
     ) if $req->status ne 'O_ITEM_RECEIVED_DESTINATION';
 
-    my $body = $c->validation->param('body');
+    my $body = $c->req->json;
 
-    my $transactionTime   = $body->{transactionTime};
-    my $dueDateTime       = $body->{dueDateTime};
-    my $patronId          = $body->{patronId};
-    my $patronAgencyCode  = $body->{patronAgencyCode};
-    my $itemAgencyCode    = $body->{itemAgencyCode};
-    my $itemId            = $body->{itemId};
+    my $transactionTime  = $body->{transactionTime};
+    my $dueDateTime      = $body->{dueDateTime};
+    my $patronId         = $body->{patronId};
+    my $patronAgencyCode = $body->{patronAgencyCode};
+    my $itemAgencyCode   = $body->{itemAgencyCode};
+    my $itemId           = $body->{itemId};
 
     return try {
 
         # the current status is valid, retrieve the checkout object
-        my $checkout_attribute = $req->extended_attributes->find({ type => 'checkout_id' });
+        my $checkout_attribute = $req->extended_attributes->find( { type => 'checkout_id' } );
         my $checkout;
 
-        if ( $checkout_attribute ) {
+        if ($checkout_attribute) {
             $checkout = Koha::Checkouts->find( $checkout_attribute->value );
-        }
-        else {
-            Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("Old request: fallback to search by itemnumber a.k.a. might not be accurate!");
-            $checkout = Koha::Checkouts->search({ itemnumber => $itemId })->next;
+        } else {
+            Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn(
+                "Old request: fallback to search by itemnumber a.k.a. might not be accurate!");
+            $checkout = Koha::Checkouts->search( { itemnumber => $itemId } )->next;
         }
 
-        unless ( $checkout ) {
+        unless ($checkout) {
             return $c->render(
                 status  => 409,
                 openapi => {
@@ -1219,11 +1218,9 @@ sub borrowerrenew {
         }
 
         my $date_due =
-                DateTime->from_epoch( epoch => $dueDateTime )
-                        ->truncate( to => 'day' )
-                        ->set( hour => 23, minute => 59 );
+            DateTime->from_epoch( epoch => $dueDateTime )->truncate( to => 'day' )->set( hour => 23, minute => 59 );
 
-        $checkout->set({ date_due => $date_due })->store;
+        $checkout->set( { date_due => $date_due } )->store;
 
         return $c->render(
             status  => 200,
@@ -1233,8 +1230,7 @@ sub borrowerrenew {
                 errors => []
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -1252,10 +1248,10 @@ This can only happen when the ILL request status is O_ITEM_REQUESTED.
 sub cancelrequest {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId = $c->validation->param('trackingId');
-    my $centralCode   = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    # my $body = $c->validation->param('body');
+    # my $body = $c->req->json;
 
     # my $transactionTime   = $body->{transactionTime};
     # my $patronId          = $body->{patronId};
@@ -1267,7 +1263,7 @@ sub cancelrequest {
 
     return try {
 
-        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
         return $c->render(
             status  => 404,
@@ -1305,8 +1301,7 @@ sub cancelrequest {
                 errors => []
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -1320,18 +1315,19 @@ TODO: this method is a stub
 sub receiveunshipped {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId = $c->validation->param('trackingId');
-    my $centralCode   = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    my $body = $c->validation->param('body');
+    my $body = $c->req->json;
 
-    my $transactionTime    = $body->{transactionTime};
-    my $patronId           = $body->{patronId};
-    my $patronAgencyCode   = $body->{patronAgencyCode};
-    my $itemAgencyCode     = $body->{itemAgencyCode};
-    my $itemId             = $body->{itemId};
+    my $transactionTime  = $body->{transactionTime};
+    my $patronId         = $body->{patronId};
+    my $patronAgencyCode = $body->{patronAgencyCode};
+    my $itemAgencyCode   = $body->{itemAgencyCode};
+    my $itemId           = $body->{itemId};
 
     return try {
+
         # do your stuff
         return $c->render(
             status  => 200,
@@ -1341,8 +1337,7 @@ sub receiveunshipped {
                 errors => []
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -1360,12 +1355,12 @@ This request can only happen when the ILL request status is B_ITEM_REQUESTED.
 sub transferrequest {
     my $c = shift->openapi->valid_input or return;
 
-    my $trackingId = $c->validation->param('trackingId');
-    my $centralCode   = $c->validation->param('centralCode');
+    my $trackingId  = $c->param('trackingId');
+    my $centralCode = $c->param('centralCode');
 
-    my $body = $c->validation->param('body');
+    my $body = $c->req->json;
 
-    my $newItemId        = $body->{newItemId};
+    my $newItemId = $body->{newItemId};
 
     my $attributes = {
         transactionTime  => $body->{transactionTime},
@@ -1376,12 +1371,13 @@ sub transferrequest {
     };
 
     return try {
-        my $req = $c->get_ill_request({ trackingId => $trackingId, centralCode => $centralCode });
+        my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
-        while ( my ($type, $value) = each %{$attributes} ) {
+        while ( my ( $type, $value ) = each %{$attributes} ) {
+
             # Update all attributes
-            my $attr = $req->extended_attributes->find({ type => $type });
-            $attr->set({ value => $value })->store;
+            my $attr = $req->extended_attributes->find( { type => $type } );
+            $attr->set( { value => $value } )->store;
         }
 
         return $c->render(
@@ -1392,8 +1388,7 @@ sub transferrequest {
                 errors => []
             }
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -1408,17 +1403,17 @@ generate a print slip for an ILL request.
 sub get_print_slip {
     my $c = shift->openapi->valid_input or return;
 
-    my $illrequest_id = $c->validation->param('illrequest_id');
-    my $print_slip_id = $c->validation->param('print_slip_id');
+    my $illrequest_id = $c->param('illrequest_id');
+    my $print_slip_id = $c->param('print_slip_id');
 
     try {
 
         my $plugin = Koha::Plugin::Com::Theke::INNReach->new();
 
-        $plugin->{cgi} = CGI->new; # required by C4::Auth::gettemplate and friends
-        my $template = $plugin->get_template({ file => 'print_slip.tt' });
+        $plugin->{cgi} = CGI->new;    # required by C4::Auth::gettemplate and friends
+        my $template = $plugin->get_template( { file => 'print_slip.tt' } );
 
-        my $req = Koha::Illrequests->find( $illrequest_id );
+        my $req = Koha::Illrequests->find($illrequest_id);
 
         unless ($req) {
             return $c->render(
@@ -1428,65 +1423,67 @@ sub get_print_slip {
         }
 
         my $illrequestattributes = {};
-        my $attributes = $req->extended_attributes;
+        my $attributes           = $req->extended_attributes;
         while ( my $attribute = $attributes->next ) {
-            $illrequestattributes->{$attribute->type} = $attribute->value;
+            $illrequestattributes->{ $attribute->type } = $attribute->value;
         }
 
         # Koha::Illrequest->get_notice with hardcoded letter_code
-        my $title     = $req->extended_attributes->find({ type => 'title' });
-        my $author    = $req->extended_attributes->find({ type => 'author' });
+        my $title     = $req->extended_attributes->find( { type => 'title' } );
+        my $author    = $req->extended_attributes->find( { type => 'author' } );
         my $metahash  = $req->metadata;
         my @metaarray = ();
 
-        while (my($key, $value) = each %{$metahash}) {
+        while ( my ( $key, $value ) = each %{$metahash} ) {
             push @metaarray, "- $key: $value" if $value;
         }
 
-        my $metastring = join("\n", @metaarray);
+        my $metastring = join( "\n", @metaarray );
 
         my $item_id;
         if ( $req->status =~ /^O_/ ) {
+
             # 'lending'
-            my $item_id_attr = $req->extended_attributes->find({ type => 'itemId' });
+            my $item_id_attr = $req->extended_attributes->find( { type => 'itemId' } );
             $item_id = ($item_id_attr) ? $item_id_attr->value : '';
-        }
-        elsif ( $req->status =~ /^B_/ ) {
+        } elsif ( $req->status =~ /^B_/ ) {
+
             # 'borrowing' (itemId is the lending system's, use itemBarcode instead)
-            my $barcode_attr = $req->extended_attributes->find({ type => 'itemBarcode' });
-            my $barcode = ($barcode_attr) ? $barcode_attr->value : '';
-            if ( $barcode ) {
-                if ( Koha::Items->search({ barcode => $barcode })->count > 0 ) {
-                    my $item = Koha::Items->search({ barcode => $barcode })->next;
+            my $barcode_attr = $req->extended_attributes->find( { type => 'itemBarcode' } );
+            my $barcode      = ($barcode_attr) ? $barcode_attr->value : '';
+            if ($barcode) {
+                if ( Koha::Items->search( { barcode => $barcode } )->count > 0 ) {
+                    my $item = Koha::Items->search( { barcode => $barcode } )->next;
                     $item_id = $item->id;
                 }
             }
-        }
-        else {
+        } else {
             Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("Not sure where I am");
         }
 
         my $slip = C4::Letters::GetPreparedLetter(
-            module                 => 'circulation', # FIXME: should be 'ill' in 20.11+
+            module                 => 'circulation',        # FIXME: should be 'ill' in 20.11+
             letter_code            => $print_slip_id,
             branchcode             => $req->branchcode,
             message_transport_type => 'print',
             lang                   => $req->patron->lang,
             tables                 => {
+
                 # illrequests => $req->illrequest_id, # FIXME: should be used in 20.11+
-                borrowers   => $req->borrowernumber,
-                biblio      => $req->biblio_id,
-                item        => $item_id,
-                branches    => $req->branchcode,
+                borrowers => $req->borrowernumber,
+                biblio    => $req->biblio_id,
+                item      => $item_id,
+                branches  => $req->branchcode,
             },
-            substitute  => {
+            substitute => {
                 illrequestattributes => $illrequestattributes,
-                illrequest           => $req->unblessed, # FIXME: should be removed in 20.11+
-                ill_bib_title        => $title ? $title->value : '',
+                illrequest           => $req->unblessed,         # FIXME: should be removed in 20.11+
+                ill_bib_title        => $title  ? $title->value  : '',
                 ill_bib_author       => $author ? $author->value : '',
                 ill_full_metadata    => $metastring
             }
         );
+
         # / Koha::Illrequest->get_notice
 
         $template->param(
@@ -1496,10 +1493,9 @@ sub get_print_slip {
 
         return $c->render(
             status => 200,
-            data   => Encode::encode('UTF-8', $template->output())
+            data   => Encode::encode( 'UTF-8', $template->output() )
         );
-    }
-    catch {
+    } catch {
         return $c->unhandled_innreach_exception($_);
     };
 }
@@ -1518,15 +1514,17 @@ sub get_ill_request {
     my $trackingId  = $args->{trackingId};
     my $centralCode = $args->{centralCode};
 
-        # Get/validate the request
+    # Get/validate the request
     my $dbh = C4::Context->dbh;
-    my $sth = $dbh->prepare(qq{
+    my $sth = $dbh->prepare(
+        qq{
         SELECT * FROM illrequestattributes AS ra_a
         INNER JOIN    illrequestattributes AS ra_b
         ON ra_a.illrequest_id=ra_b.illrequest_id AND
           (ra_a.type='trackingId'  AND ra_a.value='$trackingId') AND
           (ra_b.type='centralCode' AND ra_b.value='$centralCode');
-    });
+    }
+    );
 
     $sth->execute();
     my $result = $sth->fetchrow_hashref;
@@ -1550,11 +1548,11 @@ sub get_ill_request_from_barcode {
     my ( $c, $args ) = @_;
 
     my $barcode = $args->{barcode};
-    my $status  = $args->{status} // 'B_ITEM_SHIPPED'; # borrowing site, item shipped, receiving
+    my $status  = $args->{status} // 'B_ITEM_SHIPPED';    # borrowing site, item shipped, receiving
 
-    my $item = Koha::Items->find({ barcode => $barcode });
+    my $item = Koha::Items->find( { barcode => $barcode } );
 
-    unless ( $item ) {
+    unless ($item) {
         INNReach::Circ::UnkownBarcode->throw( barcode => $barcode );
     }
 
@@ -1563,19 +1561,19 @@ sub get_ill_request_from_barcode {
     my $reqs = Koha::Illrequests->search(
         {
             biblio_id => $biblio_id,
-            status    => [
-                $status
-            ]
+            status    => [$status]
         }
     );
 
     if ( $reqs->count > 1 ) {
-        Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("More than one ILL request for barcode ($barcode). Beware!");
+        Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn(
+            "More than one ILL request for barcode ($barcode). Beware!");
     }
 
     return unless $reqs->count > 0;
 
     my $req = $reqs->next;
+
     # TODO: what about other stages? testing valid statuses?
     # TODO: Owning site use case?
 
@@ -1606,9 +1604,9 @@ sub add_virtual_record_and_item {
     my $call_number = $args->{call_number};
     my $barcode     = $args->{barcode};
 
-    my $attributes  = $req->extended_attributes;
+    my $attributes = $req->extended_attributes;
 
-    my $centralItemType = $attributes->search({ type => 'centralItemType' })->next->value;
+    my $centralItemType = $attributes->search( { type => 'centralItemType' } )->next->value;
 
     my $marc_flavour   = C4::Context->preference('marcflavour');
     my $framework_code = $config->{default_marc_framework} || 'FA';
@@ -1630,22 +1628,18 @@ sub add_virtual_record_and_item {
 
     if ( any { $centralItemType eq $_ } @{$no_barcode_central_itypes} ) {
         $barcode = undef;
-    }
-    else {
+    } else {
         my $default_normalizers = $config->{default_barcode_normalizers} // [];
 
-        my $normalizer = Koha::Plugin::Com::Theke::INNReach::Normalizer->new({ string => $barcode });
+        my $normalizer = Koha::Plugin::Com::Theke::INNReach::Normalizer->new( { string => $barcode } );
 
         foreach my $method ( @{$default_normalizers} ) {
-            unless (
-                any { $_ eq $method }
-                @{ $normalizer->available_normalizers }
-              )
-            {
+            unless ( any { $_ eq $method } @{ $normalizer->available_normalizers } ) {
+
                 # not a valid normalizer
-                Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("Invalid barcode normalizer configured: $method");
-            }
-            else {
+                Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn(
+                    "Invalid barcode normalizer configured: $method");
+            } else {
                 $normalizer->$method;
             }
         }
@@ -1656,19 +1650,19 @@ sub add_virtual_record_and_item {
     # determine the right item types
     my $item_type;
     if ( exists $config->{central_to_local_itype} ) {
-        $item_type = ( exists $config->{central_to_local_itype}->{$centralItemType}
-                          and $config->{central_to_local_itype}->{$centralItemType} )
-                    ? $config->{central_to_local_itype}->{$centralItemType}
-                    : $config->{default_item_type};
-    }
-    else {
+        $item_type =
+            ( exists $config->{central_to_local_itype}->{$centralItemType}
+                and $config->{central_to_local_itype}->{$centralItemType} )
+            ? $config->{central_to_local_itype}->{$centralItemType}
+            : $config->{default_item_type};
+    } else {
         $item_type = $config->{default_item_type};
     }
 
-    unless ( $item_type ) {
+    unless ($item_type) {
         Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("'default_item_type' entry missing in configuration");
         return $c->render(
-            status => 500,
+            status  => 500,
             openapi => {
                 status => 'error',
                 reason => "'default_item_type' entry missing in configuration",
@@ -1677,10 +1671,10 @@ sub add_virtual_record_and_item {
         );
     }
 
-    my $author_attr = $attributes->search({ type => 'author' })->next;
-    my $author      = ( $author_attr ) ? $author_attr->value : '';
-    my $title_attr  = $attributes->search({ type => 'title' })->next;
-    my $title       = ( $title_attr ) ? $title_attr->value : '';
+    my $author_attr = $attributes->search( { type => 'author' } )->next;
+    my $author      = ($author_attr) ? $author_attr->value : '';
+    my $title_attr  = $attributes->search( { type => 'title' } )->next;
+    my $title       = ($title_attr) ? $title_attr->value : '';
 
     my $record;
 
@@ -1688,22 +1682,17 @@ sub add_virtual_record_and_item {
         $record = MARC::Record->new();
         $record->leader('     nac a22     1u 4500');
         $record->insert_fields_ordered(
-            MARC::Field->new(
-                '100', '1', '0', 'a' => $author
-            ),
-            MARC::Field->new(
-                '245', '1', '0', 'a' => $title
-            ),
+            MARC::Field->new( '100', '1', '0', 'a' => $author ),
+            MARC::Field->new( '245', '1', '0', 'a' => $title ),
             MARC::Field->new(
                 '942', '1', '0',
-                    'n' => 1,
-                    'c' => $item_type
+                'n' => 1,
+                'c' => $item_type
             )
         );
-    }
-    else {
+    } else {
         return $c->render(
-            status => 500,
+            status  => 500,
             openapi => {
                 status => 'error',
                 reason => "$marc_flavour is not supported (yet)",
@@ -1715,26 +1704,25 @@ sub add_virtual_record_and_item {
     my ( $biblio_id, $biblioitemnumber ) = AddBiblio( $record, $framework_code );
 
     my $item = {
-        barcode          => $barcode,
-        holdingbranch    => $req->branchcode,
-        homebranch       => $req->branchcode,
-        itype            => $item_type,
-        itemcallnumber   => $call_number,
-        ccode            => $ccode,
-        location         => $location,
-        materials        => $materials,
-        notforloan       => $notforloan,
+        barcode             => $barcode,
+        holdingbranch       => $req->branchcode,
+        homebranch          => $req->branchcode,
+        itype               => $item_type,
+        itemcallnumber      => $call_number,
+        ccode               => $ccode,
+        location            => $location,
+        materials           => $materials,
+        notforloan          => $notforloan,
         itemnotes_nonpublic => $checkin_note,
     };
     my $item_id;
     if ( C4::Context->preference('Version') ge '20.050000' ) {
-        $item->{biblionumber} = $biblio_id;
+        $item->{biblionumber}     = $biblio_id;
         $item->{biblioitemnumber} = $biblioitemnumber;
-        my $item_obj = Koha::Item->new( $item );
+        my $item_obj = Koha::Item->new($item);
         $item_obj->store->discard_changes;
         $item_id = $item_obj->itemnumber;
-    }
-    else {
+    } else {
         ( undef, undef, $item_id ) = C4::Items::AddItem( $item, $biblio_id );
     }
     return ( $biblio_id, $item_id, $biblioitemnumber );
@@ -1756,14 +1744,14 @@ sub pickup_location_to_library_id {
 
     if ( $args->{pickupLocation} =~ m/^(?<pickup_location>.*):.*:.*$/ ) {
         $pickup_location = $+{pickup_location};
-    }
-    else {
-        INNReach::Ill::BadPickupLocation->throw( "Couldn't parse 'pickupLocation' parameter: '$args->{pickupLocation}'" );
+    } else {
+        INNReach::Ill::BadPickupLocation->throw("Couldn't parse 'pickupLocation' parameter: '$args->{pickupLocation}'");
     }
 
     $library_id = $configuration->{location_to_library}->{$pickup_location};
 
-    INNReach::Ill::MissingMapping->throw( "Configuration section 'location_to_library' doesn't contain a mapping for '$pickup_location'" )
+    INNReach::Ill::MissingMapping->throw(
+        "Configuration section 'location_to_library' doesn't contain a mapping for '$pickup_location'")
         unless $library_id;
 
     return $library_id;
@@ -1777,7 +1765,7 @@ errors.
 =cut
 
 sub invalid_request_id {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     return $self->render(
         status  => 400,
@@ -1810,7 +1798,7 @@ errors.
 =cut
 
 sub out_of_sequence {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $current_status   = $args->{current_status};
     my $requested_status = $args->{requested_status};
@@ -1848,7 +1836,7 @@ sub unhandled_innreach_exception {
         openapi => {
             status => 'error',
             reason => 'Unhandled Koha exception',
-            errors => [ "$exception" ],
+            errors => ["$exception"],
         }
     );
 }

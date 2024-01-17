@@ -46,8 +46,8 @@ Return a bibliographic record by bibId (biblionumber)
 sub getbibrecord {
     my $c = shift->openapi->valid_input or return;
 
-    my $bibId       = $c->validation->param('bibId');
-    my $centralCode = $c->validation->param('centralCode');
+    my $bibId       = $c->param('bibId');
+    my $centralCode = $c->param('centralCode');
 
     return try {
 
