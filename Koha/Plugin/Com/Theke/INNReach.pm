@@ -733,7 +733,8 @@ sub after_circ_action {
             O_ITEM_CANCELLED_BY_US
             O_ITEM_CLAIMED_RETURNED
             O_ITEM_IN_TRANSIT
-            O_ITEM_RETURN_UNCIRCULATED)
+            O_ITEM_RETURN_UNCIRCULATED
+            O_ITEM_RECEIVED_DESTINATION)
             )
         {
             INNReach::BackgroundJobs::OwningSite::FinalCheckin->new->enqueue(
@@ -824,6 +825,9 @@ sub schedule_task {
     my $object_type    = $params->{object_type};
     my $object_id      = $params->{object_id};
     my $payload        = $params->{payload};
+
+    $payload = "'$payload'"
+        if $payload;
 
     my $task_queue      = $self->get_qualified_table_name('task_queue');
 
