@@ -723,32 +723,32 @@ sub after_circ_action {
     }
     elsif ( $action eq 'checkin' ) {
 
-        my $hook_payload = $params->{payload};
-        my $checkout     = $hook_payload->{checkout};
-
-        my $checkout_id = $checkout->id;
+        my $checkout = $params->{payload}->{checkout};
 
         my $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
             {
                 type  => 'checkout_id',
-                value => $checkout_id,
+                value => $checkout->id,
             }
         );
 
         if ($req) {
 
-            my $central_server = Koha::Illrequestattributes->find(
-                { illrequest_id => $req->id, type => 'centralCode' } )->value;
-
-            $self->schedule_task(
-                {
-                    action         => $action,
-                    central_server => $central_server,
-                    object_id      => $checkout_id,
-                    object_type    => 'circulation',
-                    status         => 'queued',
-                }
-            );
+            if (
+                any { $req->status eq $_ }
+                qw(O_ITEM_CANCELLED
+                O_ITEM_CANCELLED_BY_US
+                O_ITEM_CLAIMED_RETURNED
+                O_ITEM_IN_TRANSIT
+                O_ITEM_RETURN_UNCIRCULATED)
+                )
+            {
+                INNReach::BackgroundJobs::OwningSite::FinalCheckin->new->enqueue(
+                    {
+                        ill_request_id => $req->id,
+                    }
+                ) if $self->configuration->{$central_server}->{lending}->{automatic_final_checkin};
+            }
         }
     }
 }
@@ -880,7 +880,8 @@ Plugin hook used to register new background_job types
 sub background_tasks {
     return {
         o_cancel_request => 'INNReach::BackgroundJobs::OwningSite::CancelRequest',
-        itemshipped      => 'INNReach::BackgroundJobs::OwningSite::ItemShipped',
+        o_final_checkin  => 'INNReach::BackgroundJobs::OwningSite::FinalCheckin',
+        o_item_shipped   => 'INNReach::BackgroundJobs::OwningSite::ItemShipped',
     };
 }
 

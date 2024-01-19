@@ -1,4 +1,4 @@
-package INNReach::BackgroundJobs::OwningSite::ItemShipped;
+package INNReach::BackgroundJobs::OwningSite::FinalCheckin;
 
 # Koha is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -26,8 +26,8 @@ use INNReach::Commands::OwningSite;
 
 =head1 NAME
 
-INNReach::BackgroundJobs::OwningSite::ItemShipped - Background task for notifying
-an item has been shipped.
+INNReach::BackgroundJobs::OwningSite::FinalCheckin - Background task for notifying
+an item has been received for ending the process.
 
 This is a subclass of Koha::BackgroundJob.
 
@@ -37,12 +37,12 @@ This is a subclass of Koha::BackgroundJob.
 
 =head3 job_type
 
-Define the job type of this job: greeter
+Define the job type of this job
 
 =cut
 
 sub job_type {
-    return 'plugin_innreach_o_item_shipped';
+    return 'plugin_innreach_o_final_checkin';
 }
 
 =head3 process
@@ -65,7 +65,7 @@ sub process {
     my $req = Koha::Illrequests->find( $args->{ill_request_id} );
 
     try {
-        $commands->item_shipped( $req );
+        $commands->final_checkin( $req );
     }
     catch {
         push @messages, "Error: $_";

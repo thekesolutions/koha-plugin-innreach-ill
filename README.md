@@ -178,6 +178,7 @@ d2ir:
         - ltrim
         - rtrim
     lending:
+        automatic_final_checkin: false
         automatic_item_shipped: false
     default_item_type: ILL
     default_item_ccode: GENERAL_STACKS
