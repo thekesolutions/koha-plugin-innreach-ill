@@ -732,6 +732,8 @@ sub after_circ_action {
             }
         );
 
+        my $central_server = $req->extended_attributes->find( { type => 'centralCode' } )->value;
+
         if ($req) {
 
             if (
