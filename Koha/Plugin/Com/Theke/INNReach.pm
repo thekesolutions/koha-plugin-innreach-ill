@@ -96,6 +96,10 @@ sub configure {
 
     my $template = $self->get_template({ file => 'configure.tt' });
 
+    my $errors = $self->check_configuration;
+
+    $template->param( errors => $errors );
+
     unless ( scalar $cgi->param('save') ) {
 
         ## Grab the values we already have for our settings, if any exist
@@ -1284,6 +1288,49 @@ sub add_return {
     }
 
     return C4::Circulation::AddReturn( $params->{barcode} );
+}
+
+=head3 check_configuration
+
+    my $errors = $self->check_configuration;
+
+Returns a reference to a list of errors found in configuration.
+
+=cut
+
+sub check_configuration {
+    my ($self) = @_;
+
+    my @errors;
+
+    my $configuration   = $self->configuration;
+    my @central_servers = grep { $_ ne 'default_item_types' } keys %{$configuration};
+
+    foreach my $central_server (@central_servers) {
+        push @errors,
+            {
+            code  => 'undefined_partners_library_id',
+            value => $configuration->{$central_server}->{partners_library_id}, central_server => $central_server
+            }
+            unless Koha::Libraries->find( $configuration->{$central_server}->{partners_library_id} );
+    }
+
+    foreach my $central_server (@central_servers) {
+        push @errors,
+            {
+            code  => 'undefined_partners_category',
+            value => $configuration->{$central_server}->{partners_category}, central_server => $central_server
+            }
+            unless Koha::Patron::Categories->find( $configuration->{$central_server}->{partners_category} );
+    }
+
+    push @errors, { code => 'ILLModule_disabled' }
+        unless C4::Context->preference('ILLModule');
+
+    push @errors, { code => 'CirculateILL_enabled' }
+        if C4::Context->preference('CirculateILL');
+
+    return \@errors;
 }
 
 1;

@@ -48,6 +48,20 @@
 <div id="doc3" class="yui-t2">
   <div id="yui-main">
     <h2>INN-Reach configuration</h2>
+
+    [% IF errors %]
+        [% FOREACH error IN errors %]
+            <div class="dialog error">
+                [% SWITCH error.code %]
+                [% CASE 'ILLModule_disabled' %]<span>The <strong>mandatory</strong> system preference <strong>ILLModule<strong> is disabled.</span>
+                [% CASE 'CirculateILL_enabled' %]<span>The system preference <strong>CirculateILL</strong> is enabled, but it is incompatible with this plugin.</span>
+                [% CASE 'undefined_partners_library_id' %]<span>[<strong>[% error.central_server | html %]</strong>]The configured <strong>partners_library_id</strong> '[% error.value | html %]' is not defined on the system.</span>
+                [% CASE 'undefined_partners_category' %]<span>[<strong>[% error.central_server | html %]</strong>]The configured <strong>partners_category</strong> '[% error.value | html %]' is not defined on the system.</span>
+                [% END %]
+            </div>
+        [% END %]
+    [% END %]
+
     <br/>
       <h4>Central servers</h4>
       <form method="post">

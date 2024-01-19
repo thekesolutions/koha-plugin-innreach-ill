@@ -195,6 +195,7 @@ d2ir:
     restriction_blocks_holds: true
     # Debugging
     debug_mode: false
+    dev_mode: false
 ```
 
 ### Options
