@@ -41,6 +41,7 @@ BEGIN {
     unshift @INC, $path;
 
     require INNReach::BackgroundJobs::OwningSite::CancelRequest;
+    require INNReach::BackgroundJobs::OwningSite::FinalCheckin;
     require INNReach::BackgroundJobs::OwningSite::ItemShipped;
 }
 
@@ -694,63 +695,48 @@ sub after_circ_action {
 
     my $action = $params->{action};
 
-    if ( $action eq 'renewal' ) {
-        # We only care about renewals here
-        my $hook_payload = $params->{payload};
-        my $checkout = $hook_payload->{checkout};
+    my $checkout = $params->{payload}->{checkout};
 
-        my $item      = $checkout->item;
-        my $item_id   = $item->itemnumber;
-        my $biblio_id = $item->biblionumber;
-
-        my $req = $self->get_ill_request_from_biblio_id({ biblio_id => $biblio_id });
-
-        if ( $req ) {
-            # There's a request, and it is a renewal, notify!
-
-            my $payload = encode_json( $hook_payload );
-            my $task_queue = $self->get_qualified_table_name('task_queue');
-
-            my $central_server = Koha::Illrequestattributes->find({ illrequest_id => $req->id, type => 'centralCode' })->value;
-
-            C4::Context->dbh->do(qq{
-                INSERT INTO $task_queue
-                    ( central_server, object_type, object_id, payload, action, status, attempts )
-                VALUES
-                    ( '$central_server', 'item', $item_id, '$payload', '$action', 'queued', 0 )
-            });
+    my $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
+        {
+            type  => 'checkout_id',
+            value => $checkout->id,
         }
-    }
-    elsif ( $action eq 'checkin' ) {
+    );
 
-        my $checkout = $params->{payload}->{checkout};
+    return
+        unless $req;
 
-        my $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
+    my $central_server = $req->extended_attributes->find( { type => 'centralCode' } )->value;
+
+    if ( $action eq 'renewal' ) {
+
+        $self->schedule_task(
             {
-                type  => 'checkout_id',
-                value => $checkout->id,
+                action         => $action,
+                central_server => $central_server,
+                object_id      => $checkout->item->id,
+                object_type    => 'item',
+                payload        => encode_json( $params->{payload} ),
+                status         => 'queued',
             }
         );
+    } elsif ( $action eq 'checkin' ) {
 
-        my $central_server = $req->extended_attributes->find( { type => 'centralCode' } )->value;
-
-        if ($req) {
-
-            if (
-                any { $req->status eq $_ }
-                qw(O_ITEM_CANCELLED
-                O_ITEM_CANCELLED_BY_US
-                O_ITEM_CLAIMED_RETURNED
-                O_ITEM_IN_TRANSIT
-                O_ITEM_RETURN_UNCIRCULATED)
-                )
-            {
-                INNReach::BackgroundJobs::OwningSite::FinalCheckin->new->enqueue(
-                    {
-                        ill_request_id => $req->id,
-                    }
-                ) if $self->configuration->{$central_server}->{lending}->{automatic_final_checkin};
-            }
+        if (
+            any { $req->status eq $_ }
+            qw(O_ITEM_CANCELLED
+            O_ITEM_CANCELLED_BY_US
+            O_ITEM_CLAIMED_RETURNED
+            O_ITEM_IN_TRANSIT
+            O_ITEM_RETURN_UNCIRCULATED)
+            )
+        {
+            INNReach::BackgroundJobs::OwningSite::FinalCheckin->new->enqueue(
+                {
+                    ill_request_id => $req->id,
+                }
+            ) if $self->configuration->{$central_server}->{lending}->{automatic_final_checkin};
         }
     }
 }
@@ -833,14 +819,15 @@ sub schedule_task {
     my $central_server = $params->{central_server};
     my $object_type    = $params->{object_type};
     my $object_id      = $params->{object_id};
+    my $payload        = $params->{payload};
 
     my $task_queue      = $self->get_qualified_table_name('task_queue');
 
     C4::Context->dbh->do(qq{
         INSERT INTO $task_queue
-            (  central_server,     object_type,   object_id,   action,   status,  attempts )
+            (  central_server,     object_type,   object_id,   action,   status,  attempts,  payload )
         VALUES
-            ( '$central_server', '$object_type', $object_id, '$action', 'queued', 0 );
+            ( '$central_server', '$object_type', $object_id, '$action', 'queued',        0, $payload );
     });
 
     return $self;

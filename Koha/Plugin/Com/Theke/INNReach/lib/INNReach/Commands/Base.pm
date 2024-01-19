@@ -43,10 +43,8 @@ sub new {
     INNReach::Ill::MissingParameter->throw( param => 'plugin' )
         unless $plugin and ref($plugin) eq 'Koha::Plugin::Com::Theke::INNReach';
 
-    my $configuration   = $plugin->configuration;
-
     my $self = {
-        configuration => $configuration,
+        configuration => $plugin->configuration, # calculated hash, put here to reuse
         plugin        => $plugin,
     };
 
