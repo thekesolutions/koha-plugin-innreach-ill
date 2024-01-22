@@ -178,6 +178,7 @@ d2ir:
         - ltrim
         - rtrim
     borrowing:
+        automatic_item_in_transit: false
         automatic_item_receive: false
     lending:
         automatic_final_checkin: false
