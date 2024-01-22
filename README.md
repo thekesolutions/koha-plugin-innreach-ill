@@ -177,6 +177,8 @@ d2ir:
         - trim
         - ltrim
         - rtrim
+    borrowing:
+        automatic_item_receive: false
     lending:
         automatic_final_checkin: false
         automatic_item_shipped: false

@@ -28,6 +28,7 @@ to INN-Reach central servers
 
 =head2 Class methods
 
+
 =head3 item_received
 
     $command->item_received( $ill_request );
@@ -39,28 +40,36 @@ Given a I<Koha::Illrequest> object, notifies the item has been received
 sub item_received {
     my ( $self, $request ) = @_;
 
-    INNReach::Ill::InconsistentStatus->throw(
-        "Status is not correct: " . $request->status )
-      unless $request->status =~ m/^B/; # needs to be borrowing site flow
+    INNReach::Ill::InconsistentStatus->throw( "Status is not correct: " . $request->status )
+        unless $request->status =~ m/^B/;    # needs to be borrowing site flow
 
     my $attributes = $request->extended_attributes;
 
     my $trackingId  = $attributes->find( { type => 'trackingId' } )->value;
     my $centralCode = $attributes->find( { type => 'centralCode' } )->value;
 
-    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
-        {
-            endpoint => "/innreach/v2/circ/intransit/$trackingId/$centralCode",
-            centralCode => $centralCode,
+    Koha::Database->schema->storage->txn_do(
+        sub {
+
+            # skip actual INN-Reach interactions in dev_mode
+            unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
+
+                my $response = $self->{plugin}->get_ua($centralCode)->post_request(
+                    {
+                        endpoint    => "/innreach/v2/circ/itemreceived/$trackingId/$centralCode",
+                        centralCode => $centralCode,
+                    }
+                );
+
+                INNReach::Ill::RequestFailed->throw(
+                    method   => 'item_received',
+                    response => $response
+                ) unless $response->is_success;
+            }
+
+            $request->status('B_ITEM_RECEIVED')->store;
         }
     );
-
-    INNReach::Ill::RequestFailed->throw(
-        method   => 'item_received',
-        response => $response
-    ) unless $response->is_success;
-
-    $request->status('B_ITEM_RECEIVED')->store;
 
     return $self;
 }

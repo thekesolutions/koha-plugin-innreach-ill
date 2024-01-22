@@ -742,6 +742,12 @@ sub after_circ_action {
                     ill_request_id => $req->id,
                 }
             ) if $self->configuration->{$central_server}->{lending}->{automatic_final_checkin};
+        } elsif ( any { $req->status eq $_ } qw{B_ITEM_SHIPPED} ) {
+            INNReach::BackgroundJobs::BorrowingSite::ItemReceived->new->enqueue(
+                {
+                    ill_request_id => $req->id,
+                }
+            ) if $self->configuration->{$central_server}->{borrowing}->{automatic_item_receive};
         }
     }
 }
@@ -876,6 +882,7 @@ Plugin hook used to register new background_job types
 
 sub background_tasks {
     return {
+        b_item_received  => 'INNReach::BackgroundJobs::BorrowingSite::ItemReceived',
         o_cancel_request => 'INNReach::BackgroundJobs::OwningSite::CancelRequest',
         o_final_checkin  => 'INNReach::BackgroundJobs::OwningSite::FinalCheckin',
         o_item_shipped   => 'INNReach::BackgroundJobs::OwningSite::ItemShipped',
