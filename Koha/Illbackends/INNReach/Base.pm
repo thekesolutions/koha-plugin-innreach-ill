@@ -783,42 +783,9 @@ sent back to them and is in transit.
 sub item_in_transit {
     my ( $self, $params ) = @_;
 
-    my $req   = $params->{request};
-    my $attrs = $req->extended_attributes;
-
-    my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
-    my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
-
-    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
-        {   endpoint    => "/innreach/v2/circ/intransit/$trackingId/$centralCode",
-            centralCode => $centralCode,
-        }
-    );
-
     return try {
-        Koha::Database->new->schema->txn_do(
-            sub {
-                # Return the item first
-                my $barcode = $attrs->find({ type => 'itemBarcode' })->value;
 
-                my $item     = Koha::Items->find( { barcode => $barcode } );
-                my $checkout = Koha::Checkouts->find( { itemnumber => $item->id } );
-
-                unless ($checkout) {
-                    $self->{plugin}->add_return( { barcode => $barcode } );
-                }
-
-                # FIXME: who's this checked out to?
-                # FIXME: should we cancel any holds?
-
-                my $biblio = Koha::Biblios->find( $req->biblio_id );
-                # Remove the virtual item
-                $biblio->items->delete;
-                $biblio->delete;
-            }
-        );
-
-        $req->status('B_ITEM_IN_TRANSIT')->store;
+        INNReach::Commands::BorrowingSite->new( { plugin => $self->{plugin} } )->item_in_transit( $params->{request} );
 
         return {
             error   => 0,
@@ -829,8 +796,7 @@ sub item_in_transit {
             next    => 'illview',
             value   => '',
         };
-    }
-    catch {
+    } catch {
         return {
             error   => 1,
             status  => 'item_in_transit_error',
