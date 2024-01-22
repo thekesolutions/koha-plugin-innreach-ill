@@ -123,7 +123,7 @@ sub item_in_transit {
                 $self->{plugin}->add_return( { barcode => $barcode } );
             }
 
-            my $biblio = Koha::Biblios->find( $req->biblio_id );
+            my $biblio = Koha::Biblios->find( $request->biblio_id );
 
             # Remove the virtual item
             $biblio->items->delete;

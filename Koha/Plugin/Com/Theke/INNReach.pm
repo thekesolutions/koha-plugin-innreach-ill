@@ -750,7 +750,6 @@ sub after_circ_action {
                     ill_request_id => $req->id,
                 }
             ) if $self->configuration->{$central_server}->{borrowing}->{automatic_item_receive};
-        }
         } elsif ( any { $req->status eq $_ } qw{B_ITEM_RECEIVED B_ITEM_RECALLED} ) {
             INNReach::BackgroundJobs::BorrowingSite::ItemInTransit->new->enqueue(
                 {
