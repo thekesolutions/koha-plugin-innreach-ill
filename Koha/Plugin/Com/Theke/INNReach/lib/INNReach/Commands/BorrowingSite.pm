@@ -74,6 +74,68 @@ sub item_received {
     return $self;
 }
 
+
+=head3 item_in_transit
+
+    $command->item_in_transit( $ill_request );
+
+Given a I<Koha::Illrequest> object, notifies the item has been sent back
+
+=cut
+
+sub item_in_transit {
+    my ( $self, $request ) = @_;
+
+    INNReach::Ill::InconsistentStatus->throw( "Status is not correct: " . $request->status )
+        unless $request->status =~ m/^B/;    # needs to be borrowing site flow
+
+    my $attrs = $request->extended_attributes;
+
+    my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
+    my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
+
+    Koha::Database->schema->storage->txn_do(
+        sub {
+
+            # skip actual INN-Reach interactions in dev_mode
+            unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
+
+                my $response = $self->{plugin}->get_ua($centralCode)->post_request(
+                    {
+                        endpoint    => "/innreach/v2/circ/intransit/$trackingId/$centralCode",
+                        centralCode => $centralCode,
+                    }
+                );
+
+                INNReach::Ill::RequestFailed->throw(
+                    method   => 'item_in_transit',
+                    response => $response
+                ) unless $response->is_success;
+            }
+
+            # Return the item first
+            my $barcode = $attrs->find( { type => 'itemBarcode' } )->value;
+
+            my $item     = Koha::Items->find( { barcode => $barcode } );
+            my $checkout = Koha::Checkouts->find( { itemnumber => $item->id } );
+
+            if ($checkout) {
+                $self->{plugin}->add_return( { barcode => $barcode } );
+            }
+
+            my $biblio = Koha::Biblios->find( $req->biblio_id );
+
+            # Remove the virtual item
+            $biblio->items->delete;
+            $biblio->delete;
+
+            $request->status('B_ITEM_IN_TRANSIT')->store;
+        }
+    );
+
+    return $self;
+}
+
 =head3 receive_unshipped
 
     $command->receive_unshipped( $ill_request );

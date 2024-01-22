@@ -40,6 +40,8 @@ BEGIN {
     $path =~ s!\.pm$!/lib!;
     unshift @INC, $path;
 
+    require INNReach::BackgroundJobs::BorrowingSite::ItemInTransit;
+    require INNReach::BackgroundJobs::BorrowingSite::ItemReceived;
     require INNReach::BackgroundJobs::OwningSite::CancelRequest;
     require INNReach::BackgroundJobs::OwningSite::FinalCheckin;
     require INNReach::BackgroundJobs::OwningSite::ItemShipped;
@@ -742,12 +744,19 @@ sub after_circ_action {
                     ill_request_id => $req->id,
                 }
             ) if $self->configuration->{$central_server}->{lending}->{automatic_final_checkin};
-        } elsif ( any { $req->status eq $_ } qw{B_ITEM_SHIPPED} ) {
+        } elsif ( $req->status eq 'B_ITEM_SHIPPED' ) {
             INNReach::BackgroundJobs::BorrowingSite::ItemReceived->new->enqueue(
                 {
                     ill_request_id => $req->id,
                 }
             ) if $self->configuration->{$central_server}->{borrowing}->{automatic_item_receive};
+        }
+        } elsif ( any { $req->status eq $_ } qw{B_ITEM_RECEIVED B_ITEM_RECALLED} ) {
+            INNReach::BackgroundJobs::BorrowingSite::ItemInTransit->new->enqueue(
+                {
+                    ill_request_id => $req->id,
+                }
+            ) if $self->configuration->{$central_server}->{borrowing}->{automatic_item_in_transit};
         }
     }
 }
@@ -882,10 +891,11 @@ Plugin hook used to register new background_job types
 
 sub background_tasks {
     return {
-        b_item_received  => 'INNReach::BackgroundJobs::BorrowingSite::ItemReceived',
-        o_cancel_request => 'INNReach::BackgroundJobs::OwningSite::CancelRequest',
-        o_final_checkin  => 'INNReach::BackgroundJobs::OwningSite::FinalCheckin',
-        o_item_shipped   => 'INNReach::BackgroundJobs::OwningSite::ItemShipped',
+        b_item_in_transit => 'INNReach::BackgroundJobs::BorrowingSite::ItemInTransit',
+        b_item_received   => 'INNReach::BackgroundJobs::BorrowingSite::ItemReceived',
+        o_cancel_request  => 'INNReach::BackgroundJobs::OwningSite::CancelRequest',
+        o_final_checkin   => 'INNReach::BackgroundJobs::OwningSite::FinalCheckin',
+        o_item_shipped    => 'INNReach::BackgroundJobs::OwningSite::ItemShipped',
     };
 }
 
