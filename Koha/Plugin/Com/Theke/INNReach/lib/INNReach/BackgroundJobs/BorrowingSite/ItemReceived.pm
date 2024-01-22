@@ -22,7 +22,7 @@ use Try::Tiny;
 use Koha::Illrequests;
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 
-use INNReach::Commands::OwningSite;
+use INNReach::Commands::BorrowingSite;
 
 =head1 NAME
 
