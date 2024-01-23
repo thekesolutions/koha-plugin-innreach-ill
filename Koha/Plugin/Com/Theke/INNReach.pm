@@ -807,6 +807,9 @@ sub after_hold_action {
     elsif ( $req->status =~ /^B_/ ) {
         if ( $action eq 'fill' || $action eq 'waiting' || $action eq 'transfer' ) {
             if ( $req->status eq 'B_ITEM_SHIPPED' ) {
+
+                my $central_server = $self->get_req_central_server($req);
+
                 INNReach::BackgroundJobs::BorrowingSite::ItemReceived->new->enqueue(
                     {
                         ill_request_id => $req->id,
