@@ -22,13 +22,10 @@ use Modern::Perl;
 use Getopt::Long;
 use List::MoreUtils qw(any);
 
-use Koha::Plugin::Com::Theke::INNReach::Contribution;
-
 use C4::Context;
 use Koha::Biblios;
 
 use Koha::Plugin::Com::Theke::INNReach;
-use Koha::Plugin::Com::Theke::INNReach::Contribution;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -97,7 +94,7 @@ _USAGE_
 }
 
 my $plugin       = Koha::Plugin::Com::Theke::INNReach->new;
-my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $plugin } );
+my $contribution = $plugin->contribution;
 
 my $query      = {};
 my $attributes = {};
@@ -153,27 +150,6 @@ while ( my $biblio = $biblios->next ) {
 
         print STDOUT "\t* contributed\n"
             unless $noout;
-
-        if ( $contributable_items->count > 0 ) {
-            print STDOUT "\t* items:\n"
-                unless $noout;
-
-            while ( my $item = $contributable_items->next ) {
-
-                $plugin->schedule_task(
-                    {
-                        action         => 'create',
-                        central_server => $central_server,
-                        object_id      => $item->id,
-                        object_type    => 'item',
-                        status         => 'queued',
-                    }
-                );
-
-                print STDOUT "\t\t * " . $item->id . " (contribute)\n"
-                    unless $noout;
-            }
-        }
     }
 }
 

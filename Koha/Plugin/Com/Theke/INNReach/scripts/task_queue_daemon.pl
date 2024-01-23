@@ -24,8 +24,8 @@ use Try::Tiny;
 
 use C4::Context;
 
+use Koha::Biblios;
 use Koha::Plugin::Com::Theke::INNReach;
-use Koha::Plugin::Com::Theke::INNReach::Contribution;
 
 use Koha::Script;
 
@@ -70,7 +70,7 @@ sub run_queued_tasks {
     my $dbh = C4::Context->dbh;
 
     my $plugin       = Koha::Plugin::Com::Theke::INNReach->new;
-    my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $plugin } );
+    my $contribution = $plugin->contribution;
 
     my $table  = $plugin->get_qualified_table_name('task_queue');
 
@@ -180,7 +180,18 @@ sub do_biblio_contribute {
             }
         }
         else {
-            mark_task({ task => $task, status => 'success' });
+            $result = $contribution->contribute_all_bib_items_in_batch({ biblio => Koha::Biblios->find($biblio_id), centralServer => $task->{central_server} });
+            if ( $result ) {
+                if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
+                    mark_task({ task => $task, status => 'retry', error => $result });
+                }
+                else {
+                    mark_task({ task => $task, status => 'error', error => $result });
+                }
+            }
+            else {
+                mark_task({ task => $task, status => 'success' });
+            }
         }
     }
     catch {

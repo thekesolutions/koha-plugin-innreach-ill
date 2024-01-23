@@ -1235,6 +1235,18 @@ sub get_ua {
 }
 
 
+=head3 contribution
+
+This method retrieves a I<Koha::Plugin::Com::Theke::INNReach::Contribution> object.
+
+=cut
+
+sub contribution {
+    my ($self) = @_;
+
+    return Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $self } );
+}
+
 =head3 get_req_central_server
 
 This method returns the central server code a Koha::Illrequest is linked to.
