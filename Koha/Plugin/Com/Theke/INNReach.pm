@@ -829,7 +829,7 @@ sub schedule_task {
     my ( $self, $params ) = @_;
 
     my @mandatory_params = qw(action central_server object_type object_id);
-    foreach my $param ( @mandatory_params ) {
+    foreach my $param (@mandatory_params) {
         INNReach::Ill::MissingParameter->throw( param => $param )
             unless exists $params->{$param};
     }
@@ -840,17 +840,19 @@ sub schedule_task {
     my $object_id      = $params->{object_id};
     my $payload        = $params->{payload};
 
-    $payload = "'$payload'"
-        if $payload;
+    $payload = ""
+        unless $payload;
 
-    my $task_queue      = $self->get_qualified_table_name('task_queue');
+    my $task_queue = $self->get_qualified_table_name('task_queue');
 
-    C4::Context->dbh->do(qq{
+    C4::Context->dbh->do(
+        qq{
         INSERT INTO $task_queue
             (  central_server,     object_type,   object_id,   action,   status,  attempts,  payload )
         VALUES
-            ( '$central_server', '$object_type', $object_id, '$action', 'queued',        0, $payload );
-    });
+            ( '$central_server', '$object_type', $object_id, '$action', 'queued',        0, '$payload' );
+    }
+    );
 
     return $self;
 }
