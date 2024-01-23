@@ -744,12 +744,6 @@ sub after_circ_action {
                     ill_request_id => $req->id,
                 }
             ) if $self->configuration->{$central_server}->{lending}->{automatic_final_checkin};
-        } elsif ( $req->status eq 'B_ITEM_SHIPPED' ) {
-            INNReach::BackgroundJobs::BorrowingSite::ItemReceived->new->enqueue(
-                {
-                    ill_request_id => $req->id,
-                }
-            ) if $self->configuration->{$central_server}->{borrowing}->{automatic_item_receive};
         } elsif ( any { $req->status eq $_ } qw{B_ITEM_RECEIVED B_ITEM_RECALLED} ) {
             INNReach::BackgroundJobs::BorrowingSite::ItemInTransit->new->enqueue(
                 {
@@ -785,27 +779,40 @@ sub after_hold_action {
     return
         unless $req;
 
-    if ( $action eq 'fill' || $action eq 'waiting' || $action eq 'transfer' ) {
+    if ( $req->status =~ /^O_/ ) {
+        if ( $action eq 'fill' || $action eq 'waiting' || $action eq 'transfer' ) {
 
-        if ( $req->status eq 'O_ITEM_REQUESTED' ) {
+            if ( $req->status eq 'O_ITEM_REQUESTED' ) {
 
-            my $central_server = $self->get_req_central_server($req);
+                my $central_server = $self->get_req_central_server($req);
 
-            INNReach::BackgroundJobs::OwningSite::ItemShipped->new->enqueue(
-                {
-                    ill_request_id => $req->id,
-                }
-            ) if $self->configuration->{$central_server}->{lending}->{automatic_item_shipped};
+                INNReach::BackgroundJobs::OwningSite::ItemShipped->new->enqueue(
+                    {
+                        ill_request_id => $req->id,
+                    }
+                ) if $self->configuration->{$central_server}->{lending}->{automatic_item_shipped};
+            }
+        } elsif ( $action eq 'cancel' ) {
+
+            if ( $req->status eq 'O_ITEM_REQUESTED' ) {
+
+                INNReach::BackgroundJobs::OwningSite::CancelRequest->new->enqueue(
+                    {
+                        ill_request_id => $req->id,
+                    }
+                );
+            }
         }
-    } elsif ( $action eq 'cancel' ) {
-
-        if ( $req->status eq 'O_ITEM_REQUESTED' ) {
-
-            INNReach::BackgroundJobs::OwningSite::CancelRequest->new->enqueue(
-                {
-                    ill_request_id => $req->id,
-                }
-            );
+    }
+    elsif ( $req->status =~ /^B_/ ) {
+        if ( $action eq 'fill' ) {
+            if ( $req->status eq 'B_ITEM_SHIPPED' ) {
+                INNReach::BackgroundJobs::BorrowingSite::ItemReceived->new->enqueue(
+                    {
+                        ill_request_id => $req->id,
+                    }
+                ) if $self->configuration->{$central_server}->{borrowing}->{automatic_item_receive};
+            }
         }
     }
 }
