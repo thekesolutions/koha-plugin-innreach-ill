@@ -805,7 +805,7 @@ sub after_hold_action {
         }
     }
     elsif ( $req->status =~ /^B_/ ) {
-        if ( $action eq 'fill' ) {
+        if ( $action eq 'fill' || $action eq 'waiting' || $action eq 'transfer' ) {
             if ( $req->status eq 'B_ITEM_SHIPPED' ) {
                 INNReach::BackgroundJobs::BorrowingSite::ItemReceived->new->enqueue(
                     {
