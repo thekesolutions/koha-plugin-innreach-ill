@@ -103,7 +103,7 @@ sub new {
             undefined  => undef,
         ]
     );
-    $self->{debug_mode} = ( $args->{debug_mode} ) ? 1 : 0;
+    $self->{debug_mode} = ( $args->{debug_requests} ) ? 1 : 0;
 
     bless $self, $class;
 

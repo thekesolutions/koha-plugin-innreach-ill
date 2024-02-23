@@ -198,6 +198,7 @@ d2ir:
     restriction_blocks_holds: true
     # Debugging
     debug_mode: false
+    debug_requests: false
     dev_mode: false
 ```
 

@@ -1227,7 +1227,8 @@ sub get_ua {
             client_secret      => $configuration->{client_secret},
             api_base_url       => $configuration->{api_base_url},
             api_token_base_url => $configuration->{api_token_base_url},
-            local_server_code  => $configuration->{localServerCode}
+            local_server_code  => $configuration->{localServerCode},
+            debug_requests     => $configuration->{debug_requests},
         });
     }
 

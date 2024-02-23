@@ -76,6 +76,7 @@ sub new {
                     client_id          => $args->{config}->{$centralCode}->{client_id},
                     client_secret      => $args->{config}->{$centralCode}->{client_secret},
                     local_server_code  => $args->{config}->{$centralCode}->{localServerCode},
+                    debug_requests     => $args->{config}->{$centralCode}->{debug_requests},
                 }
             );
         }
