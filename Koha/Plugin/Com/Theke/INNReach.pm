@@ -1235,6 +1235,21 @@ sub get_ua {
     return $self->{_oauth2}->{$central_server};
 }
 
+=head3 debug_mode
+
+    if ( $self->debug_mode($central_server) ) { ... }
+
+This method tells if debug mode is enabled/configured for the specified I<$central_server>.
+
+Defaults to B<0> if not specified in the configuration YAML.
+
+=cut
+
+sub debug_mode {
+    my ( $self, $central_server ) = @_;
+
+    return $self->configuration->{$central_server}->{debug_mode} ? 1 : 0;
+}
 
 =head3 contribution
 
