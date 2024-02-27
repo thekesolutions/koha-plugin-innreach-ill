@@ -161,6 +161,7 @@ d2ir:
         - 201
         - 202
     contribution:
+        enabled: true
         max_retries: 10
         exclude_empty_biblios: true
         use_holding_library: false # if true, holding library will be used for the location
@@ -316,6 +317,12 @@ $ journalctl -u innreach_task_queue.service -f
 ```
 
 ## Initial record contribution
+
+Contribution rules are likely needed to be set before starting to use the plugin.
+
+**WARNING:** Not setting any rules will make Koha contribute every record.
+
+Before starting the contribution setup, we recommend setting the `contribution / enabled` setting to `false`. To avoid leaking the wrong records and items to the configured central server.
 
 Once the contribution rules are set (either `included_items` or `excluded_items`) it is time to
 perform the first contribution.
