@@ -519,13 +519,12 @@ sub after_biblio_action {
     my $biblio_id = $args->{biblio_id};
     my $biblio    = $args->{biblio};
 
-    my $task_queue    = $self->get_qualified_table_name('task_queue');
-    my $configuration = $self->configuration;
-    my $contribution  = Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $self } );
-
+    my $configuration   = $self->configuration;
     my @central_servers = $self->central_servers;
 
     foreach my $central_server ( @central_servers ) {
+
+        my $contribution = $self->contribution($central_server);
 
         if ( $action ne 'delete' ) {
 
@@ -609,12 +608,12 @@ sub after_item_action {
     my $item_id = $args->{item_id};
     my $item    = $args->{item};
 
-    my $configuration = $self->configuration;
-    my $contribution  = Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $self } );
-
+    my $configuration   = $self->configuration;
     my @central_servers = $self->central_servers;
 
     foreach my $central_server ( @central_servers ) {
+
+        my $contribution = $self->contribution($central_server);
 
         if ( $action ne 'delete' ) {
 
@@ -1253,14 +1252,22 @@ sub debug_mode {
 
 =head3 contribution
 
-This method retrieves a I<Koha::Plugin::Com::Theke::INNReach::Contribution> object.
+    my $contribution = $plugin->contribution($central_server);
+
+This method retrieves a I<Koha::Plugin::Com::Theke::INNReach::Contribution> object for the passed
+I<$central_server>
 
 =cut
 
 sub contribution {
-    my ($self) = @_;
+    my ( $self, $central_server ) = @_;
 
-    return Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $self } );
+    unless ( $self->{_contribution}->{$central_server} ) {
+        $self->{_contribution}->{$central_server} = Koha::Plugin::Com::Theke::INNReach::Contribution->new(
+            { central_server => $central_server, plugin => $self } );
+    }
+
+    return $self->{_contribution}->{$central_server};
 }
 
 =head3 get_req_central_server

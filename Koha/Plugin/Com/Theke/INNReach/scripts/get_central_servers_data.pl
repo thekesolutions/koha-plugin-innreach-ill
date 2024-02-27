@@ -24,10 +24,10 @@ use Data::Printer colored => 1;
 use Getopt::Long;
 
 use Koha::Plugin::Com::Theke::INNReach;
-use Koha::Plugin::Com::Theke::INNReach::Contribution;
+
 use Koha::Script;
 
-binmode(STDOUT,':encoding(utf8)');
+binmode( STDOUT, ':encoding(utf8)' );
 
 my $agencies;
 my $locations;
@@ -67,7 +67,7 @@ sub print_usage {
 _USAGE_
 }
 
-if ( $all ) {
+if ($all) {
     $agencies     = 1;
     $locations    = 1;
     $item_types   = 1;
@@ -75,51 +75,52 @@ if ( $all ) {
 }
 
 my $response;
-my $plugin       = Koha::Plugin::Com::Theke::INNReach->new;
-my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $plugin } );
 
-my @central_servers = @{ $contribution->centralServers };
+my $plugin          = Koha::Plugin::Com::Theke::INNReach->new;
+my @central_servers = @{ $plugin->central_servers };
 
-if ( $agencies ) {
+if ($agencies) {
     print STDOUT "# Agencies:\n";
     foreach my $central_server (@central_servers) {
         print STDOUT "## $central_server:\n";
-        $response = $contribution->get_agencies_list({ centralServer => $central_server });
-        foreach my $agency ( @{ $response } ) {
-            print STDOUT p( $agency );
+        $response = $plugin->contribution($central_server)->get_agencies_list( { centralServer => $central_server } );
+        foreach my $agency ( @{$response} ) {
+            print STDOUT p($agency);
         }
     }
 }
 
-if ( $locations ) {
+if ($locations) {
     print STDOUT "# Locations:\n";
     foreach my $central_server (@central_servers) {
         print STDOUT "## $central_server:\n";
-        $response = $contribution->get_locations_list({ centralServer => $central_server });
-        foreach my $location ( @{ $response } ) {
-            print STDOUT p( $location );
+        $response = $plugin->contribution($central_server)->get_locations_list( { centralServer => $central_server } );
+        foreach my $location ( @{$response} ) {
+            print STDOUT p($location);
         }
     }
 }
 
-if ( $item_types ) {
+if ($item_types) {
     print STDOUT "# Item types:\n";
     foreach my $central_server (@central_servers) {
         print STDOUT "## $central_server:\n";
-        $response = $contribution->get_central_item_types({ centralServer => $central_server });
-        foreach my $item_type ( @{ $response } ) {
-            print STDOUT p( $item_type );
+        $response =
+            $plugin->contribution($central_server)->get_central_item_types( { centralServer => $central_server } );
+        foreach my $item_type ( @{$response} ) {
+            print STDOUT p($item_type);
         }
     }
 }
 
-if ( $patron_types ) {
+if ($patron_types) {
     print STDOUT "# Patron types:\n";
     foreach my $central_server (@central_servers) {
         print STDOUT "## $central_server:\n";
-        $response = $contribution->get_central_patron_types_list({ centralServer => $central_server });
-        foreach my $patron_type ( @{ $response } ) {
-            print STDOUT p( $patron_type );
+        $response = $plugin->contribution($central_server)
+            ->get_central_patron_types_list( { centralServer => $central_server } );
+        foreach my $patron_type ( @{$response} ) {
+            print STDOUT p($patron_type);
         }
     }
 }

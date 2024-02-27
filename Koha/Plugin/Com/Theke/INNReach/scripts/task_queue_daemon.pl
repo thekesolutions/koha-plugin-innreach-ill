@@ -69,8 +69,7 @@ sub run_queued_tasks {
 
     my $dbh = C4::Context->dbh;
 
-    my $plugin       = Koha::Plugin::Com::Theke::INNReach->new;
-    my $contribution = $plugin->contribution;
+    my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
 
     my $table  = $plugin->get_qualified_table_name('task_queue');
 
@@ -113,9 +112,8 @@ sub run_queued_tasks {
 sub do_task {
     my ($args) = @_;
 
-    my $contribution = $args->{contribution};
-    my $plugin       = $args->{plugin};
-    my $task         = $args->{task};
+    my $plugin = $args->{plugin};
+    my $task   = $args->{task};
 
     unless ($task) {
         warn "'do_task' called without the 'task' param! Beware!";
@@ -128,29 +126,24 @@ sub do_task {
 
     if ( $object_type eq 'biblio' ) {
         if ( $action eq 'create' ) {
-            do_biblio_contribute({ biblio_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
+            do_biblio_contribute({ biblio_id => $object_id, plugin => $plugin, task => $task });
         }
         elsif ( $action eq 'modify' ) {
-            do_biblio_contribute({ biblio_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
+            do_biblio_contribute({ biblio_id => $object_id, plugin => $plugin, task => $task });
         }
         elsif ( $action eq 'delete' ) {
-            do_biblio_decontribute({ biblio_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
+            do_biblio_decontribute({ biblio_id => $object_id, plugin => $plugin, task => $task });
         }
     }
     elsif ( $object_type eq 'item' ) {
         if ( $action eq 'create' || $action eq 'modify' ) {
-            handle_item_action({ item_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
+            handle_item_action({ item_id => $object_id, plugin => $plugin, task => $task });
         }
         elsif ( $action eq 'delete' ) {
-            do_item_decontribute({ item_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
+            do_item_decontribute({ item_id => $object_id, plugin => $plugin, task => $task });
         }
         elsif ( $action eq 'renewal' ) {
-            handle_item_renewal({ item_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
-        }
-    }
-    elsif ( $object_type eq 'circulation' ) {
-        if ( $action eq 'checkin' ) {
-            handle_checkin({ checkout_id => $object_id, contribution => $contribution, plugin => $plugin, task => $task });
+            handle_item_renewal({ item_id => $object_id, plugin => $plugin, task => $task });
         }
     }
     else {
@@ -165,14 +158,17 @@ sub do_task {
 sub do_biblio_contribute {
     my ($args) = @_;
 
-    my $biblio_id    = $args->{biblio_id};
-    my $contribution = $args->{contribution};
-    my $task         = $args->{task};
+    my $biblio_id = $args->{biblio_id};
+    my $plugin    = $args->{plugin};
+    my $task      = $args->{task};
+
+    my $central_server = $task->{central_server};
 
     try {
-        my $result = $contribution->contribute_bib({ bibId => $biblio_id, centralServer => $task->{central_server} });
+        my $contribution = $plugin->contribution( $central_server );
+        my $result = $contribution->contribute_bib( { bibId => $biblio_id, centralServer => $central_server } );
         if ( $result ) {
-            if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
+            if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries} // 10 ) {
                 mark_task({ task => $task, status => 'retry', error => $result });
             }
             else {
@@ -180,9 +176,9 @@ sub do_biblio_contribute {
             }
         }
         else {
-            $result = $contribution->contribute_all_bib_items_in_batch({ biblio => Koha::Biblios->find($biblio_id), centralServer => $task->{central_server} });
+            $result = $contribution->contribute_all_bib_items_in_batch({ biblio => Koha::Biblios->find($biblio_id), centralServer => $central_server });
             if ( $result ) {
-                if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
+                if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries} // 10 ) {
                     mark_task({ task => $task, status => 'retry', error => $result });
                 }
                 else {
@@ -214,18 +210,21 @@ sub do_biblio_contribute {
 sub do_biblio_decontribute {
     my ($args) = @_;
 
-    my $biblio_id    = $args->{biblio_id};
-    my $contribution = $args->{contribution};
-    my $task         = $args->{task};
+    my $biblio_id = $args->{biblio_id};
+    my $plugin    = $args->{plugin};
+    my $task      = $args->{task};
+
+    my $central_server = $task->{central_server};
 
     try {
-        my $result = $contribution->decontribute_bib({ bibId => $biblio_id, centralServer => $task->{central_server} });
+        my $contribution = $plugin->contribution( $central_server );
+        my $result = $contribution->decontribute_bib( { bibId => $biblio_id, centralServer => $central_server } );
         if ( $result ) {
-            if ( $result->{$task->{central_server}} =~ m/No bib record found with specified recid/ ) {
+            if ( $result->{$central_server} =~ m/No bib record found with specified recid/ ) {
                 mark_task({ task => $task, status => 'skipped', error => $result });
             }
             else {
-                if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
+                if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries} // 10 ) {
                     mark_task({ task => $task, status => 'retry', error => $result });
                 }
                 else {
@@ -253,12 +252,15 @@ This sub handles item actions.
 sub handle_item_action {
     my ($args) = @_;
 
-    my $item_id        = $args->{item_id};
-    my $contribution   = $args->{contribution};
-    my $task           = $args->{task};
+    my $item_id = $args->{item_id};
+    my $plugin  = $args->{plugin};
+    my $task    = $args->{task};
+
     my $central_server = $task->{central_server};
 
     if ( $task->{action} eq 'modify' || $task->{action} eq 'create' ) {
+
+        my $contribution = $plugin->contribution($central_server);
 
         # should item be contributed?
         my $item = Koha::Items->find($item_id);
@@ -297,9 +299,12 @@ sub handle_item_action {
 sub do_item_contribute {
     my ($args) = @_;
 
-    my $item_id      = $args->{item_id};
-    my $contribution = $args->{contribution};
-    my $task         = $args->{task};
+    my $item_id = $args->{item_id};
+    my $plugin  = $args->{plugin};
+    my $task    = $args->{task};
+
+    my $central_server = $task->{central_server};
+    my $contribution   = $plugin->contribution($central_server);
 
     my $item = Koha::Items->find( $item_id );
 
@@ -310,9 +315,9 @@ sub do_item_contribute {
     my $biblio_id = $item->biblionumber;
 
     try {
-        my $result = $contribution->contribute_batch_items({ item => $item, bibId => $biblio_id, centralServer => $task->{central_server} });
+        my $result = $contribution->contribute_batch_items({ item => $item, bibId => $biblio_id, centralServer => $central_server });
         if ( $result ) {
-            if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
+            if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries} // 10 ) {
                 mark_task({ task => $task, status => 'retry', error => $result });
             }
             else {
@@ -337,18 +342,21 @@ sub do_item_contribute {
 sub do_item_decontribute {
     my ($args) = @_;
 
-    my $item_id      = $args->{item_id};
-    my $contribution = $args->{contribution};
-    my $task         = $args->{task};
+    my $item_id = $args->{item_id};
+    my $plugin  = $args->{plugin};
+    my $task    = $args->{task};
+
+    my $central_server = $task->{central_server};
+    my $contribution   = $plugin->contribution($central_server);
 
     try {
-        my $result = $contribution->decontribute_item({ itemId => $item_id, centralServer => $task->{central_server} });
+        my $result = $contribution->decontribute_item({ itemId => $item_id, centralServer => $central_server });
         if ( $result ) {
-            if ( $result->{$task->{central_server}} =~ m/No item record found with specified recid/ ) {
+            if ( $result->{$central_server} =~ m/No item record found with specified recid/ ) {
                 mark_task({ task => $task, status => 'skipped', error => $result });
             }
             else {
-                if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
+                if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries} // 10 ) {
                     mark_task({ task => $task, status => 'retry', error => $result });
                 }
                 else {
@@ -370,10 +378,13 @@ sub do_item_decontribute {
 sub handle_item_renewal {
     my ($args) = @_;
 
-    my $item_id      = $args->{item_id};
-    my $contribution = $args->{contribution};
-    my $task         = $args->{task};
-    my $payload      = decode_json($task->{payload});
+    my $item_id = $args->{item_id};
+    my $plugin  = $args->{plugin};
+    my $task    = $args->{task};
+    my $payload = decode_json( $task->{payload} );
+
+    my $central_server = $task->{central_server};
+    my $contribution   = $plugin->contribution($central_server);
 
     try {
         my $result = $contribution->notify_borrower_renew(
@@ -383,7 +394,7 @@ sub handle_item_renewal {
             }
         );
         if ( $result ) {
-            if ( $task->{attempts} <= $contribution->config->{$task->{central_server}}->{contribution}->{max_retries} // 10 ) {
+            if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries} // 10 ) {
                 mark_task({ task => $task, status => 'retry', error => $result });
             }
             else {
@@ -397,40 +408,6 @@ sub handle_item_renewal {
     catch {
         mark_task({ task => $task, status => 'error', error => "$_" });
     };
-}
-
-sub handle_checkin {
-    my ($args) = @_;
-
-    my $checkout_id  = $args->{checkout_id};
-    my $contribution = $args->{contribution};
-    my $plugin       = $args->{plugin};
-    my $task         = $args->{task};
-
-    mark_task({ task => $task, status => 'skipped' });
-
-    # try {
-    #     my $result = $contribution->notify_borrower_renew(
-    #         {
-    #             item_id  => $item_id,
-    #             date_due => $payload->{date_due}
-    #         }
-    #     );
-    #     if ( $result ) {
-    #         if ( $task->{attempts} <= $contribution->config->{contribution}->{max_retries} // 10 ) {
-    #             mark_task({ task => $task, status => 'retry' });
-    #         }
-    #         else {
-    #             mark_task({ task => $task, status => 'error' });
-    #         }
-    #     }
-    #     else {
-    #         mark_task({ task => $task, status => 'success' });
-    #     }
-    # }
-    # catch {
-    #     mark_task({ task => $task, status => 'error', error => "$_" });
-    # };
 }
 
 sub mark_task {

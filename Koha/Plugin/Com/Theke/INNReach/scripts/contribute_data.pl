@@ -28,7 +28,6 @@ use List::MoreUtils qw(any);
 use Try::Tiny;
 
 use Koha::Plugin::Com::Theke::INNReach;
-use Koha::Plugin::Com::Theke::INNReach::Contribution;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -135,14 +134,15 @@ Note: --biblio_id, --items and --all_biblios are mutually exclussive
 _USAGE_
 }
 
-my $plugin       = Koha::Plugin::Com::Theke::INNReach->new;
-my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $plugin } );
+my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
 
-unless ( any { $_ eq $central_server } @{$contribution->{centralServers}} ) { # valid?
+unless ( any { $_ eq $central_server } @{$plugin->central_servers} ) { # valid?
     print_usage();
     say "$central_server is not a valid configured central server!";
     exit 1;
 }
+
+my $contribution = $plugin->contribution($central_server);
 
 if ($items) {
 
@@ -159,7 +159,7 @@ if ($items) {
     }
 
     # normal flow
-    my $configuration = $contribution->config->{$central_server};
+    my $configuration = $plugin->configuration->{$central_server};
     my $exclude_empty_biblios =
         $configuration->{contribution} ? $configuration->{contribution}->{exclude_empty_biblios} : 0;
 

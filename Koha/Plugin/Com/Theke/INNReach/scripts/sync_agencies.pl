@@ -24,11 +24,10 @@ use Data::Printer colored => 1;
 use Getopt::Long;
 
 use Koha::Plugin::Com::Theke::INNReach;
-use Koha::Plugin::Com::Theke::INNReach::Contribution;
 
 use Koha::Script qw(-cron);
 
-binmode(STDOUT,':encoding(utf8)');
+binmode( STDOUT, ':encoding(utf8)' );
 
 my $verbose;
 my $local_server;
@@ -61,10 +60,10 @@ _USAGE_
 }
 
 my $response;
-my $plugin       = Koha::Plugin::Com::Theke::INNReach->new;
-my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $plugin } );
 
-my @central_servers = @{ $contribution->centralServers };
+my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
+my @central_servers = @{ $plugin->central_servers };
 @central_servers = grep { $_ eq $central_server } @central_servers
     if $central_server;
 
@@ -77,13 +76,13 @@ print STDOUT "Central servers:\n"
     if $verbose and scalar @central_servers > 0;
 
 foreach my $central_server (@central_servers) {
-    $response = $contribution->get_agencies_list({ centralServer => $central_server });
+    $response = $plugin->contribution($central_server)->get_agencies_list( { centralServer => $central_server } );
 
     print STDOUT "$central_server\n"
         if $verbose;
     print STDOUT "\tLocal servers:\n"
-        if $verbose and scalar @{ $response } > 0;
-    foreach my $server ( @{ $response } ) {
+        if $verbose and scalar @{$response} > 0;
+    foreach my $server ( @{$response} ) {
 
         next if $local_server and $server->{localCode} ne $local_server;
 
@@ -112,25 +111,30 @@ foreach my $central_server (@central_servers) {
             my $patron;
 
             unless ($dry_run) {
-                if ( $patron_id ) {
+                if ($patron_id) {
+
                     # Update description
-                    $plugin->update_patron_for_agency({
-                        plugin         => $plugin,
-                        agency_id      => $agency_id,
-                        description    => $description,
-                        local_server   => $local_server,
-                        central_server => $central_server
-                    });
-                }
-                else {
+                    $plugin->update_patron_for_agency(
+                        {
+                            plugin         => $plugin,
+                            agency_id      => $agency_id,
+                            description    => $description,
+                            local_server   => $local_server,
+                            central_server => $central_server
+                        }
+                    );
+                } else {
+
                     # Create it
-                    $plugin->generate_patron_for_agency({
-                        plugin         => $plugin,
-                        agency_id      => $agency_id,
-                        description    => $description,
-                        local_server   => $local_server,
-                        central_server => $central_server
-                    });
+                    $plugin->generate_patron_for_agency(
+                        {
+                            plugin         => $plugin,
+                            agency_id      => $agency_id,
+                            description    => $description,
+                            local_server   => $local_server,
+                            central_server => $central_server
+                        }
+                    );
                 }
             }
         }

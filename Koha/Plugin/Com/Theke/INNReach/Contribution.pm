@@ -56,10 +56,14 @@ sub new {
     INNReach::Ill::MissingParameter->throw( param => "plugin" )
         unless $plugin && ref($plugin) eq 'Koha::Plugin::Com::Theke::INNReach';
 
+    INNReach::Ill::MissingParameter->throw( param => "central_server" )
+        unless $params->{central_server};
+
     my $self = $class->SUPER::nqew(
         {
-            config          => $plugin->configuration,
+            central_server  => $central_server,
             central_servers => [ $plugin->central_servers ],
+            config          => $plugin->configuration,
             plugin          => $plugin,
         }
     );

@@ -26,7 +26,6 @@ use List::MoreUtils qw(any);
 use Try::Tiny;
 
 use Koha::Plugin::Com::Theke::INNReach;
-use Koha::Plugin::Com::Theke::INNReach::Contribution;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -69,26 +68,30 @@ Options:
 _USAGE_
 }
 
-my $plugin       = Koha::Plugin::Com::Theke::INNReach->new;
-my $contribution = Koha::Plugin::Com::Theke::INNReach::Contribution->new( { plugin => $plugin } );
+my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
 
-unless ( any { $_ eq $central_server } @{$contribution->{centralServers}} ) { # valid?
+unless ( any { $_ eq $central_server } @{ $plugin->central_servers } ) {    # valid?
     print_usage();
     say "$central_server is not a valid configured central server!";
     exit 1;
 }
 
-my $dbh = C4::Context->dbh;
-my $contributed_items_table = $contribution->plugin->get_qualified_table_name('contributed_items');
+my $contribution = $plugin->contribution($central_server);
 
-my @item_ids = map { $_->[0] } $dbh->selectall_array(qq{
+my $dbh = C4::Context->dbh;
+
+my $contributed_items_table = $plugin->get_qualified_table_name('contributed_items');
+
+my @item_ids = map { $_->[0] } $dbh->selectall_array(
+    qq{
     SELECT item_id FROM $contributed_items_table
     WHERE central_server = ?;
-}, undef, $central_server);
+}, undef, $central_server
+);
 
 if ( scalar @item_ids > 0 ) {
     print STDOUT "# Syncing items:\n";
-    foreach my $item_id ( @item_ids ) {
+    foreach my $item_id (@item_ids) {
         try {
             my $result = $contribution->update_item_status(
                 {
@@ -96,20 +99,17 @@ if ( scalar @item_ids > 0 ) {
                     centralServer => $central_server,
                 }
             );
-            if ( $result ) {
+            if ($result) {
                 warn p($result);
-                print STDOUT "\t$item_id\t => ERROR\n"
+                print STDOUT "\t$item_id\t => ERROR\n";
+            } else {
+                print STDOUT "\t$item_id\t => OK\n";
             }
-            else {
-                print STDOUT "\t$item_id\t => OK\n"
-            }
-        }
-        catch {
+        } catch {
             warn "$_";
         };
     }
-}
-else {
+} else {
     print STDOUT "No items to sync.\n";
 }
 
