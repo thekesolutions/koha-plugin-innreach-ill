@@ -61,7 +61,7 @@ sub new {
 
     my $self = $class->SUPER::nqew(
         {
-            central_server  => $central_server,
+            central_server  => $params->{central_server},
             central_servers => [ $plugin->central_servers ],
             config          => $plugin->configuration,
             plugin          => $plugin,
@@ -135,7 +135,7 @@ sub contribute_bib {
 
     my $errors;
 
-    for my $central_server (@central_servers) {
+    foreach my $central_server (@central_servers) {
         my $response = $self->{plugin}->get_ua($central_server)->post_request(
             {
                 endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
