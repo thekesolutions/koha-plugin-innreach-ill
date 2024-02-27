@@ -32,14 +32,9 @@ use Koha::Items;
 use Koha::Libraries;
 
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
-use Koha::Plugin::Com::Theke::INNReach::OAuth2;
 
 use Data::Printer colored => 1;
 binmode STDOUT, ':encoding(UTF-8)';
-
-use base qw(Class::Accessor);
-
-__PACKAGE__->mk_accessors(qw( oauth2 config centralServers plugin ));
 
 =head1 Koha::Plugin::Com::Theke::INNReach::Contribution
 
@@ -55,37 +50,19 @@ Class constructor
 =cut
 
 sub new {
-    my ($class, $params) = @_;
-
-    my $args;
+    my ( $class, $params ) = @_;
 
     my $plugin = $params->{plugin};
     INNReach::Ill::MissingParameter->throw( param => "plugin" )
         unless $plugin && ref($plugin) eq 'Koha::Plugin::Com::Theke::INNReach';
 
-    try {
-        $args->{plugin} = $plugin;
-        $args->{config} = $plugin->configuration;
-        my @centralServers = $plugin->central_servers;
-        $args->{centralServers} = \@centralServers;
-        foreach my $centralCode (@centralServers) {
-            $args->{oauth2}->{$centralCode} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new(
-                {
-                    api_base_url       => $args->{config}->{$centralCode}->{api_base_url},
-                    api_token_base_url => $args->{config}->{$centralCode}->{api_token_base_url},
-                    client_id          => $args->{config}->{$centralCode}->{client_id},
-                    client_secret      => $args->{config}->{$centralCode}->{client_secret},
-                    local_server_code  => $args->{config}->{$centralCode}->{localServerCode},
-                    debug_requests     => $args->{config}->{$centralCode}->{debug_requests},
-                }
-            );
+    my $self = $class->SUPER::nqew(
+        {
+            config          => $plugin->configuration,
+            central_servers => [ $plugin->central_servers ],
+            plugin          => $plugin,
         }
-    }
-    catch {
-        die "$_";
-    };
-
-    my $self = $class->SUPER::new($args);
+    );
 
     bless $self, $class;
     return $self;
@@ -93,7 +70,7 @@ sub new {
 
 =head3 contribute_bib
 
-    my $res = $contribution->contribute_bib({ bibId => $bibId, [ centralServer => $centralServer ] });
+    my $res = $contribution->contribute_bib({ bibId => $bibId, [ centralServer => $central_server ] });
 
 By default it sends the MARC record and the required metadata
 to all Central servers. If a centralServer parameter is passed,
@@ -149,13 +126,13 @@ sub contribute_bib {
         push @central_servers, $args->{centralServer};
     }
     else {
-        @central_servers = @{ $self->{centralServers} };
+        @central_servers = @{ $self->{central_servers} };
     }
 
     my $errors;
 
     for my $central_server (@central_servers) {
-        my $response = $self->oauth2->{$central_server}->post_request(
+        my $response = $self->{plugin}->get_ua($central_server)->post_request(
             {   endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
                 centralCode => $central_server,
                 data        => $data
@@ -192,7 +169,7 @@ sub contribute_bib {
     my $res = $contribution->contribute_batch_items(
         {   bibId => $bibId,
             item  => $item,
-            [ centralServer => $centralServer ]
+            [ centralServer => $central_server ]
         }
     );
 
@@ -231,14 +208,14 @@ sub contribute_batch_items {
         push @central_servers, $args->{centralServer};
     }
     else {
-        @central_servers = @{ $self->{centralServers} };
+        @central_servers = @{ $self->{central_servers} };
     }
 
     my $errors;
 
     for my $central_server (@central_servers) {
 
-        my $configuration = $self->config->{$central_server};
+        my $configuration = $self->{config}->{$central_server};
 
         unless ( $self->is_bib_contributed( { biblio_id => $bibId, central_server => $central_server } ) ) {
             $self->contribute_bib(
@@ -294,7 +271,7 @@ sub contribute_batch_items {
             push @itemInfo, $itemInfo;
         }
 
-        my $response = $self->oauth2->{$central_server}->post_request(
+        my $response = $self->{plugin}->get_ua($central_server)->post_request(
             {   endpoint    => '/innreach/v2/contribution/items/' . $bibId,
                 centralCode => $central_server,
                 data        => { itemInfo => \@itemInfo }
@@ -336,7 +313,7 @@ sub contribute_batch_items {
 
     my $res = $contribution->contribute_all_bib_items_in_batch(
         {   biblio => $biblio,
-            [ centralServer => $centralServer ]
+            [ centralServer => $central_server ]
         }
     );
 
@@ -360,14 +337,14 @@ sub contribute_all_bib_items_in_batch {
         push @central_servers, $args->{centralServer};
     }
     else {
-        @central_servers = @{ $self->{centralServers} };
+        @central_servers = @{ $self->{central_servers} };
     }
 
     my $errors;
 
     for my $central_server (@central_servers) {
 
-        my $configuration = $self->config->{$central_server};
+        my $configuration = $self->{config}->{$central_server};
 
         unless ( $self->is_bib_contributed( { biblio_id => $biblio->id, central_server => $central_server } ) ) {
             $self->contribute_bib(
@@ -462,7 +439,7 @@ sub contribute_all_bib_items_in_batch {
 
 =head3 update_item_status
 
-    my $res = $contribution->update_item_status({ itemId => $itemId, [ centralServer => $centralServer ] });
+    my $res = $contribution->update_item_status({ itemId => $itemId, [ centralServer => $central_server ] });
 
 It sends updated item status to the central server(s).
 
@@ -490,7 +467,7 @@ sub update_item_status {
             push @central_servers, $args->{centralServer};
         }
         else {
-            @central_servers = @{ $self->{centralServers} };
+            @central_servers = @{ $self->{central_servers} };
         }
 
         for my $central_server (@central_servers) {
@@ -500,7 +477,7 @@ sub update_item_status {
                 dueDateTime    => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
             };
 
-            my $response = $self->oauth2->{$central_server}->post_request(
+            my $response = $self->{plugin}->get_ua($central_server)->post_request(
                 {   endpoint    => '/innreach/v2/contribution/itemstatus/' . $itemId,
                     centralCode => $central_server,
                     data        => $data
@@ -532,7 +509,7 @@ sub update_item_status {
 
     my $res = $contribution->decontribute_bib(
         {   bibId => $bibId,
-            [ centralServer => $centralServer ]
+            [ centralServer => $central_server ]
         }
     );
 
@@ -553,13 +530,13 @@ sub decontribute_bib {
     if ( $args->{centralServer} ) {
         push @central_servers, $args->{centralServer};
     } else {
-        @central_servers = @{ $self->{centralServers} };
+        @central_servers = @{ $self->{central_servers} };
     }
 
     my $errors;
 
     for my $central_server (@central_servers) {
-        my $response = $self->oauth2->{$central_server}->delete_request(
+        my $response = $self->{plugin}->get_ua($central_server)->delete_request(
             {
                 endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
                 centralCode => $central_server
@@ -605,7 +582,7 @@ sub decontribute_bib {
 
     my $res = $contribution->decontribute_item(
         {   itemId => $itemId,
-            [ centralServer => $centralServer ]
+            [ centralServer => $central_server ]
         }
     );
 
@@ -626,13 +603,13 @@ sub decontribute_item {
         push @central_servers, $args->{centralServer};
     }
     else {
-        @central_servers = @{ $self->{centralServers} };
+        @central_servers = @{ $self->{central_servers} };
     }
 
     my $errors;
 
     for my $central_server (@central_servers) {
-        my $response = $self->oauth2->{$central_server}->delete_request(
+        my $response = $self->{plugin}->get_ua($central_server)->delete_request(
             {   endpoint    => '/innreach/v2/contribution/item/' . $itemId,
                 centralCode => $central_server
             }
@@ -673,7 +650,7 @@ sub decontribute_item {
 
 =head3 update_bib_status
 
-    my $res = $contribution->update_bib_status({ bibId => $bibId, [ centralServer => $centralServer ] });
+    my $res = $contribution->update_bib_status({ bibId => $bibId, [ centralServer => $central_server ] });
 
 It sends updated bib status to the central server(s).
 
@@ -703,11 +680,11 @@ sub update_bib_status {
             push @central_servers, $args->{centralServer};
         }
         else {
-            @central_servers = @{ $self->{centralServers} };
+            @central_servers = @{ $self->{central_servers} };
         }
 
         for my $central_server (@central_servers) {
-            my $response = $self->oauth2->{$central_server}->post_request(
+            my $response = $self->{plugin}->get_ua($central_server)->post_request(
                 {   endpoint    => '/innreach/v2/contribution/bibstatus/' . $bibId,
                     centralCode => $central_server,
                     data        => $data
@@ -737,7 +714,7 @@ sub update_bib_status {
 
 =head3 upload_locations_list
 
-    my $res = $contribution->upload_locations_list({ [ centralServer => $centralServer ] });
+    my $res = $contribution->upload_locations_list({ [ centralServer => $central_server ] });
 
 Sends an updated list of libraries/branches to the central server(s).
 
@@ -759,7 +736,7 @@ sub upload_locations_list {
             push @central_servers, $args->{centralServer};
         }
         else {
-            @central_servers = @{ $self->{centralServers} };
+            @central_servers = @{ $self->{central_servers} };
         }
 
         for my $central_server (@central_servers) {
@@ -776,7 +753,7 @@ sub upload_locations_list {
                   if exists $self->{config}->{$central_server}->{library_to_location}->{$library};
             }
 
-            my $response = $self->oauth2->{$central_server}->post_request(
+            my $response = $self->{plugin}->get_ua($central_server)->post_request(
                 {
                     endpoint    => '/innreach/v2/contribution/locations',
                     centralCode => $central_server,
@@ -796,7 +773,7 @@ sub upload_locations_list {
 
     my $res = $contribution->upload_single_location(
         { library_id => $library_id,
-          [ centralServer => $centralServer ]
+          [ centralServer => $central_server ]
         }
     );
 
@@ -824,7 +801,7 @@ sub upload_single_location {
             push @central_servers, $args->{centralServer};
         }
         else {
-            @central_servers = @{ $self->{centralServers} };
+            @central_servers = @{ $self->{central_servers} };
         }
 
         for my $central_server (@central_servers) {
@@ -839,7 +816,7 @@ sub upload_single_location {
                     warn "Mapped library lacks description ($library_id).";
                 }
 
-                my $response = $self->oauth2->{$central_server}->post_request(
+                my $response = $self->{plugin}->get_ua($central_server)->post_request(
                     {   endpoint    => '/innreach/v2/location/' . $locationKey,
                         centralCode => $central_server,
                         data        => { description => $description }
@@ -859,7 +836,7 @@ sub upload_single_location {
 
     my $res = $contribution->update_single_location(
         { library_id => $library_id,
-          [ centralServer => $centralServer ]
+          [ centralServer => $central_server ]
         }
     );
 
@@ -887,7 +864,7 @@ sub update_single_location {
             push @central_servers, $args->{centralServer};
         }
         else {
-            @central_servers = @{ $self->{centralServers} };
+            @central_servers = @{ $self->{central_servers} };
         }
 
         for my $central_server (@central_servers) {
@@ -902,7 +879,7 @@ sub update_single_location {
                     warn "Mapped library lacks description ($library_id).";
                 }
 
-                my $response = $self->oauth2->{$central_server}->put_request(
+                my $response = $self->{plugin}->get_ua($central_server)->put_request(
                     {   endpoint    => '/innreach/v2/location/' . $locationKey,
                         centralCode => $central_server,
                         data        => { description => $description }
@@ -922,7 +899,7 @@ sub update_single_location {
 
     my $res = $contribution->delete_single_location(
         { library_id => $library_id,
-          [ centralServer => $centralServer ]
+          [ centralServer => $central_server ]
         }
     );
 
@@ -946,7 +923,7 @@ sub delete_single_location {
             push @central_servers, $args->{centralServer};
         }
         else {
-            @central_servers = @{ $self->{centralServers} };
+            @central_servers = @{ $self->{central_servers} };
         }
 
         for my $central_server (@central_servers) {
@@ -954,7 +931,7 @@ sub delete_single_location {
             if ( exists $self->{config}->{$central_server}->{library_to_location}->{$library_id} ) {
                 my $locationKey = $self->{config}->{$central_server}->{library_to_location}->{$library_id}->{location};
 
-                my $response = $self->oauth2->{$central_server}->delete_request(
+                my $response = $self->{plugin}->get_ua($central_server)->delete_request(
                     {   endpoint    => '/innreach/v2/location/' . $locationKey,
                         centralCode => $central_server
                     }
@@ -972,7 +949,7 @@ sub delete_single_location {
 =head3 get_central_item_types
 
     my $res = $contribution->get_central_item_types(
-        { centralServer => $centralServer }
+        { centralServer => $central_server }
     );
 
 Sends a a request for defined item types to a central server.
@@ -988,10 +965,10 @@ sub get_central_item_types {
 
     try {
 
-        my $centralServer = $args->{centralServer};
-        $response = $self->oauth2->{$centralServer}->get_request(
+        my $central_server = $args->{centralServer};
+        $response = $self->{plugin}->get_ua($central_server)->get_request(
             {   endpoint    => '/innreach/v2/contribution/itemtypes',
-                centralCode => $centralServer
+                centralCode => $central_server
             }
         );
         warn p( $response )
@@ -1007,7 +984,7 @@ sub get_central_item_types {
 =head3 get_locations_list
 
     my $res = $contribution->get_locations_list(
-        { centralServer => $centralServer }
+        { centralServer => $central_server }
     );
 
 Sends a a request for defined locations to a central server.
@@ -1022,10 +999,10 @@ sub get_locations_list {
     my $response;
 
     try {
-        my $centralServer = $args->{centralServer};
-        $response = $self->oauth2->{$centralServer}->get_request(
+        my $central_server = $args->{centralServer};
+        $response = $self->{plugin}->get_ua($central_server)->get_request(
             {   endpoint    => '/innreach/v2/contribution/locations',
-                centralCode => $centralServer
+                centralCode => $central_server
             }
         );
         warn p($response)
@@ -1041,7 +1018,7 @@ sub get_locations_list {
 =head3 get_agencies_list
 
     my $res = $contribution->get_agencies_list(
-        { centralServer => $centralServer }
+        { centralServer => $central_server }
     );
 
 Sends a a request for defined agencies to a central server.
@@ -1056,10 +1033,10 @@ sub get_agencies_list {
     my $response;
 
     try {
-        my $centralServer = $args->{centralServer};
-        $response = $self->oauth2->{$centralServer}->get_request(
+        my $central_server = $args->{centralServer};
+        $response = $self->{plugin}->get_ua($central_server)->get_request(
             {   endpoint    => '/innreach/v2/contribution/localservers',
-                centralCode => $centralServer
+                centralCode => $central_server
             }
         );
         warn p($response)
@@ -1075,7 +1052,7 @@ sub get_agencies_list {
 =head3 get_central_patron_types_list
 
     my $res = $contribution->get_central_patron_types_list(
-        { centralServer => $centralServer }
+        { centralServer => $central_server }
     );
 
 Sends a a request for defined locations to a central server.
@@ -1091,10 +1068,10 @@ sub get_central_patron_types_list {
 
     try {
 
-        my $centralServer = $args->{centralServer};
-        $response = $self->oauth2->{$centralServer}->get_request(
+        my $central_server = $args->{centralServer};
+        $response = $self->{plugin}->get_ua($central_server)->get_request(
             {   endpoint    => '/innreach/v2/circ/patrontypes',
-                centralCode => $centralServer
+                centralCode => $central_server
             }
         );
         warn p( $response )
@@ -1149,13 +1126,11 @@ sub notify_borrower_renew {
         my $trackingId  = $req->extended_attributes->search({ type => 'trackingId'  })->next->value;
         my $centralCode = $req->extended_attributes->search({ type => 'centralCode' })->next->value;
 
-        $response = $self->oauth2->{$centralCode}->post_request(
+        $response = $self->{plugin}->get_ua($centralCode)->post_request(
             {
                 endpoint    => "/innreach/v2/circ/borrowerrenew/$trackingId/$centralCode",
                 centralCode => $centralCode,
-                data        => {
-                    dueDateTime => dt_from_string( $date_due )->epoch
-                }
+                data        => { dueDateTime => dt_from_string($date_due)->epoch }
             }
         );
 
@@ -1280,7 +1255,7 @@ sub should_item_be_contributed {
         unless $central_server;
 
     INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{$self->{centralServers}};
+        unless any { $_ eq $central_server } @{$self->{central_servers}};
 
     my $items_rs = Koha::Items->search({ itemnumber => $item->itemnumber });
 
@@ -1320,9 +1295,9 @@ sub filter_items_by_contributable {
         unless $central_server;
 
     INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{$self->{centralServers}};
+        unless any { $_ eq $central_server } @{$self->{central_servers}};
 
-    my $configuration = $self->config->{$central_server};
+    my $configuration = $self->{config}->{$central_server};
 
     if ( exists $configuration->{contribution}->{included_items} ) {
         # Allow-list case, overrides any deny-list setup
@@ -1374,10 +1349,10 @@ sub filter_items_by_contributed {
         unless $central_server;
 
     INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{$self->{centralServers}};
+        unless any { $_ eq $central_server } @{$self->{central_servers}};
 
     my $dbh = C4::Context->dbh;
-    my $contributed_items = $self->plugin->get_qualified_table_name('contributed_items');
+    my $contributed_items = $self->{plugin}->get_qualified_table_name('contributed_items');
 
     my @item_ids = map { $_->[0] } $dbh->selectall_array(qq{
         SELECT item_id FROM $contributed_items
@@ -1420,7 +1395,7 @@ sub filter_items_by_to_be_decontributed {
         unless $central_server;
 
     INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{$self->{centralServers}};
+        unless any { $_ eq $central_server } @{$self->{central_servers}};
 
     $items = $self->filter_items_by_contributed(
         {
@@ -1429,7 +1404,7 @@ sub filter_items_by_to_be_decontributed {
         }
     );
 
-    my $configuration = $self->config->{$central_server};
+    my $configuration = $self->{config}->{$central_server};
 
     if ( exists $configuration->{contribution}->{included_items} ) {
         # Allow-list case, overrides any deny-list setup
@@ -1475,10 +1450,10 @@ sub get_deleted_contributed_items {
         unless $central_server;
 
     INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{$self->{centralServers}};
+        unless any { $_ eq $central_server } @{$self->{central_servers}};
 
     my $dbh = C4::Context->dbh;
-    my $contributed_items = $self->plugin->get_qualified_table_name('contributed_items');
+    my $contributed_items = $self->{plugin}->get_qualified_table_name('contributed_items');
 
     my @item_ids = map { $_->[0] } $dbh->selectall_array(qq{
         SELECT item_id FROM
@@ -1520,7 +1495,7 @@ sub mark_biblio_as_contributed {
     my $biblio_id      = $params->{biblio_id};
 
     my $dbh = C4::Context->dbh;
-    my $contributed_biblios = $self->plugin->get_qualified_table_name('contributed_biblios');
+    my $contributed_biblios = $self->{plugin}->get_qualified_table_name('contributed_biblios');
 
     my $sth = $dbh->prepare(qq{
         SELECT COUNT(*) FROM $contributed_biblios
@@ -1577,7 +1552,7 @@ sub mark_item_as_contributed {
     my $item_id        = $params->{item_id};
 
     my $dbh = C4::Context->dbh;
-    my $contributed_items = $self->plugin->get_qualified_table_name('contributed_items');
+    my $contributed_items = $self->{plugin}->get_qualified_table_name('contributed_items');
 
     my $sth = $dbh->prepare(qq{
         SELECT COUNT(*) FROM $contributed_items
@@ -1634,7 +1609,7 @@ sub unmark_biblio_as_contributed {
     my $biblio_id      = $params->{biblio_id};
 
     my $dbh = C4::Context->dbh;
-    my $contributed_biblios = $self->plugin->get_qualified_table_name('contributed_biblios');
+    my $contributed_biblios = $self->{plugin}->get_qualified_table_name('contributed_biblios');
 
     $dbh->do(qq{
         DELETE FROM $contributed_biblios
@@ -1671,7 +1646,7 @@ sub unmark_item_as_contributed {
     my $item_id        = $params->{item_id};
 
     my $dbh = C4::Context->dbh;
-    my $contributed_items = $self->plugin->get_qualified_table_name('contributed_items');
+    my $contributed_items = $self->{plugin}->get_qualified_table_name('contributed_items');
 
     $dbh->do(qq{
         DELETE FROM $contributed_items
@@ -1700,7 +1675,7 @@ sub is_bib_contributed {
     my $biblio_id      = $params->{biblio_id};
 
     my $dbh = C4::Context->dbh;
-    my $contributed_biblios = $self->plugin->get_qualified_table_name('contributed_biblios');
+    my $contributed_biblios = $self->{plugin}->get_qualified_table_name('contributed_biblios');
 
     my $sth = $dbh->prepare(qq{
         SELECT COUNT(*) FROM $contributed_biblios
