@@ -17,9 +17,9 @@ package Koha::Plugin::Com::Theke::INNReach::Contribution;
 
 use Modern::Perl;
 
-use Encode qw{ encode decode };
+use Encode          qw{ encode decode };
 use List::MoreUtils qw(any);
-use Mojo::JSON qw(decode_json encode_json);
+use Mojo::JSON      qw(decode_json encode_json);
 use MARC::Record;
 use MARC::File::XML;
 use MIME::Base64 qw{ encode_base64 };
@@ -81,40 +81,41 @@ POST /innreach/v2/contribution/bib/<bibId>
 =cut
 
 sub contribute_bib {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $bibId = $args->{bibId};
-    INNReach::Ill::MissingParameter->throw( param =>  "bibId" )
+    INNReach::Ill::MissingParameter->throw( param => "bibId" )
         unless $bibId;
 
-    my $biblio = Koha::Biblios->find({ biblionumber => $bibId });
+    my $biblio = Koha::Biblios->find( { biblionumber => $bibId } );
 
-    unless ( $biblio ) {
+    unless ($biblio) {
         INNReach::Ill::UnknownBiblioId->throw( biblio_id => $bibId );
     }
 
     my $record = $biblio->metadata->record;
 
-    unless ( $record ) {
-        INNReach::Ill::UnknownBiblioId->throw( "Cannot retrieve record metadata" );
+    unless ($record) {
+        INNReach::Ill::UnknownBiblioId->throw("Cannot retrieve record metadata");
     }
 
     # Got the biblio, POST it
-    my $suppress = 'n'; # expected default
-    my $suppress_subfield = $record->subfield('942','n');
-    if ( $suppress_subfield ) {
+    my $suppress          = 'n';                               # expected default
+    my $suppress_subfield = $record->subfield( '942', 'n' );
+    if ($suppress_subfield) {
         $suppress = 'y';
     }
 
     # delete all local fields ("Omit 9XX fields" rule)
     my @local = $record->field('9..');
     $record->delete_fields(@local);
+
     # Encode ISO2709 record
-    my $encoded_record = encode_base64( encode("UTF-8",$record->as_usmarc), "" );
+    my $encoded_record = encode_base64( encode( "UTF-8", $record->as_usmarc ), "" );
 
     my $data = {
         bibId           => "$bibId",
-        marc21BibFormat => 'ISO2709', # Only supported value
+        marc21BibFormat => 'ISO2709',                   # Only supported value
         marc21BibData   => $encoded_record,
         titleHoldCount  => $biblio->holds->count + 0,
         itemCount       => $biblio->items->count + 0,
@@ -124,8 +125,7 @@ sub contribute_bib {
     my @central_servers;
     if ( $args->{centralServer} ) {
         push @central_servers, $args->{centralServer};
-    }
-    else {
+    } else {
         @central_servers = @{ $self->{central_servers} };
     }
 
@@ -133,7 +133,8 @@ sub contribute_bib {
 
     for my $central_server (@central_servers) {
         my $response = $self->{plugin}->get_ua($central_server)->post_request(
-            {   endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
+            {
+                endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
                 centralCode => $central_server,
                 data        => $data
             }
@@ -149,8 +150,7 @@ sub contribute_bib {
                 # we pick the first one
                 my $THE_error = $iii_errors[0][0];
                 $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
-            }
-            else {
+            } else {
                 $self->mark_biblio_as_contributed(
                     {
                         biblio_id      => $bibId,
@@ -182,14 +182,14 @@ POST /innreach/v2/contribution/items/<bibId>
 =cut
 
 sub contribute_batch_items {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $bibId = $args->{bibId};
-    INNReach::Ill::MissingParameter->throw( param =>  "bibId" )
+    INNReach::Ill::MissingParameter->throw( param => "bibId" )
         unless $bibId;
 
-    my $biblio = Koha::Biblios->find( $bibId );
-    unless ( $biblio ) {
+    my $biblio = Koha::Biblios->find($bibId);
+    unless ($biblio) {
         INNReach::Ill::UnknownBiblioId->throw( biblio_id => $bibId );
     }
 
@@ -198,16 +198,14 @@ sub contribute_batch_items {
     my $THE_item = $args->{item};
     if ( $THE_item and ref($THE_item) eq 'Koha::Item' ) {
         push @items, $THE_item;
-    }
-    else {
+    } else {
         @items = $biblio->items->as_list;
     }
 
     my @central_servers;
     if ( $args->{centralServer} ) {
         push @central_servers, $args->{centralServer};
-    }
-    else {
+    } else {
         @central_servers = @{ $self->{central_servers} };
     }
 
@@ -219,7 +217,8 @@ sub contribute_batch_items {
 
         unless ( $self->is_bib_contributed( { biblio_id => $bibId, central_server => $central_server } ) ) {
             $self->contribute_bib(
-                {   bibId         => $bibId,
+                {
+                    bibId         => $bibId,
                     centralServer => $central_server,
                 }
             );
@@ -230,15 +229,15 @@ sub contribute_batch_items {
 
         my @itemInfo;
 
-        foreach my $item ( @items ) {
+        foreach my $item (@items) {
             unless ( $item->biblionumber == $bibId ) {
                 die "Item (" . $item->itemnumber . ") doesn't belong to bib record ($bibId)";
             }
 
             my $branch_to_use = $use_holding_library ? $item->holdingbranch : $item->homebranch;
 
-            my $centralItemType = $configuration->{local_to_central_itype}->{$item->effective_itemtype};
-            my $locationKey = $configuration->{library_to_location}->{$branch_to_use}->{location};
+            my $centralItemType = $configuration->{local_to_central_itype}->{ $item->effective_itemtype };
+            my $locationKey     = $configuration->{library_to_location}->{$branch_to_use}->{location};
 
             # Skip the item if has unmapped values (that are relevant)
             unless ( $centralItemType && $locationKey ) {
@@ -272,7 +271,8 @@ sub contribute_batch_items {
         }
 
         my $response = $self->{plugin}->get_ua($central_server)->post_request(
-            {   endpoint    => '/innreach/v2/contribution/items/' . $bibId,
+            {
+                endpoint    => '/innreach/v2/contribution/items/' . $bibId,
                 centralCode => $central_server,
                 data        => { itemInfo => \@itemInfo }
             }
@@ -292,8 +292,7 @@ sub contribute_batch_items {
                       $THE_error->{reason} . q{: }
                     . join( ' | ', map { $_->{messages} } @{ $THE_error->{errors} } ) . " "
                     . p(@itemInfo);
-            }
-            else {
+            } else {
                 foreach my $item (@items) {
                     $self->mark_item_as_contributed(
                         {
@@ -325,7 +324,7 @@ POST /innreach/v2/contribution/items/<bibId>
 =cut
 
 sub contribute_all_bib_items_in_batch {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $biblio = $args->{biblio};
 
@@ -335,8 +334,7 @@ sub contribute_all_bib_items_in_batch {
     my @central_servers;
     if ( $args->{centralServer} ) {
         push @central_servers, $args->{centralServer};
-    }
-    else {
+    } else {
         @central_servers = @{ $self->{central_servers} };
     }
 
@@ -348,7 +346,8 @@ sub contribute_all_bib_items_in_batch {
 
         unless ( $self->is_bib_contributed( { biblio_id => $biblio->id, central_server => $central_server } ) ) {
             $self->contribute_bib(
-                {   bibId         => $biblio->id,
+                {
+                    bibId         => $biblio->id,
                     centralServer => $central_server,
                 }
             );
@@ -359,14 +358,15 @@ sub contribute_all_bib_items_in_batch {
 
         my @itemInfo;
 
-        my $items = $self->filter_items_by_contributable( { items => $biblio->items, central_server => $central_server } );
+        my $items =
+            $self->filter_items_by_contributable( { items => $biblio->items, central_server => $central_server } );
 
         while ( my $item = $items->next ) {
 
             my $branch_to_use = $use_holding_library ? $item->holdingbranch : $item->homebranch;
 
-            my $centralItemType = $configuration->{local_to_central_itype}->{$item->effective_itemtype};
-            my $locationKey = $configuration->{library_to_location}->{$branch_to_use}->{location};
+            my $centralItemType = $configuration->{local_to_central_itype}->{ $item->effective_itemtype };
+            my $locationKey     = $configuration->{library_to_location}->{$branch_to_use}->{location};
 
             # Skip the item if has unmapped values (that are relevant)
             unless ( $centralItemType && $locationKey ) {
@@ -400,7 +400,8 @@ sub contribute_all_bib_items_in_batch {
         }
 
         my $response = $self->{plugin}->get_ua($central_server)->post_request(
-            {   endpoint    => '/innreach/v2/contribution/items/' . $biblio->id,
+            {
+                endpoint    => '/innreach/v2/contribution/items/' . $biblio->id,
                 centralCode => $central_server,
                 data        => { itemInfo => \@itemInfo }
             }
@@ -420,8 +421,7 @@ sub contribute_all_bib_items_in_batch {
                       $THE_error->{reason} . q{: }
                     . join( ' | ', map { $_->{messages} } @{ $THE_error->{errors} } ) . " "
                     . p(@itemInfo);
-            }
-            else {
+            } else {
                 foreach my $itemInfo (@itemInfo) {
                     $self->mark_item_as_contributed(
                         {
@@ -448,7 +448,7 @@ POST /innreach/v2/contribution/bibstatus/<itemId>
 =cut
 
 sub update_item_status {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $itemId = $args->{itemId};
 
@@ -460,25 +460,25 @@ sub update_item_status {
     my $errors;
 
     try {
-        $item = Koha::Items->find( $itemId );
+        $item = Koha::Items->find($itemId);
 
         my @central_servers;
         if ( $args->{centralServer} ) {
             push @central_servers, $args->{centralServer};
-        }
-        else {
+        } else {
             @central_servers = @{ $self->{central_servers} };
         }
 
         for my $central_server (@central_servers) {
             my $data = {
-                itemCircStatus => $self->item_circ_status({ item => $item }),
+                itemCircStatus => $self->item_circ_status( { item => $item } ),
                 holdCount      => 0,
-                dueDateTime    => ($item->onloan) ? dt_from_string( $item->onloan )->epoch : undef,
+                dueDateTime    => ( $item->onloan ) ? dt_from_string( $item->onloan )->epoch : undef,
             };
 
             my $response = $self->{plugin}->get_ua($central_server)->post_request(
-                {   endpoint    => '/innreach/v2/contribution/itemstatus/' . $itemId,
+                {
+                    endpoint    => '/innreach/v2/contribution/itemstatus/' . $itemId,
                     centralCode => $central_server,
                     data        => $data
                 }
@@ -493,12 +493,12 @@ sub update_item_status {
 
                     # we pick the first one
                     my $THE_error = $iii_errors[0][0];
-                    $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+                    $errors->{$central_server} =
+                        $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
                 }
             }
         }
-    }
-    catch {
+    } catch {
         die "Problem updating requested item ($itemId)";
     };
 
@@ -593,7 +593,7 @@ DELETE /innreach/v2/contribution/item/<itemId>
 =cut
 
 sub decontribute_item {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $itemId = $args->{itemId};
     die "itemId is mandatory" unless $itemId;
@@ -601,8 +601,7 @@ sub decontribute_item {
     my @central_servers;
     if ( $args->{centralServer} ) {
         push @central_servers, $args->{centralServer};
-    }
-    else {
+    } else {
         @central_servers = @{ $self->{central_servers} };
     }
 
@@ -610,7 +609,8 @@ sub decontribute_item {
 
     for my $central_server (@central_servers) {
         my $response = $self->{plugin}->get_ua($central_server)->delete_request(
-            {   endpoint    => '/innreach/v2/contribution/item/' . $itemId,
+            {
+                endpoint    => '/innreach/v2/contribution/item/' . $itemId,
                 centralCode => $central_server
             }
         );
@@ -625,7 +625,7 @@ sub decontribute_item {
                 # we pick the first one
                 my $THE_error = $iii_errors[0][0];
                 $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
-                if ( any { $_ =~ m/No item record found with specified recid/ } @{$THE_error->{messages}} ) {
+                if ( any { $_ =~ m/No item record found with specified recid/ } @{ $THE_error->{messages} } ) {
                     $self->unmark_item_as_contributed(
                         {
                             central_server => $central_server,
@@ -633,8 +633,7 @@ sub decontribute_item {
                         }
                     );
                 }
-            }
-            else {
+            } else {
                 $self->unmark_item_as_contributed(
                     {
                         central_server => $central_server,
@@ -659,7 +658,7 @@ POST /innreach/v2/contribution/bibstatus/<bibId>
 =cut
 
 sub update_bib_status {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $bibId = $args->{bibId};
     die "bibId is mandatory" unless $bibId;
@@ -669,23 +668,23 @@ sub update_bib_status {
     my $errors;
 
     try {
-        $biblio   = Koha::Biblios->find( $bibId );
+        $biblio = Koha::Biblios->find($bibId);
         my $data = {
-            titleHoldCount  => $biblio->holds->count,
-            itemCount       => $biblio->items->count,
+            titleHoldCount => $biblio->holds->count,
+            itemCount      => $biblio->items->count,
         };
 
         my @central_servers;
         if ( $args->{centralServer} ) {
             push @central_servers, $args->{centralServer};
-        }
-        else {
+        } else {
             @central_servers = @{ $self->{central_servers} };
         }
 
         for my $central_server (@central_servers) {
             my $response = $self->{plugin}->get_ua($central_server)->post_request(
-                {   endpoint    => '/innreach/v2/contribution/bibstatus/' . $bibId,
+                {
+                    endpoint    => '/innreach/v2/contribution/bibstatus/' . $bibId,
                     centralCode => $central_server,
                     data        => $data
                 }
@@ -700,12 +699,12 @@ sub update_bib_status {
 
                     # we pick the first one
                     my $THE_error = $iii_errors[0][0];
-                    $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+                    $errors->{$central_server} =
+                        $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
                 }
             }
         }
-    }
-    catch {
+    } catch {
         die "Problem updating requested biblio ($bibId)";
     };
 
@@ -734,8 +733,7 @@ sub upload_locations_list {
         my @central_servers;
         if ( $args->{centralServer} ) {
             push @central_servers, $args->{centralServer};
-        }
-        else {
+        } else {
             @central_servers = @{ $self->{central_servers} };
         }
 
@@ -746,11 +744,11 @@ sub upload_locations_list {
             my @locationList;
             foreach my $library (@libraries) {
                 push @locationList,
-                  {
+                    {
                     locationKey => $self->{config}->{$central_server}->{library_to_location}->{$library}->{location},
                     description => $self->{config}->{$central_server}->{library_to_location}->{$library}->{description}
-                  }
-                  if exists $self->{config}->{$central_server}->{library_to_location}->{$library};
+                    }
+                    if exists $self->{config}->{$central_server}->{library_to_location}->{$library};
             }
 
             my $response = $self->{plugin}->get_ua($central_server)->post_request(
@@ -761,10 +759,9 @@ sub upload_locations_list {
                 }
             );
             warn p($response)
-              if $response->is_error or $ENV{DEBUG};
+                if $response->is_error or $ENV{DEBUG};
         }
-    }
-    catch {
+    } catch {
         die "Problem uploading locations list";
     };
 }
@@ -784,7 +781,7 @@ POST /innreach/v2/contribution/locations/<locationKey>
 =cut
 
 sub upload_single_location {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $library_id = $args->{library_id};
     die 'Mandatory parameter is missing: library'
@@ -799,8 +796,7 @@ sub upload_single_location {
         my @central_servers;
         if ( $args->{centralServer} ) {
             push @central_servers, $args->{centralServer};
-        }
-        else {
+        } else {
             @central_servers = @{ $self->{central_servers} };
         }
 
@@ -809,7 +805,8 @@ sub upload_single_location {
             if ( exists $self->{config}->{$central_server}->{library_to_location}->{$library_id} ) {
 
                 my $locationKey = $self->{config}->{$central_server}->{library_to_location}->{$library_id}->{location};
-                my $description = $self->{config}->{$central_server}->{library_to_location}->{$library_id}->{description};
+                my $description =
+                    $self->{config}->{$central_server}->{library_to_location}->{$library_id}->{description};
 
                 unless ($description) {
                     $description = $library->branchname;
@@ -817,17 +814,17 @@ sub upload_single_location {
                 }
 
                 my $response = $self->{plugin}->get_ua($central_server)->post_request(
-                    {   endpoint    => '/innreach/v2/location/' . $locationKey,
+                    {
+                        endpoint    => '/innreach/v2/location/' . $locationKey,
                         centralCode => $central_server,
                         data        => { description => $description }
                     }
                 );
-                warn p( $response )
+                warn p($response)
                     if $response->is_error or $ENV{DEBUG};
             }
         }
-    }
-    catch {
+    } catch {
         die "Problem uploading the required location";
     };
 }
@@ -847,7 +844,7 @@ PUT /innreach/v2/contribution/locations/<locationKey>
 =cut
 
 sub update_single_location {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $library_id = $args->{library_id};
     die 'Mandatory parameter is missing: library'
@@ -862,8 +859,7 @@ sub update_single_location {
         my @central_servers;
         if ( $args->{centralServer} ) {
             push @central_servers, $args->{centralServer};
-        }
-        else {
+        } else {
             @central_servers = @{ $self->{central_servers} };
         }
 
@@ -872,7 +868,8 @@ sub update_single_location {
             if ( exists $self->{config}->{$central_server}->{library_to_location}->{$library_id} ) {
 
                 my $locationKey = $self->{config}->{$central_server}->{library_to_location}->{$library_id}->{location};
-                my $description = $self->{config}->{$central_server}->{library_to_location}->{$library_id}->{description};
+                my $description =
+                    $self->{config}->{$central_server}->{library_to_location}->{$library_id}->{description};
 
                 unless ($description) {
                     $description = $library->branchname;
@@ -880,17 +877,17 @@ sub update_single_location {
                 }
 
                 my $response = $self->{plugin}->get_ua($central_server)->put_request(
-                    {   endpoint    => '/innreach/v2/location/' . $locationKey,
+                    {
+                        endpoint    => '/innreach/v2/location/' . $locationKey,
                         centralCode => $central_server,
                         data        => { description => $description }
                     }
                 );
-                warn p( $response )
+                warn p($response)
                     if $response->is_error or $ENV{DEBUG};
             }
         }
-    }
-    catch {
+    } catch {
         die "Problem updating the required location";
     };
 }
@@ -910,7 +907,7 @@ DELETE /innreach/v2/location/<locationKey>
 =cut
 
 sub delete_single_location {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $library_id = $args->{library_id};
     die 'Mandatory parameter is missing: library_id'
@@ -921,8 +918,7 @@ sub delete_single_location {
         my @central_servers;
         if ( $args->{centralServer} ) {
             push @central_servers, $args->{centralServer};
-        }
-        else {
+        } else {
             @central_servers = @{ $self->{central_servers} };
         }
 
@@ -932,16 +928,16 @@ sub delete_single_location {
                 my $locationKey = $self->{config}->{$central_server}->{library_to_location}->{$library_id}->{location};
 
                 my $response = $self->{plugin}->get_ua($central_server)->delete_request(
-                    {   endpoint    => '/innreach/v2/location/' . $locationKey,
+                    {
+                        endpoint    => '/innreach/v2/location/' . $locationKey,
                         centralCode => $central_server
                     }
                 );
-                warn p( $response )
+                warn p($response)
                     if $response->is_error or $ENV{DEBUG};
             }
         }
-    }
-    catch {
+    } catch {
         die "Problem deleting the required location";
     };
 }
@@ -959,7 +955,7 @@ GET /innreach/v2/contribution/itemtypes
 =cut
 
 sub get_central_item_types {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $response;
 
@@ -967,18 +963,18 @@ sub get_central_item_types {
 
         my $central_server = $args->{centralServer};
         $response = $self->{plugin}->get_ua($central_server)->get_request(
-            {   endpoint    => '/innreach/v2/contribution/itemtypes',
+            {
+                endpoint    => '/innreach/v2/contribution/itemtypes',
                 centralCode => $central_server
             }
         );
-        warn p( $response )
+        warn p($response)
             if $response->is_error or $ENV{DEBUG};
-    }
-    catch {
+    } catch {
         die "Problem fetching the item types list";
     };
 
-    return decode_json($response->decoded_content)->{itemTypeList};
+    return decode_json( $response->decoded_content )->{itemTypeList};
 }
 
 =head3 get_locations_list
@@ -994,25 +990,25 @@ GET /innreach/v2/contribution/locations
 =cut
 
 sub get_locations_list {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $response;
 
     try {
         my $central_server = $args->{centralServer};
         $response = $self->{plugin}->get_ua($central_server)->get_request(
-            {   endpoint    => '/innreach/v2/contribution/locations',
+            {
+                endpoint    => '/innreach/v2/contribution/locations',
                 centralCode => $central_server
             }
         );
         warn p($response)
-          if $response->is_error or $ENV{DEBUG};
-    }
-    catch {
+            if $response->is_error or $ENV{DEBUG};
+    } catch {
         die "Problem fetching the locations list";
     };
 
-    return decode_json(encode('UTF-8',$response->content))->{locationList};
+    return decode_json( encode( 'UTF-8', $response->content ) )->{locationList};
 }
 
 =head3 get_agencies_list
@@ -1028,25 +1024,25 @@ GET /innreach/v2/contribution/agencies
 =cut
 
 sub get_agencies_list {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $response;
 
     try {
         my $central_server = $args->{centralServer};
         $response = $self->{plugin}->get_ua($central_server)->get_request(
-            {   endpoint    => '/innreach/v2/contribution/localservers',
+            {
+                endpoint    => '/innreach/v2/contribution/localservers',
                 centralCode => $central_server
             }
         );
         warn p($response)
-          if $response->is_error or $ENV{DEBUG};
-    }
-    catch {
+            if $response->is_error or $ENV{DEBUG};
+    } catch {
         die "Problem fetching the agencies list";
     };
 
-    return decode_json(encode('UTF-8',$response->content))->{localServerList};
+    return decode_json( encode( 'UTF-8', $response->content ) )->{localServerList};
 }
 
 =head3 get_central_patron_types_list
@@ -1062,7 +1058,7 @@ GET /innreach/v2/circ/patrontypes
 =cut
 
 sub get_central_patron_types_list {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $response;
 
@@ -1070,18 +1066,18 @@ sub get_central_patron_types_list {
 
         my $central_server = $args->{centralServer};
         $response = $self->{plugin}->get_ua($central_server)->get_request(
-            {   endpoint    => '/innreach/v2/circ/patrontypes',
+            {
+                endpoint    => '/innreach/v2/circ/patrontypes',
                 centralCode => $central_server
             }
         );
-        warn p( $response )
+        warn p($response)
             if $response->is_error or $ENV{DEBUG};
-    }
-    catch {
+    } catch {
         die "Problem fetching the central patron types list";
     };
 
-    return decode_json(encode('UTF-8',$response->content))->{patronTypeList};
+    return decode_json( encode( 'UTF-8', $response->content ) )->{patronTypeList};
 }
 
 =head3 notify_borrower_renew
@@ -1103,7 +1099,7 @@ POST /innreach/v2/circ/borrowerrenew/$trackingId/$centralCode"
 =cut
 
 sub notify_borrower_renew {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $item_id  = $args->{item_id};
     my $date_due = $args->{date_due};
@@ -1115,16 +1111,14 @@ sub notify_borrower_renew {
         }
     );
 
-    INNReach::Ill::InconsistentStatus->throw(
-        expected_status => 'B_ITEM_RECEIVED'
-    ) unless $req;
+    INNReach::Ill::InconsistentStatus->throw( expected_status => 'B_ITEM_RECEIVED' ) unless $req;
 
     my $response;
 
     return try {
 
-        my $trackingId  = $req->extended_attributes->search({ type => 'trackingId'  })->next->value;
-        my $centralCode = $req->extended_attributes->search({ type => 'centralCode' })->next->value;
+        my $trackingId  = $req->extended_attributes->search( { type => 'trackingId' } )->next->value;
+        my $centralCode = $req->extended_attributes->search( { type => 'centralCode' } )->next->value;
 
         $response = $self->{plugin}->get_ua($centralCode)->post_request(
             {
@@ -1136,16 +1130,15 @@ sub notify_borrower_renew {
 
         if ( $response->is_error ) {
 
-            warn p( $response )
+            warn p($response)
                 if $ENV{DEBUG};
 
             return ($response);
         }
 
         return;
-    }
-    catch {
-        INNReach::Ill->throw( "Unhandled exception: $_" );
+    } catch {
+        INNReach::Ill->throw("Unhandled exception: $_");
     };
 }
 
@@ -1158,7 +1151,7 @@ Calculates the value for itemCircStatus
 =cut
 
 sub item_circ_status {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     die "Mandatory parameter missing: item"
         unless exists $args->{item};
@@ -1170,17 +1163,13 @@ sub item_circ_status {
     my $status = 'Available';
     if ( $item->onloan ) {
         $status = 'On Loan';
-    }
-    elsif ( $item->withdrawn && $item->withdrawn > 0 ) {
+    } elsif ( $item->withdrawn && $item->withdrawn > 0 ) {
         $status = 'Not Available';
-    }
-    elsif ( $item->notforloan ) {
+    } elsif ( $item->notforloan ) {
         $status = 'Non-Lendable';
-    }
-    elsif ( !C4::Context->preference('AllowHoldsOnDamagedItems') && $item->damaged ) {
+    } elsif ( !C4::Context->preference('AllowHoldsOnDamagedItems') && $item->damaged ) {
         $status = 'Non-Lendable';
-    }
-    elsif ( $item->itemlost ) {
+    } elsif ( $item->itemlost ) {
         $status = 'Not Available';
     }
 
@@ -1197,11 +1186,11 @@ sub get_ill_request_from_item_id {
     my ( $self, $args ) = @_;
 
     my $item_id = $args->{item_id};
-    my $status  = $args->{status} // 'B_ITEM_SHIPPED'; # borrowing site, item shipped, receiving
+    my $status  = $args->{status} // 'B_ITEM_SHIPPED';    # borrowing site, item shipped, receiving
 
-    my $item = Koha::Items->find( $item_id );
+    my $item = Koha::Items->find($item_id);
 
-    unless ( $item ) {
+    unless ($item) {
         INNReach::Ill::UnknownItemId->throw( item_id => $item_id );
     }
 
@@ -1210,9 +1199,7 @@ sub get_ill_request_from_item_id {
     my $reqs = Koha::Illrequests->search(
         {
             biblio_id => $biblio_id,
-            status    => [
-                $status
-            ]
+            status    => [$status]
         }
     );
 
@@ -1223,6 +1210,7 @@ sub get_ill_request_from_item_id {
     return unless $reqs->count > 0;
 
     my $req = $reqs->next;
+
     # TODO: what about other stages? testing valid statuses?
     # TODO: Owning site use case?
 
@@ -1255,9 +1243,9 @@ sub should_item_be_contributed {
         unless $central_server;
 
     INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{$self->{central_servers}};
+        unless any { $_ eq $central_server } @{ $self->{central_servers} };
 
-    my $items_rs = Koha::Items->search({ itemnumber => $item->itemnumber });
+    my $items_rs = Koha::Items->search( { itemnumber => $item->itemnumber } );
 
     return $self->filter_items_by_contributable(
         {
@@ -1295,26 +1283,29 @@ sub filter_items_by_contributable {
         unless $central_server;
 
     INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{$self->{central_servers}};
+        unless any { $_ eq $central_server } @{ $self->{central_servers} };
 
     my $configuration = $self->{config}->{$central_server};
 
     if ( exists $configuration->{contribution}->{included_items} ) {
+
         # Allow-list case, overrides any deny-list setup
         if ( $configuration->{contribution}->{included_items} ) {
+
             # there are rules!
-            $items = $items->search($configuration->{contribution}->{included_items});
+            $items = $items->search( $configuration->{contribution}->{included_items} );
+        } else {
+            $items = $items->empty    # No items if the rules exist but are empty
         }
-        else {
-            $items = $items->empty # No items if the rules exist but are empty
-        }
-    }
-    else {
+    } else {
+
         # Deny-list case
         if ( $configuration->{contribution}->{excluded_items} ) {
+
             # there are rules!
-            $items = $items->search({ '-not' => $configuration->{contribution}->{excluded_items} });
+            $items = $items->search( { '-not' => $configuration->{contribution}->{excluded_items} } );
         }
+
         # else {  } # no filter
     }
 
@@ -1349,21 +1340,19 @@ sub filter_items_by_contributed {
         unless $central_server;
 
     INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{$self->{central_servers}};
+        unless any { $_ eq $central_server } @{ $self->{central_servers} };
 
-    my $dbh = C4::Context->dbh;
+    my $dbh               = C4::Context->dbh;
     my $contributed_items = $self->{plugin}->get_qualified_table_name('contributed_items');
 
-    my @item_ids = map { $_->[0] } $dbh->selectall_array(qq{
+    my @item_ids = map { $_->[0] } $dbh->selectall_array(
+        qq{
         SELECT item_id FROM $contributed_items
         WHERE central_server = ?;
-    }, undef, $central_server);
-
-    return $items->search(
-        {
-            itemnumber => \@item_ids
-        }
+    }, undef, $central_server
     );
+
+    return $items->search( { itemnumber => \@item_ids } );
 }
 
 =head3 filter_items_by_to_be_decontributed
@@ -1395,7 +1384,7 @@ sub filter_items_by_to_be_decontributed {
         unless $central_server;
 
     INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{$self->{central_servers}};
+        unless any { $_ eq $central_server } @{ $self->{central_servers} };
 
     $items = $self->filter_items_by_contributed(
         {
@@ -1407,19 +1396,21 @@ sub filter_items_by_to_be_decontributed {
     my $configuration = $self->{config}->{$central_server};
 
     if ( exists $configuration->{contribution}->{included_items} ) {
+
         # Allow-list case, overrides any deny-list setup
         if ( $configuration->{contribution}->{included_items} ) {
+
             # there are rules!
-            $items = $items->search({ '-not' => $configuration->{contribution}->{included_items} });
+            $items = $items->search( { '-not' => $configuration->{contribution}->{included_items} } );
         }
-    }
-    else {
+    } else {
+
         # Deny-list case
         if ( $configuration->{contribution}->{excluded_items} ) {
+
             # there are rules!
             $items = $items->search( $configuration->{contribution}->{excluded_items} );
-        }
-        else {
+        } else {
             $items = $items->empty;
         }
     }
@@ -1450,12 +1441,13 @@ sub get_deleted_contributed_items {
         unless $central_server;
 
     INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{$self->{central_servers}};
+        unless any { $_ eq $central_server } @{ $self->{central_servers} };
 
-    my $dbh = C4::Context->dbh;
+    my $dbh               = C4::Context->dbh;
     my $contributed_items = $self->{plugin}->get_qualified_table_name('contributed_items');
 
-    my @item_ids = map { $_->[0] } $dbh->selectall_array(qq{
+    my @item_ids = map { $_->[0] } $dbh->selectall_array(
+        qq{
         SELECT item_id FROM
         (
           (SELECT item_id
@@ -1464,7 +1456,8 @@ sub get_deleted_contributed_items {
           LEFT JOIN items
           ON (items.itemnumber=b.item_id)
         ) WHERE items.itemnumber IS NULL;
-    }, undef, $central_server);
+    }, undef, $central_server
+    );
 
     return \@item_ids;
 }
@@ -1486,7 +1479,7 @@ sub mark_biblio_as_contributed {
     my ( $self, $params ) = @_;
 
     my @mandatory_params = qw(central_server biblio_id);
-    foreach my $param ( @mandatory_params ) {
+    foreach my $param (@mandatory_params) {
         INNReach::Ill::MissingParameter->throw( param => $param )
             unless exists $params->{$param};
     }
@@ -1494,33 +1487,38 @@ sub mark_biblio_as_contributed {
     my $central_server = $params->{central_server};
     my $biblio_id      = $params->{biblio_id};
 
-    my $dbh = C4::Context->dbh;
+    my $dbh                 = C4::Context->dbh;
     my $contributed_biblios = $self->{plugin}->get_qualified_table_name('contributed_biblios');
 
-    my $sth = $dbh->prepare(qq{
+    my $sth = $dbh->prepare(
+        qq{
         SELECT COUNT(*) FROM $contributed_biblios
         WHERE central_server = ?
           AND biblio_id = ?;
-    });
+    }
+    );
 
-    $sth->execute($central_server, $biblio_id);
+    $sth->execute( $central_server, $biblio_id );
     my ($count) = $sth->fetchrow_array;
 
-    if ($count) { # update
-        $dbh->do(qq{
+    if ($count) {    # update
+        $dbh->do(
+            qq{
             UPDATE $contributed_biblios
             SET timestamp=NOW()
             WHERE central_server='$central_server'
               AND biblio_id='$biblio_id';
-        });
-    }
-    else { # insert
-        $dbh->do(qq{
+        }
+        );
+    } else {         # insert
+        $dbh->do(
+            qq{
             INSERT INTO $contributed_biblios
                 (  central_server,     biblio_id )
             VALUES
                 ( '$central_server', '$biblio_id' );
-        });
+        }
+        );
     }
 
     return $self;
@@ -1543,7 +1541,7 @@ sub mark_item_as_contributed {
     my ( $self, $params ) = @_;
 
     my @mandatory_params = qw(central_server item_id);
-    foreach my $param ( @mandatory_params ) {
+    foreach my $param (@mandatory_params) {
         INNReach::Ill::MissingParameter->throw( param => $param )
             unless exists $params->{$param};
     }
@@ -1551,33 +1549,38 @@ sub mark_item_as_contributed {
     my $central_server = $params->{central_server};
     my $item_id        = $params->{item_id};
 
-    my $dbh = C4::Context->dbh;
+    my $dbh               = C4::Context->dbh;
     my $contributed_items = $self->{plugin}->get_qualified_table_name('contributed_items');
 
-    my $sth = $dbh->prepare(qq{
+    my $sth = $dbh->prepare(
+        qq{
         SELECT COUNT(*) FROM $contributed_items
         WHERE central_server = ?
           AND item_id = ?;
-    });
+    }
+    );
 
-    $sth->execute($central_server, $item_id);
+    $sth->execute( $central_server, $item_id );
     my ($count) = $sth->fetchrow_array;
 
-    if ($count) { # update
-        $dbh->do(qq{
+    if ($count) {    # update
+        $dbh->do(
+            qq{
             UPDATE $contributed_items
             SET timestamp=NOW()
             WHERE central_server='$central_server'
               AND item_id='$item_id';
-        });
-    }
-    else { # insert
-        $dbh->do(qq{
+        }
+        );
+    } else {         # insert
+        $dbh->do(
+            qq{
             INSERT INTO $contributed_items
                 (  central_server,     item_id )
             VALUES
                 ( '$central_server', '$item_id' );
-        });
+        }
+        );
     }
 
     return $self;
@@ -1600,7 +1603,7 @@ sub unmark_biblio_as_contributed {
     my ( $self, $params ) = @_;
 
     my @mandatory_params = qw(central_server biblio_id);
-    foreach my $param ( @mandatory_params ) {
+    foreach my $param (@mandatory_params) {
         INNReach::Ill::MissingParameter->throw( param => $param )
             unless exists $params->{$param};
     }
@@ -1608,14 +1611,16 @@ sub unmark_biblio_as_contributed {
     my $central_server = $params->{central_server};
     my $biblio_id      = $params->{biblio_id};
 
-    my $dbh = C4::Context->dbh;
+    my $dbh                 = C4::Context->dbh;
     my $contributed_biblios = $self->{plugin}->get_qualified_table_name('contributed_biblios');
 
-    $dbh->do(qq{
+    $dbh->do(
+        qq{
         DELETE FROM $contributed_biblios
         WHERE central_server='$central_server'
           AND      biblio_id='$biblio_id';
-    });
+    }
+    );
 
     return $self;
 }
@@ -1637,7 +1642,7 @@ sub unmark_item_as_contributed {
     my ( $self, $params ) = @_;
 
     my @mandatory_params = qw(central_server item_id);
-    foreach my $param ( @mandatory_params ) {
+    foreach my $param (@mandatory_params) {
         INNReach::Ill::MissingParameter->throw( param => $param )
             unless exists $params->{$param};
     }
@@ -1645,14 +1650,16 @@ sub unmark_item_as_contributed {
     my $central_server = $params->{central_server};
     my $item_id        = $params->{item_id};
 
-    my $dbh = C4::Context->dbh;
+    my $dbh               = C4::Context->dbh;
     my $contributed_items = $self->{plugin}->get_qualified_table_name('contributed_items');
 
-    $dbh->do(qq{
+    $dbh->do(
+        qq{
         DELETE FROM $contributed_items
         WHERE central_server='$central_server'
           AND        item_id='$item_id';
-    });
+    }
+    );
 
     return $self;
 }
@@ -1674,16 +1681,18 @@ sub is_bib_contributed {
     my $central_server = $params->{central_server};
     my $biblio_id      = $params->{biblio_id};
 
-    my $dbh = C4::Context->dbh;
+    my $dbh                 = C4::Context->dbh;
     my $contributed_biblios = $self->{plugin}->get_qualified_table_name('contributed_biblios');
 
-    my $sth = $dbh->prepare(qq{
+    my $sth = $dbh->prepare(
+        qq{
         SELECT COUNT(*) FROM $contributed_biblios
         WHERE central_server = ?
           AND biblio_id = ?;
-    });
+    }
+    );
 
-    $sth->execute($central_server, $biblio_id);
+    $sth->execute( $central_server, $biblio_id );
     my ($count) = $sth->fetchrow_array;
 
     return ($count) ? 1 : 0;
