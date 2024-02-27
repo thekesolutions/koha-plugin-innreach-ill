@@ -59,14 +59,12 @@ sub new {
     INNReach::Ill::MissingParameter->throw( param => "central_server" )
         unless $params->{central_server};
 
-    my $self = $class->SUPER::nqew(
-        {
-            central_server  => $params->{central_server},
-            central_servers => [ $plugin->central_servers ],
-            config          => $plugin->configuration,
-            plugin          => $plugin,
-        }
-    );
+    my $self = {
+        central_server  => $params->{central_server},
+        central_servers => [ $plugin->central_servers ],
+        config          => $plugin->configuration,
+        plugin          => $plugin,
+    };
 
     bless $self, $class;
     return $self;
