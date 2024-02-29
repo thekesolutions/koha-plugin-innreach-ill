@@ -698,16 +698,27 @@ So far, only renewals of ILL-linked items are taken care of here.
 sub after_circ_action {
     my ( $self, $params ) = @_;
 
-    my $action = $params->{action};
-
+    my $action   = $params->{action};
     my $checkout = $params->{payload}->{checkout};
 
-    my $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
-        {
-            type  => 'checkout_id',
-            value => $checkout->id,
-        }
-    );
+    my $req;
+
+    if ( $action eq 'checkout' )
+    {    # we don't have a checkout_id yet. the item has been created by itemshipped so query using the barcode
+        $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
+            {
+                type  => 'itemBarcode',
+                value => $checkout->item->barcode,
+            }
+        );
+    } else {
+        $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
+            {
+                type  => 'checkout_id',
+                value => $checkout->id,
+            }
+        );
+    }
 
     return
         unless $req;
@@ -749,6 +760,15 @@ sub after_circ_action {
                     ill_request_id => $req->id,
                 }
             ) if $self->configuration->{$central_server}->{borrowing}->{automatic_item_in_transit};
+        }
+    } elsif ( $action eq 'checkout' ) {
+        if ( any { $req->status eq $_ } qw{B_ITEM_RECEIVED} ) {
+            Koha::Plugin::Com::Theke::INNReach::Utils::add_or_update_attributes(
+                {
+                    request    => $req,
+                    attributes => { checkout_id => $checkout->id }
+                }
+            );
         }
     }
 }
