@@ -22,7 +22,7 @@ use base qw(Class::Accessor);
 __PACKAGE__->mk_accessors(qw( ua access_token dev_mode ));
 
 use DateTime;
-use DDP                   qw(p);
+use DDP;
 use HTTP::Request::Common qw(DELETE GET POST PUT);
 use JSON                  qw(decode_json encode_json);
 use LWP::UserAgent;

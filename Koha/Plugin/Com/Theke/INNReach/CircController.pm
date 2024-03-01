@@ -20,7 +20,7 @@ use Modern::Perl;
 use utf8;
 
 use CGI;
-use DDP qw(p);
+use DDP;
 use DateTime;
 use Encode;
 use List::MoreUtils qw(any);
@@ -825,9 +825,6 @@ sub patronhold {
         $schema->txn_do(
             sub {
                 my $configuration = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
-                use Data::Printer colored => 1;
-                p($attributes);
-                p($configuration);
                 my $pickup_location = $c->pickup_location_to_library_id(
                     {
                         pickupLocation => $attributes->{pickupLocation},

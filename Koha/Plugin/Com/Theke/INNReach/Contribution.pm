@@ -17,7 +17,7 @@ package Koha::Plugin::Com::Theke::INNReach::Contribution;
 
 use Modern::Perl;
 
-use DDP             qw(p);
+use DDP;
 use Encode          qw{ encode decode };
 use List::MoreUtils qw(any);
 use Mojo::JSON      qw(decode_json encode_json);
@@ -37,7 +37,6 @@ use Koha::Libraries;
 
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 
-use Data::Printer colored => 1;
 binmode STDOUT, ':encoding(UTF-8)';
 
 =head1 Koha::Plugin::Com::Theke::INNReach::Contribution

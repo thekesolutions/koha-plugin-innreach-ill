@@ -20,7 +20,7 @@
 
 use Modern::Perl;
 
-use Data::Printer colored => 1;
+use DDP;
 
 use Getopt::Long;
 use Koha::Script;
