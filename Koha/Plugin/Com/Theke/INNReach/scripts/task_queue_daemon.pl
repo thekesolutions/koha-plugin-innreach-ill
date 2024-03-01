@@ -31,7 +31,7 @@ use Koha::Script;
 
 my $daemon_sleep    = 1;
 my $verbose_logging = 0;
-my $help       = 0;
+my $help            = 0;
 
 my $result = GetOptions(
     'help|?'  => \$help,
@@ -39,7 +39,7 @@ my $result = GetOptions(
     'sleep=s' => \$daemon_sleep,
 );
 
-if (not $result or $help) {
+if ( not $result or $help ) {
     pod2usage(1);
 }
 
@@ -50,9 +50,8 @@ while (1) {
 
         run_queued_tasks();
 
-    }
-    catch {
-        if ($@ && $verbose_logging) {
+    } catch {
+        if ( $@ && $verbose_logging ) {
             warn "Warning : $@\n";
         }
     };
@@ -71,9 +70,10 @@ sub run_queued_tasks {
 
     my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
 
-    my $table  = $plugin->get_qualified_table_name('task_queue');
+    my $table = $plugin->get_qualified_table_name('task_queue');
 
-    my $query = $dbh->prepare(qq{
+    my $query = $dbh->prepare(
+        qq{
         SELECT
             id,
             object_type,
@@ -91,15 +91,15 @@ sub run_queued_tasks {
             status='retry'
 	ORDER BY timestamp ASC
 	LIMIT 100
-    });
+    }
+    );
 
     $query->execute;
     while ( my $task = $query->fetchrow_hashref ) {
         do_task(
             {
-                contribution => $contribution,
-                plugin       => $plugin,
-                task         => $task,
+                plugin => $plugin,
+                task   => $task,
             }
         );
     }
@@ -126,28 +126,22 @@ sub do_task {
 
     if ( $object_type eq 'biblio' ) {
         if ( $action eq 'create' ) {
-            do_biblio_contribute({ biblio_id => $object_id, plugin => $plugin, task => $task });
+            do_biblio_contribute( { biblio_id => $object_id, plugin => $plugin, task => $task } );
+        } elsif ( $action eq 'modify' ) {
+            do_biblio_contribute( { biblio_id => $object_id, plugin => $plugin, task => $task } );
+        } elsif ( $action eq 'delete' ) {
+            do_biblio_decontribute( { biblio_id => $object_id, plugin => $plugin, task => $task } );
         }
-        elsif ( $action eq 'modify' ) {
-            do_biblio_contribute({ biblio_id => $object_id, plugin => $plugin, task => $task });
-        }
-        elsif ( $action eq 'delete' ) {
-            do_biblio_decontribute({ biblio_id => $object_id, plugin => $plugin, task => $task });
-        }
-    }
-    elsif ( $object_type eq 'item' ) {
+    } elsif ( $object_type eq 'item' ) {
         if ( $action eq 'create' || $action eq 'modify' ) {
-            handle_item_action({ item_id => $object_id, plugin => $plugin, task => $task });
+            handle_item_action( { item_id => $object_id, plugin => $plugin, task => $task } );
+        } elsif ( $action eq 'delete' ) {
+            do_item_decontribute( { item_id => $object_id, plugin => $plugin, task => $task } );
+        } elsif ( $action eq 'renewal' ) {
+            handle_item_renewal( { item_id => $object_id, plugin => $plugin, task => $task } );
         }
-        elsif ( $action eq 'delete' ) {
-            do_item_decontribute({ item_id => $object_id, plugin => $plugin, task => $task });
-        }
-        elsif ( $action eq 'renewal' ) {
-            handle_item_renewal({ item_id => $object_id, plugin => $plugin, task => $task });
-        }
-    }
-    else {
-        mark_task({ task => $task, status => 'skipped', error => "Unhandled object_type ($object_type)" });
+    } else {
+        mark_task( { task => $task, status => 'skipped', error => "Unhandled object_type ($object_type)" } );
     }
 }
 
@@ -165,38 +159,35 @@ sub do_biblio_contribute {
     my $central_server = $task->{central_server};
 
     try {
-        my $contribution = $plugin->contribution( $central_server );
-        my $result = $contribution->contribute_bib( { bibId => $biblio_id, centralServer => $central_server } );
-        if ( $result ) {
+        my $contribution = $plugin->contribution($central_server);
+        my $result       = $contribution->contribute_bib( { bibId => $biblio_id, centralServer => $central_server } );
+        if ($result) {
             if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries} // 10 ) {
-                mark_task({ task => $task, status => 'retry', error => $result });
+                mark_task( { task => $task, status => 'retry', error => $result } );
+            } else {
+                mark_task( { task => $task, status => 'error', error => $result } );
             }
-            else {
-                mark_task({ task => $task, status => 'error', error => $result });
+        } else {
+            $result = $contribution->contribute_all_bib_items_in_batch(
+                { biblio => Koha::Biblios->find($biblio_id), centralServer => $central_server } );
+            if ($result) {
+                if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries}
+                    // 10 )
+                {
+                    mark_task( { task => $task, status => 'retry', error => $result } );
+                } else {
+                    mark_task( { task => $task, status => 'error', error => $result } );
+                }
+            } else {
+                mark_task( { task => $task, status => 'success' } );
             }
         }
-        else {
-            $result = $contribution->contribute_all_bib_items_in_batch({ biblio => Koha::Biblios->find($biblio_id), centralServer => $central_server });
-            if ( $result ) {
-                if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries} // 10 ) {
-                    mark_task({ task => $task, status => 'retry', error => $result });
-                }
-                else {
-                    mark_task({ task => $task, status => 'error', error => $result });
-                }
-            }
-            else {
-                mark_task({ task => $task, status => 'success' });
-            }
-        }
-    }
-    catch {
+    } catch {
         if ( ref($_) eq 'INNReach::Ill::UnknownBiblioId' ) {
             mark_task( { task => $task, status => 'skipped', error => 'Biblio not found' } );
             return 1;
-        }
-        else {
-            mark_task({ task => $task, status => 'error', error => "$_" });
+        } else {
+            mark_task( { task => $task, status => 'error', error => "$_" } );
         }
     };
 
@@ -217,27 +208,25 @@ sub do_biblio_decontribute {
     my $central_server = $task->{central_server};
 
     try {
-        my $contribution = $plugin->contribution( $central_server );
-        my $result = $contribution->decontribute_bib( { bibId => $biblio_id, centralServer => $central_server } );
-        if ( $result ) {
+        my $contribution = $plugin->contribution($central_server);
+        my $result       = $contribution->decontribute_bib( { bibId => $biblio_id, centralServer => $central_server } );
+        if ($result) {
             if ( $result->{$central_server} =~ m/No bib record found with specified recid/ ) {
-                mark_task({ task => $task, status => 'skipped', error => $result });
-            }
-            else {
-                if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries} // 10 ) {
-                    mark_task({ task => $task, status => 'retry', error => $result });
+                mark_task( { task => $task, status => 'skipped', error => $result } );
+            } else {
+                if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries}
+                    // 10 )
+                {
+                    mark_task( { task => $task, status => 'retry', error => $result } );
+                } else {
+                    mark_task( { task => $task, status => 'error', error => $result } );
                 }
-                else {
-                    mark_task({ task => $task, status => 'error', error => $result });
-                }
             }
+        } else {
+            mark_task( { task => $task, status => 'success' } );
         }
-        else {
-            mark_task({ task => $task, status => 'success' });
-        }
-    }
-    catch {
-        mark_task({ task => $task, status => 'error', error => "$_" });
+    } catch {
+        mark_task( { task => $task, status => 'error', error => "$_" } );
     };
 
     return 1;
@@ -306,30 +295,28 @@ sub do_item_contribute {
     my $central_server = $task->{central_server};
     my $contribution   = $plugin->contribution($central_server);
 
-    my $item = Koha::Items->find( $item_id );
+    my $item = Koha::Items->find($item_id);
 
-    unless ( $item ) {
+    unless ($item) {
         mark_task( { task => $task, status => 'skipped', error => 'Item not found' } );
     }
 
     my $biblio_id = $item->biblionumber;
 
     try {
-        my $result = $contribution->contribute_batch_items({ item => $item, bibId => $biblio_id, centralServer => $central_server });
-        if ( $result ) {
+        my $result = $contribution->contribute_batch_items(
+            { item => $item, bibId => $biblio_id, centralServer => $central_server } );
+        if ($result) {
             if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries} // 10 ) {
-                mark_task({ task => $task, status => 'retry', error => $result });
+                mark_task( { task => $task, status => 'retry', error => $result } );
+            } else {
+                mark_task( { task => $task, status => 'error', error => $result } );
             }
-            else {
-                mark_task({ task => $task, status => 'error', error => $result });
-            }
+        } else {
+            mark_task( { task => $task, status => 'success' } );
         }
-        else {
-            mark_task({ task => $task, status => 'success' });
-        }
-    }
-    catch {
-        mark_task({ task => $task, status => 'error', error => "$_" });
+    } catch {
+        mark_task( { task => $task, status => 'error', error => "$_" } );
     };
 
     return 1;
@@ -350,26 +337,24 @@ sub do_item_decontribute {
     my $contribution   = $plugin->contribution($central_server);
 
     try {
-        my $result = $contribution->decontribute_item({ itemId => $item_id, centralServer => $central_server });
-        if ( $result ) {
+        my $result = $contribution->decontribute_item( { itemId => $item_id, centralServer => $central_server } );
+        if ($result) {
             if ( $result->{$central_server} =~ m/No item record found with specified recid/ ) {
-                mark_task({ task => $task, status => 'skipped', error => $result });
-            }
-            else {
-                if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries} // 10 ) {
-                    mark_task({ task => $task, status => 'retry', error => $result });
+                mark_task( { task => $task, status => 'skipped', error => $result } );
+            } else {
+                if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries}
+                    // 10 )
+                {
+                    mark_task( { task => $task, status => 'retry', error => $result } );
+                } else {
+                    mark_task( { task => $task, status => 'error', error => $result } );
                 }
-                else {
-                    mark_task({ task => $task, status => 'error', error => $result });
-                }
             }
+        } else {
+            mark_task( { task => $task, status => 'success' } );
         }
-        else {
-            mark_task({ task => $task, status => 'success' });
-        }
-    }
-    catch {
-        mark_task({ task => $task, status => 'error', error => "$_" });
+    } catch {
+        mark_task( { task => $task, status => 'error', error => "$_" } );
     };
 
     return 1;
@@ -393,20 +378,17 @@ sub handle_item_renewal {
                 date_due => $payload->{date_due}
             }
         );
-        if ( $result ) {
+        if ($result) {
             if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries} // 10 ) {
-                mark_task({ task => $task, status => 'retry', error => $result });
+                mark_task( { task => $task, status => 'retry', error => $result } );
+            } else {
+                mark_task( { task => $task, status => 'error', error => $result } );
             }
-            else {
-                mark_task({ task => $task, status => 'error', error => $result });
-            }
+        } else {
+            mark_task( { task => $task, status => 'success' } );
         }
-        else {
-            mark_task({ task => $task, status => 'success' });
-        }
-    }
-    catch {
-        mark_task({ task => $task, status => 'error', error => "$_" });
+    } catch {
+        mark_task( { task => $task, status => 'error', error => "$_" } );
     };
 }
 
@@ -427,15 +409,17 @@ sub mark_task {
 
     my $query;
     if ( defined $error ) {
-	my $encoded_error;
+        my $encoded_error;
         if ( ref($error) eq 'HASH' ) {
-	    $encoded_error = encode_json($error);
-	}
-	else {
-	    $encoded_error = $error;
-	}
-	print STDERR "[innreach][ERROR] Task ($task_id) failed | $task->{action} $task->{object_type} $task->{object_id} ($status): " . $encoded_error . "\n";
-        $query = $dbh->prepare(qq{
+            $encoded_error = encode_json($error);
+        } else {
+            $encoded_error = $error;
+        }
+        print STDERR
+            "[innreach][ERROR] Task ($task_id) failed | $task->{action} $task->{object_type} $task->{object_id} ($status): "
+            . $encoded_error . "\n";
+        $query = $dbh->prepare(
+            qq{
             UPDATE
                 $table
             SET
@@ -444,11 +428,13 @@ sub mark_task {
                 last_error='$encoded_error'
             WHERE
                 id=$task_id
-        });
-    }
-    else {
-	print STDOUT "[innreach][DEBUG] Task ($task_id) success | $task->{action} $task->{object_type} $task->{object_id}\n";
-        $query = $dbh->prepare(qq{
+        }
+        );
+    } else {
+        print STDOUT
+            "[innreach][DEBUG] Task ($task_id) success | $task->{action} $task->{object_type} $task->{object_id}\n";
+        $query = $dbh->prepare(
+            qq{
             UPDATE
                 $table
             SET
@@ -457,7 +443,8 @@ sub mark_task {
                 last_error=NULL
             WHERE
                 id=$task_id
-        });
+        }
+        );
     }
 
     $query->execute;
