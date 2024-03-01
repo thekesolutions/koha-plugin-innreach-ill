@@ -17,7 +17,7 @@ use Modern::Perl;
 
 use base 'Koha::BackgroundJob';
 
-use Try::Tiny;
+use Try::Tiny qw(catch try);
 
 use Koha::Illrequests;
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;

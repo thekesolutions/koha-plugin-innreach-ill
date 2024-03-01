@@ -20,7 +20,7 @@ use Modern::Perl;
 use Getopt::Long;
 use JSON qw(decode_json encode_json);
 use Pod::Usage;
-use Try::Tiny;
+use Try::Tiny qw(catch try);
 
 use C4::Context;
 

@@ -17,7 +17,7 @@ package INNReach::Commands::Base;
 
 use Modern::Perl;
 
-use Try::Tiny;
+use Try::Tiny qw(catch try);
 
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 

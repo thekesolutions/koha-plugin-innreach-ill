@@ -20,7 +20,7 @@ package Koha::Illbackends::INNReach::Base;
 use Modern::Perl;
 
 use DateTime;
-use Try::Tiny;
+use Try::Tiny qw(catch try);
 
 use Koha::Database;
 
@@ -28,9 +28,12 @@ use C4::Biblio qw(DelBiblio);
 use C4::Reserves qw(AddReserve);
 
 use Koha::Biblios;
+use Koha::Checkouts;
 use Koha::DateUtils qw(dt_from_string);
+use Koha::Holds;
 use Koha::Illrequests;
 use Koha::Illrequestattributes;
+use Koha::Items;
 use Koha::Patrons;
 
 use Koha::Plugin::Com::Theke::INNReach;
@@ -137,27 +140,27 @@ sub status_graph {
             id             => 'O_ITEM_REQUESTED',
             name           => 'Item Requested',
             ui_method_name => 'Item Requested',
-            method         => '',
+            method         => q{},
             next_actions   => [ 'O_ITEM_SHIPPED', 'O_ITEM_CANCELLED_BY_US' ],
-            ui_method_icon => '',
+            ui_method_icon => q{},
         },
         O_LOCAL_HOLD  => {
             prev_actions => [ ],
             id             => 'O_LOCAL_HOLD',
             name           => 'Local hold requested',
             ui_method_name => 'Local hold requested',
-            method         => '',
+            method         => q{},
             next_actions   => [ 'COMP' ],
-            ui_method_icon => '',
+            ui_method_icon => q{},
         },
         O_ITEM_CANCELLED => {
             prev_actions => [ 'O_ITEM_REQUESTED' ],
             id             => 'O_ITEM_CANCELLED',
             name           => 'Item request cancelled by requesting library',
             ui_method_name => 'Item request cancelled by requesting library',
-            method         => '',
+            method         => q{},
             next_actions   => [ 'COMP' ],
-            ui_method_icon => '',
+            ui_method_icon => q{},
         },
         O_ITEM_CANCELLED_BY_US => {
             prev_actions => [ 'O_ITEM_REQUESTED' ],
@@ -181,10 +184,10 @@ sub status_graph {
             prev_actions => [ 'O_ITEM_SHIPPED' ],
             id             => 'O_ITEM_RECEIVED_DESTINATION',
             name           => 'Item received by borrowing library',
-            ui_method_name => '',
-            method         => '',
+            ui_method_name => q{},
+            method         => q{},
             next_actions   => [ 'O_ITEM_RECALLED' ],
-            ui_method_icon => '',
+            ui_method_icon => q{},
         },
         O_ITEM_RECALLED => {
             prev_actions => [ 'O_ITEM_RECEIVED_DESTINATION' ],
@@ -199,17 +202,17 @@ sub status_graph {
             prev_actions => [ 'O_ITEM_RECEIVED_DESTINATION' ],
             id             => 'O_ITEM_CLAIMED_RETURNED',
             name           => 'Item claimed returned at borrowing library',
-            ui_method_name => '',
-            method         => '',
+            ui_method_name => q{},
+            method         => q{},
             next_actions   => [ ],
-            ui_method_icon => '',
+            ui_method_icon => q{},
         },
         O_ITEM_IN_TRANSIT => {
             prev_actions => [ 'O_ITEM_RECEIVED_DESTINATION', 'O_ITEM_CLAIMED_RETURNED' ],
             id             => 'O_ITEM_IN_TRANSIT',
             name           => 'Item in transit from borrowing library',
-            ui_method_name => '',
-            method         => '',
+            ui_method_name => q{},
+            method         => q{},
             next_actions   => [ 'O_ITEM_CHECKED_IN' ],
             ui_method_icon => 'fa-inbox',
         },
@@ -217,8 +220,8 @@ sub status_graph {
             prev_actions => [ 'O_ITEM_RECEIVED_DESTINATION', 'O_ITEM_CLAIMED_RETURNED' ],
             id             => 'O_ITEM_RETURN_UNCIRCULATED',
             name           => 'Item in transit from borrowing library (uncirculated)',
-            ui_method_name => '',
-            method         => '',
+            ui_method_name => q{},
+            method         => q{},
             next_actions   => [ 'O_ITEM_CHECKED_IN' ],
             ui_method_icon => 'fa-inbox',
         },
@@ -238,18 +241,18 @@ sub status_graph {
             id             => 'B_ITEM_REQUESTED',
             name           => 'Item requested to owning library',
             ui_method_name => 'Item requested to owning library',
-            method         => '',
+            method         => q{},
             next_actions   => [ 'B_ITEM_CANCELLED_BY_US', 'B_RECEIVE_UNSHIPPED' ],
-            ui_method_icon => '',
+            ui_method_icon => q{},
         },
         B_ITEM_CANCELLED => {
             prev_actions => [ ],
             id             => 'B_ITEM_CANCELLED',
             name           => 'Item request cancelled by owning library',
             ui_method_name => 'Item request cancelled by owning library',
-            method         => '',
+            method         => q{},
             next_actions   => [ 'COMP' ],
-            ui_method_icon => '',
+            ui_method_icon => q{},
         },
         B_ITEM_CANCELLED_BY_US => {
             prev_actions => [ 'B_ITEM_REQUESTED' ],
@@ -264,10 +267,10 @@ sub status_graph {
             prev_actions => [ ],
             id             => 'B_ITEM_SHIPPED',
             name           => 'Item shipped by owning library',
-            ui_method_name => '',
-            method         => '',
+            ui_method_name => q{},
+            method         => q{},
             next_actions   => [ 'B_ITEM_RECEIVED' ],
-            ui_method_icon => '',
+            ui_method_icon => q{},
         },
         B_RECEIVE_UNSHIPPED => { # will never be set. Only used to present a form
             prev_actions   => [ 'B_ITEM_REQUESTED' ],
@@ -291,10 +294,10 @@ sub status_graph {
             prev_actions => [ ],
             id             => 'B_ITEM_RECALLED',
             name           => 'Item recalled by owning library',
-            ui_method_name => '',
-            method         => '',
+            ui_method_name => q{},
+            method         => q{},
             next_actions   => [ 'B_ITEM_IN_TRANSIT' ],
-            ui_method_icon => '',
+            ui_method_icon => q{},
         },
         B_ITEM_CLAIMED_RETURNED => {
             prev_actions => [ 'B_ITEM_RECEIVED' ],
@@ -328,9 +331,9 @@ sub status_graph {
             id             => 'B_ITEM_CHECKED_IN',
             name           => 'Item checked-in at owning library',
             ui_method_name => 'Check-in',
-            method         => '',
+            method         => q{},
             next_actions   => [ 'COMP' ],
-            ui_method_icon => '',
+            ui_method_icon => q{},
         }
     };
 }
@@ -406,12 +409,12 @@ sub item_shipped {
 
         return {
             error   => 0,
-            status  => '',
-            message => '',
+            status  => q{},
+            message => q{},
             method  => 'item_shipped',
             stage   => 'commit',
             next    => 'illview',
-            value   => '',
+            value   => q{},
         };
     }
     catch {
@@ -441,8 +444,8 @@ sub item_recalled {
     if ( !$stage || $stage eq 'init' ) { # initial form, allow choosing date
         return {
             error   => 0,
-            status  => '',
-            message => '',
+            status  => q{},
+            message => q{},
             method  => 'item_recalled',
             stage   => 'form'
         };
@@ -472,12 +475,12 @@ sub item_recalled {
 
             return {
                 error   => 0,
-                status  => '',
-                message => '',
+                status  => q{},
+                message => q{},
                 method  => 'item_recalled',
                 stage   => 'commit',
                 next    => 'illview',
-                value   => '',
+                value   => q{},
             };
         }
         catch {
@@ -519,12 +522,12 @@ sub item_checkin {
 
     return {
         error   => 0,
-        status  => '',
-        message => '',
+        status  => q{},
+        message => q{},
         method  => 'item_checkin',
         stage   => 'commit',
         next    => 'illview',
-        value   => '',
+        value   => q{},
     };
 }
 
@@ -541,8 +544,8 @@ sub cancel_request {
     my $req = $params->{request};
 
     my $result = {
-        status  => '',
-        message => '',
+        status  => q{},
+        message => q{},
         method  => 'illview',
         stage   => 'commit',
     };
@@ -580,7 +583,7 @@ sub cancel_request {
                             centralCode => $centralCode,
                             data        => {
                                 localBibId => $req->biblio_id,
-                                reason     => '',
+                                reason     => q{},
                                 reasonCode => '7',
                                 patronName => $patronName
                             }
@@ -632,12 +635,12 @@ sub item_received {
 
     return {
         error   => 0,
-        status  => '',
-        message => '',
+        status  => q{},
+        message => q{},
         method  => 'item_received',
         stage   => 'commit',
         next    => 'illview',
-        value   => '',
+        value   => q{},
     };
 }
 
@@ -656,8 +659,8 @@ sub receive_unshipped {
     if ( !$stage || $stage eq 'init' ) {    # initial form, allow choosing date
         return {
             error   => 0,
-            status  => '',
-            message => '',
+            status  => q{},
+            message => q{},
             method  => 'receive_unshipped',
             stage   => 'form'
         };
@@ -727,7 +730,7 @@ sub receive_unshipped {
                             reservation_date => undef,
                             expiration_date  => undef,
                             notes            => $config->{default_hold_note} // 'Placed by ILL',
-                            title            => '',
+                            title            => q{},
                             itemnumber       => $item->id,
                             found            => undef,
                             itemtype         => $item->effective_itemtype
@@ -753,7 +756,7 @@ sub receive_unshipped {
             innreach_warn("$_");
             return {
                 error   => 1,
-                status  => '',
+                status  => q{},
                 message => "$_",
                 method  => 'receive_unshipped',
                 stage   => 'form'
@@ -763,12 +766,12 @@ sub receive_unshipped {
 
     return {
         error   => 0,
-        status  => '',
-        message => '',
+        status  => q{},
+        message => q{},
         method  => 'receive_unshipped',
         stage   => 'commit',
         next    => 'illview',
-        value   => '',
+        value   => q{},
     };
 }
 
@@ -789,12 +792,12 @@ sub item_in_transit {
 
         return {
             error   => 0,
-            status  => '',
-            message => '',
+            status  => q{},
+            message => q{},
             method  => 'item_in_transit',
             stage   => 'commit',
             next    => 'illview',
-            value   => '',
+            value   => q{},
         };
     } catch {
         return {
@@ -863,12 +866,12 @@ sub return_uncirculated {
 
     return {
         error   => 0,
-        status  => '',
-        message => '',
+        status  => q{},
+        message => q{},
         method  => 'return_uncirculated',
         stage   => 'commit',
         next    => 'illview',
-        value   => '',
+        value   => q{},
     };
 }
 
@@ -912,12 +915,12 @@ sub cancel_request_by_us {
 
     return {
         error   => 0,
-        status  => '',
-        message => '',
+        status  => q{},
+        message => q{},
         method  => 'cancel_request_by_us',
         stage   => 'commit',
         next    => 'illview',
-        value   => '',
+        value   => q{},
     };
 }
 
@@ -950,12 +953,12 @@ sub claims_returned {
 
     return {
         error   => 0,
-        status  => '',
-        message => '',
+        status  => q{},
+        message => q{},
         method  => 'claims_returned',
         stage   => 'commit',
         next    => 'illview',
-        value   => '',
+        value   => q{},
     };
 }
 
@@ -988,12 +991,12 @@ sub capabilities {
 sub create {
     return {
         error   => 0,
-        status  => '',
-        message => '',
+        status  => q{},
+        message => q{},
         method  => 'create',
-        stage   => '',
+        stage   => q{},
         next    => 'illview',
-        value   => '',
+        value   => q{},
     };
 }
 
