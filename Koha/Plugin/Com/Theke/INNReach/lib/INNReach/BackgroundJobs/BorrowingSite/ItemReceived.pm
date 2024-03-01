@@ -75,7 +75,7 @@ sub process {
     my $data = $self->decoded_data;
     $data->{messages} = \@messages;
 
-    $self->finish($data);
+    return $self->finish($data);
 }
 
 =head3 enqueue
@@ -90,7 +90,7 @@ sub enqueue {
     INNReach::Ill::MissingParameter->throw( param => 'ill_request_id' )
         unless $args->{ill_request_id};
 
-    $self->SUPER::enqueue(
+    return $self->SUPER::enqueue(
         {
             job_args => $args,
             job_size => 1,

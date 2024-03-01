@@ -17,6 +17,11 @@ package INNReach::Commands::BorrowingSite;
 
 use Modern::Perl;
 
+use Koha::Biblios;
+use Koha::Checkouts;
+use Koha::Database;
+use Koha::Items;
+
 use base qw(INNReach::Commands::Base);
 
 =head1 INNReach::Commands::BorrowingSite

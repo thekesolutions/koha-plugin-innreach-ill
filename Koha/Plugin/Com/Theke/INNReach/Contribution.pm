@@ -17,17 +17,21 @@ package Koha::Plugin::Com::Theke::INNReach::Contribution;
 
 use Modern::Perl;
 
+use DDP             qw(p);
 use Encode          qw{ encode decode };
 use List::MoreUtils qw(any);
 use Mojo::JSON      qw(decode_json encode_json);
 use MARC::Record;
 use MARC::File::XML;
-use MIME::Base64 qw{ encode_base64 };
-use Try::Tiny;
+use MIME::Base64 qw( encode_base64 );
+use Try::Tiny    qw(catch try);
+
+use C4::Context;
 
 use Koha::Biblios;
 use Koha::Biblio::Metadatas;
 use Koha::DateUtils qw(dt_from_string);
+use Koha::Illrequests;
 use Koha::Items;
 use Koha::Libraries;
 
@@ -163,7 +167,7 @@ sub contribute_bib {
         }
     }
 
-    return $errors if $errors;
+    return $errors;
 }
 
 =head3 contribute_batch_items
@@ -307,7 +311,7 @@ sub contribute_batch_items {
         }
     }
 
-    return $errors if $errors;
+    return $errors;
 }
 
 =head3 contribute_all_bib_items_in_batch
@@ -436,7 +440,7 @@ sub contribute_all_bib_items_in_batch {
         }
     }
 
-    return $errors if $errors;
+    return $errors;
 }
 
 =head3 update_item_status
@@ -504,7 +508,7 @@ sub update_item_status {
         die "Problem updating requested item ($itemId)";
     };
 
-    return $errors if $errors;
+    return $errors;
 }
 
 =head3 decontribute_bib
@@ -577,7 +581,7 @@ sub decontribute_bib {
             }
         }
     }
-    return $errors if $errors;
+    return $errors;
 }
 
 =head3 decontribute_item
@@ -646,7 +650,7 @@ sub decontribute_item {
         }
     }
 
-    return $errors if $errors;
+    return $errors;
 }
 
 =head3 update_bib_status
@@ -710,7 +714,7 @@ sub update_bib_status {
         die "Problem updating requested biblio ($bibId)";
     };
 
-    return $errors if $errors;
+    return $errors;
 }
 
 =head3 upload_locations_list
@@ -766,6 +770,8 @@ sub upload_locations_list {
     } catch {
         die "Problem uploading locations list";
     };
+
+    return $self;
 }
 
 =head3 upload_single_location
@@ -829,6 +835,8 @@ sub upload_single_location {
     } catch {
         die "Problem uploading the required location";
     };
+
+    return;
 }
 
 =head3 update_single_location
@@ -892,6 +900,8 @@ sub update_single_location {
     } catch {
         die "Problem updating the required location";
     };
+
+    return;
 }
 
 =head3 delete_single_location
@@ -942,6 +952,8 @@ sub delete_single_location {
     } catch {
         die "Problem deleting the required location";
     };
+
+    return;
 }
 
 =head3 get_central_item_types

@@ -17,6 +17,11 @@ package INNReach::Commands::OwningSite;
 
 use Modern::Perl;
 
+use C4::Context;
+
+use Koha::Database;
+use Koha::Illrequestattribute;
+use Koha::Items;
 use Koha::Patrons;
 
 use base qw(INNReach::Commands::Base);

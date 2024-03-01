@@ -17,8 +17,6 @@ package Koha::Plugin::Com::Theke::INNReach::Normalizer;
 
 use Modern::Perl;
 
-use Koha::Plugin::Com::Theke::INNReach::Exceptions;
-
 =head1 Koha::Plugin::Com::Theke::INNReach::Normalizer
 
 String normalizer class.

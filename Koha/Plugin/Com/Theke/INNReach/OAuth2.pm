@@ -22,10 +22,11 @@ use base qw(Class::Accessor);
 __PACKAGE__->mk_accessors(qw( ua access_token dev_mode ));
 
 use DateTime;
-use HTTP::Request::Common qw{ DELETE GET POST PUT };
-use JSON;
+use DDP                   qw(p);
+use HTTP::Request::Common qw(DELETE GET POST PUT);
+use JSON                  qw(decode_json encode_json);
 use LWP::UserAgent;
-use MIME::Base64 qw{ decode_base64url encode_base64url };
+use MIME::Base64 qw( decode_base64url encode_base64url );
 
 use Exception::Class (
   'INNReach::OAuth2Error',

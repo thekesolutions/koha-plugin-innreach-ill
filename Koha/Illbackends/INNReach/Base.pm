@@ -944,7 +944,7 @@ sub claims_returned {
         {   endpoint    => "/innreach/v2/circ/claimsreturned/$trackingId/$centralCode",
             centralCode => $centralCode,
             data        => {
-                claimsReturnedDate => dt_from_string->epoch
+                claimsReturnedDate => dt_from_string()->epoch
             }
         }
     );

@@ -19,18 +19,25 @@ use Modern::Perl;
 
 use utf8;
 
-use DateTime;
-use List::MoreUtils qw(any);
-use Try::Tiny;
-
 use CGI;
+use DDP qw(p);
+use DateTime;
+use Encode;
+use List::MoreUtils qw(any);
+use MARC::Field;
+use MARC::Record;
+use Try::Tiny qw(catch try);
+
+use C4::Context;
 use C4::Biblio qw(AddBiblio);
 use C4::Items;
+use C4::Letters;
 use C4::Reserves qw(AddReserve CanItemBeReserved);
-use Encode;
 
 use Koha::Biblios;
 use Koha::Checkouts;
+use Koha::Illrequests;
+use Koha::Illrequestattributes;
 use Koha::Items;
 use Koha::Patrons;
 
@@ -38,8 +45,7 @@ use Koha::Database;
 use Koha::DateUtils qw(dt_from_string);
 
 use Koha::Illbackends::INNReach::Base;
-use Koha::Illrequests;
-use Koha::Illrequestattributes;
+
 use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 use Koha::Plugin::Com::Theke::INNReach::Normalizer;
@@ -1406,7 +1412,7 @@ sub get_print_slip {
     my $illrequest_id = $c->param('illrequest_id');
     my $print_slip_id = $c->param('print_slip_id');
 
-    try {
+    return try {
 
         my $plugin = Koha::Plugin::Com::Theke::INNReach->new();
 

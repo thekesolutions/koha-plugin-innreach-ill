@@ -32,11 +32,16 @@ BEGIN {
 }
 
 use List::MoreUtils qw(any);
+use MARC::Field;
+use MARC::Record;
 
+use C4::Context;
 use C4::Biblio qw(AddBiblio);
 
+use Koha::Database;
 use Koha::Illrequests;
 use Koha::Illrequestattributes;
+use Koha::Items;
 
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 use Koha::Plugin::Com::Theke::INNReach::Normalizer;

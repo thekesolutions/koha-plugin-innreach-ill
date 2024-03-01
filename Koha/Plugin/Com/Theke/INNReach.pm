@@ -21,15 +21,21 @@ use base qw(Koha::Plugins::Base);
 
 use Encode;
 use List::MoreUtils qw(any);
+use Module::Metadata;
 use Mojo::JSON qw(decode_json encode_json);
 use YAML::XS;
 
-use C4::Circulation;
+use C4::Context;
+use C4::Circulation qw(AddIssue AddReturn);
 
-use Koha::Biblioitems;
+use Koha::Biblios;
+use Koha::Database;
 use Koha::Illrequestattributes;
 use Koha::Illrequests;
 use Koha::Items;
+use Koha::Libraries;
+use Koha::Patron::Categories;
+use Koha::Patrons;
 
 use Koha::Plugin::Com::Theke::INNReach::Contribution;
 use Koha::Plugin::Com::Theke::INNReach::OAuth2;
@@ -593,6 +599,8 @@ sub after_biblio_action {
             }
         );
     }
+
+    return;
 }
 
 =head3 after_item_action
@@ -682,6 +690,8 @@ sub after_item_action {
             }
         }
     }
+
+    return;
 }
 
 =head3 after_circ_action
@@ -771,6 +781,8 @@ sub after_circ_action {
             );
         }
     }
+
+    return;
 }
 
 =head3 after_hold_action
@@ -837,6 +849,8 @@ sub after_hold_action {
             }
         }
     }
+
+    return;
 }
 
 =head3 schedule_task
@@ -1303,6 +1317,8 @@ sub get_req_central_server {
 
     return $attr->value
         if $attr;
+
+    return;
 }
 
 
@@ -1344,8 +1360,8 @@ sub add_issue {
     }
 
     return ( C4::Context->preference('Version') ge '23.110000' )
-        ? C4::Circulation::AddIssue( $params->{patron},            $params->{barcode} )
-        : C4::Circulation::AddIssue( $params->{patron}->unblessed, $params->{barcode} );
+        ? AddIssue( $params->{patron},            $params->{barcode} )
+        : AddIssue( $params->{patron}->unblessed, $params->{barcode} );
 }
 
 =head3 add_return
@@ -1374,7 +1390,7 @@ sub add_return {
             unless exists $params->{$param};
     }
 
-    return C4::Circulation::AddReturn( $params->{barcode} );
+    return AddReturn( $params->{barcode} );
 }
 
 =head3 check_configuration
