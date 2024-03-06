@@ -1184,6 +1184,8 @@ sub item_circ_status {
         $status = 'Non-Lendable';
     } elsif ( $item->itemlost ) {
         $status = 'Not Available';
+    } elsif ( $item->holds->filter_by_found->count > 0 ) {
+        $status = 'Not Available';
     }
 
     return $status;
