@@ -1240,7 +1240,8 @@ sub get_ill_request_from_item_id {
        )
        { ... }
 
-Returns a I<boolean> telling if the item should be contributed to the specified
+Returns a I<boolean> telling if the B<$item> should be contributed to the specified
+B<$central_server>
 
 =cut
 
@@ -1268,6 +1269,47 @@ sub should_item_be_contributed {
             central_server => $central_server
         }
     )->count > 0;
+}
+
+=head3 should_biblio_be_contributed
+
+    if ( $contribution->should_biblio_be_contributed({
+                 biblio         => $biblio,
+                 central_server => $central_server }})
+       )
+       { ... }
+
+Returns a I<boolean> telling if the B<$biblio> should be contributed to the specified
+B<$central_server>.
+
+=cut
+
+sub should_biblio_be_contributed {
+    my ( $self, $params ) = @_;
+
+    my @mandatory_params = qw(central_server biblio);
+    foreach my $param (@mandatory_params) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $params->{$param};
+    }
+
+    my $biblio         = $params->{biblio};
+    my $central_server = $params->{central_server};
+
+    INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
+        unless any { $_ eq $central_server } @{ $self->{central_servers} };
+
+    my $configuration = $self->{config}->{$central_server};
+
+    # FIXME: Should there be rules on biblio records?
+    return ( $configuration->{contribution}->{exclude_empty_biblios} // 1 )
+        ? $self->filter_items_by_contributable(
+        {
+            items          => $biblio->items,
+            central_server => $central_server
+        }
+        )->count > 0
+        : 1;
 }
 
 =head3 filter_items_by_contributable
