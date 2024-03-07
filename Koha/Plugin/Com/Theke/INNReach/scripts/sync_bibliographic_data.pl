@@ -94,7 +94,7 @@ _USAGE_
 }
 
 my $plugin       = Koha::Plugin::Com::Theke::INNReach->new;
-my $contribution = $plugin->contribution;
+my $contribution = $plugin->contribution($central_server);
 
 my $query      = {};
 my $attributes = {};
