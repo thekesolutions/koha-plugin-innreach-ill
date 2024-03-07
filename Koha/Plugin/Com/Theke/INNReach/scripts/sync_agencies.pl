@@ -63,7 +63,7 @@ my $response;
 
 my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
 
-my @central_servers = @{ $plugin->central_servers };
+my @central_servers = $plugin->central_servers;
 @central_servers = grep { $_ eq $central_server } @central_servers
     if $central_server;
 

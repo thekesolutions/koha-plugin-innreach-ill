@@ -136,7 +136,7 @@ _USAGE_
 
 my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
 
-unless ( any { $_ eq $central_server } @{$plugin->central_servers} ) { # valid?
+unless ( any { $_ eq $central_server } $plugin->central_servers ) { # valid?
     print_usage();
     say "$central_server is not a valid configured central server!";
     exit 1;
