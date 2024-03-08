@@ -558,6 +558,15 @@ sub decontribute_bib {
                 # we pick the first one
                 my $THE_error = $iii_errors[0][0];
                 $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+                if ( any { $_ =~ m/No bib record found with specified recid/ } @{ $THE_error->{messages} } ) {
+                    warn "Record $bibId not contributed but decontribution requested (leak)";
+                    $self->unmark_biblio_as_contributed(
+                        {
+                            central_server => $central_server,
+                            biblio_id      => $bibId,
+                        }
+                    );
+                }
             } else {
                 $self->unmark_biblio_as_contributed(
                     {
@@ -565,18 +574,6 @@ sub decontribute_bib {
                         central_server => $central_server,
                     }
                 );
-                my $biblio = Koha::Biblios->find($bibId);
-                if ($biblio) {
-                    my $items = $biblio->items;
-                    while ( my $item = $items->next ) {
-                        $self->unmark_item_as_contributed(
-                            {
-                                central_server => $central_server,
-                                item_id        => $item->id,
-                            }
-                        );
-                    }
-                }
             }
         }
     }
@@ -1648,11 +1645,12 @@ sub mark_item_as_contributed {
     $plugin->unmark_biblio_as_contributed(
         {
             central_server => $central_server,
-            biblio_id      => $biblio_id
+            biblio_id      => $biblio_id,
+          [ skip_items     => 1/0,             ]
         }
     );
 
-Method for marking an biblio as contributed.
+Method for marking a biblio as contributed.
 
 =cut
 
@@ -1678,6 +1676,21 @@ sub unmark_biblio_as_contributed {
           AND      biblio_id='$biblio_id';
     }
     );
+
+    unless ($params->{skip_items}) {
+        my $biblio = Koha::Biblios->find($biblio_id);
+        if ($biblio) {
+            my $items = $biblio->items;
+            while ( my $item = $items->next ) {
+                $self->unmark_item_as_contributed(
+                    {
+                        central_server => $central_server,
+                        item_id        => $item->id,
+                    }
+                );
+            }
+        }
+    }
 
     return $self;
 }
