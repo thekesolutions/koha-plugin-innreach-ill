@@ -35,7 +35,8 @@ A class implementing the controller methods for the patron-related endpoints
 
 =head3 verifypatron
 
-Method that validates a patron's password
+Method that validates a patron's password. the I<visiblePatronId> parameter is used
+to match the patron's B<cardnumber> and B<then> the B<userid> as a fallback.
 
 =cut
 
@@ -87,6 +88,8 @@ sub verifypatron {
     my $patron;
     if ( defined $patron_id ) {
         $patron = Koha::Patrons->find( { cardnumber => $patron_id } );
+        $patron = Koha::Patrons->find( { userid     => $patron_id } )
+            unless $patron;
     }
 
     unless ($patron) {
