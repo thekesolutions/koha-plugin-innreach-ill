@@ -408,56 +408,45 @@ POST /innreach/v2/contribution/bibstatus/<itemId>
 sub update_item_status {
     my ( $self, $args ) = @_;
 
-    my $itemId = $args->{itemId};
+    INNReach::Ill::MissingParameter->throw( param => "item_id" )
+        unless $args->{item_id};
 
-    die "itemId is mandatory"
-        unless $itemId;
-
-    my $item;
+    my $item_id = $args->{item_id};
 
     my $errors;
 
     try {
-        $item = Koha::Items->find($itemId);
+        my $item = Koha::Items->find($item_id);
 
-        my @central_servers;
-        if ( $args->{centralServer} ) {
-            push @central_servers, $args->{centralServer};
-        } else {
-            @central_servers = @{ $self->{central_servers} };
-        }
+        my $data = {
+            itemCircStatus => $self->item_circ_status( { item => $item } ),
+            holdCount      => 0,
+            dueDateTime    => ( $item->onloan ) ? dt_from_string( $item->onloan )->epoch : undef,
+        };
 
-        for my $central_server (@central_servers) {
-            my $data = {
-                itemCircStatus => $self->item_circ_status( { item => $item } ),
-                holdCount      => 0,
-                dueDateTime    => ( $item->onloan ) ? dt_from_string( $item->onloan )->epoch : undef,
-            };
+        my $response = $self->{plugin}->get_ua($self->{central_server})->post_request(
+            {
+                endpoint    => '/innreach/v2/contribution/itemstatus/' . $item_id,
+                centralCode => $self->{central_server},
+                data        => $data
+            }
+        );
 
-            my $response = $self->{plugin}->get_ua($central_server)->post_request(
-                {
-                    endpoint    => '/innreach/v2/contribution/itemstatus/' . $itemId,
-                    centralCode => $central_server,
-                    data        => $data
-                }
-            );
+        if ( !$response->is_success ) {    # HTTP code is not 2xx
+            $errors = $response->status_line;
+        } else {                           # III encoding errors in the response body of a 2xx
+            my $response_content = decode_json( $response->decoded_content );
+            if ( $response_content->{status} eq 'failed' ) {
+                my @iii_errors = $response_content->{errors};
 
-            if ( !$response->is_success ) {    # HTTP code is not 2xx
-                $errors->{$central_server} = $response->status_line;
-            } else {                           # III encoding errors in the response body of a 2xx
-                my $response_content = decode_json( $response->decoded_content );
-                if ( $response_content->{status} eq 'failed' ) {
-                    my @iii_errors = $response_content->{errors};
-
-                    # we pick the first one
-                    my $THE_error = $iii_errors[0][0];
-                    $errors->{$central_server} =
-                        $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
-                }
+                # we pick the first one
+                my $THE_error = $iii_errors[0][0];
+                $errors =
+                    $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
             }
         }
     } catch {
-        die "Problem updating requested item ($itemId)";
+        die "Problem updating requested item ($item_id)";
     };
 
     return $errors;

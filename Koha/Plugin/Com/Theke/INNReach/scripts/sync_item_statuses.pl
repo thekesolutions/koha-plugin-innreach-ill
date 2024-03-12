@@ -93,12 +93,7 @@ if ( scalar @item_ids > 0 ) {
     print STDOUT "# Syncing items:\n";
     foreach my $item_id (@item_ids) {
         try {
-            my $result = $contribution->update_item_status(
-                {
-                    itemId        => $item_id,
-                    centralServer => $central_server,
-                }
-            );
+            my $result = $contribution->update_item_status( { item_id => $item_id } );
             if ($result) {
                 warn p($result);
                 print STDOUT "\t$item_id\t => ERROR\n";
