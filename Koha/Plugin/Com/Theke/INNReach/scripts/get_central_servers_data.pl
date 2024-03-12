@@ -75,8 +75,8 @@ if ($all) {
 }
 
 my $response;
+my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
 
-my $plugin          = Koha::Plugin::Com::Theke::INNReach->new;
 my @central_servers = $plugin->central_servers;
 
 if ($agencies) {
@@ -105,8 +105,7 @@ if ($item_types) {
     print STDOUT "# Item types:\n";
     foreach my $central_server (@central_servers) {
         print STDOUT "## $central_server:\n";
-        $response =
-            $plugin->contribution($central_server)->get_central_item_types( { centralServer => $central_server } );
+        $response = $plugin->contribution($central_server)->get_central_item_types();
         foreach my $item_type ( @{$response} ) {
             print STDOUT p($item_type);
         }
@@ -117,8 +116,7 @@ if ($patron_types) {
     print STDOUT "# Patron types:\n";
     foreach my $central_server (@central_servers) {
         print STDOUT "## $central_server:\n";
-        $response = $plugin->contribution($central_server)
-            ->get_central_patron_types_list( { centralServer => $central_server } );
+        $response = $plugin->contribution($central_server)->get_central_patron_types_list();
         foreach my $patron_type ( @{$response} ) {
             print STDOUT p($patron_type);
         }

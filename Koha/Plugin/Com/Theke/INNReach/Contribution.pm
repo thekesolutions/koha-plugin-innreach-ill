@@ -850,28 +850,24 @@ sub delete_single_location {
 
 =head3 get_central_item_types
 
-    my $res = $contribution->get_central_item_types(
-        { centralServer => $central_server }
-    );
+    my $res = $contribution->get_central_item_types();
 
-Sends a a request for defined item types to a central server.
+Sends a a request for defined item types to a central server. It performs a:
 
-GET /innreach/v2/contribution/itemtypes
+    GET /innreach/v2/contribution/itemtypes
 
 =cut
 
 sub get_central_item_types {
-    my ( $self, $args ) = @_;
+    my ( $self ) = @_;
 
     my $response;
 
     try {
-
-        my $central_server = $args->{centralServer};
-        $response = $self->{plugin}->get_ua($central_server)->get_request(
+        $response = $self->{plugin}->get_ua($self->{central_server})->get_request(
             {
                 endpoint    => '/innreach/v2/contribution/itemtypes',
-                centralCode => $central_server
+                centralCode => $self->{central_server}
             }
         );
         warn p($response)
