@@ -561,18 +561,21 @@ sub after_biblio_action {
                 }
             }
             elsif ( $action eq 'modify' ) {
-                if (     $exclude_empty_biblios
-                     and $contribution->filter_items_by_contributable(
-                            {   items          => scalar $biblio->items,
-                                central_server => $central_server }
-                         )->count == 0
-                     and $contribution->is_bib_contributed(
-                            { biblio_id      => $biblio_id,
-                              central_server => $central_server })
-                ) {
+                if (
+                    $exclude_empty_biblios
+                    and $contribution->filter_items_by_contributable(
+                        {
+                            items          => scalar $biblio->items,
+                            central_server => $central_server
+                        }
+                    )->count == 0
+                    and $contribution->is_bib_contributed( { biblio_id => $biblio_id } )
+                    )
+                {
                     # decontribute
                     $self->schedule_task(
-                        {   action         => 'delete',
+                        {
+                            action         => 'delete',
                             central_server => $central_server,
                             object_id      => $biblio_id,
                             object_type    => 'biblio',
@@ -585,9 +588,7 @@ sub after_biblio_action {
         }
         else { # $action eq 'delete'
             next
-              unless $contribution->is_bib_contributed(
-                  {  biblio_id => $biblio_id,
-                      central_server => $central_server, });
+                unless $contribution->is_bib_contributed( { biblio_id => $biblio_id } );
         }
 
         $self->schedule_task(

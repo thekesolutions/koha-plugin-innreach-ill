@@ -115,7 +115,7 @@ while ( my $biblio = $biblios->next ) {
     print STDOUT "Record: " . $biblio->id . "\n"
         unless $noout;
 
-    if ( $contribution->is_bib_contributed( { biblio_id => $biblio->id, central_server => $central_server } ) ) {
+    if ( $contribution->is_bib_contributed( { biblio_id => $biblio->id } ) ) {
         $contribution->decontribute_bib(
             {
                 bibId         => $biblio->id,
