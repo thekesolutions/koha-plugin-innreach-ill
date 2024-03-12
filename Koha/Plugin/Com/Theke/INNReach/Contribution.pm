@@ -486,7 +486,7 @@ sub decontribute_bib {
 
     my $response = $self->{plugin}->get_ua($self->{central_server})->delete_request(
         {
-            endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
+            endpoint    => '/innreach/v2/contribution/bib/' . $biblio_id,
             centralCode => $self->{central_server}
         }
     );
