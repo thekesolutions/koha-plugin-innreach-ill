@@ -885,23 +885,21 @@ sub get_central_item_types {
 
 =head3 get_locations_list
 
-    my $res = $contribution->get_locations_list(
-        { centralServer => $central_server }
-    );
+    my $res = $contribution->get_locations_list();
 
-Sends a a request for defined locations to a central server.
+Sends a a request for defined locations to a central server. It performs a:
 
-GET /innreach/v2/contribution/locations
+    GET /innreach/v2/contribution/locations
 
 =cut
 
 sub get_locations_list {
-    my ( $self, $args ) = @_;
+    my ( $self ) = @_;
 
     my $response;
 
     try {
-        my $central_server = $args->{centralServer};
+        my $central_server = $self->{central_server};
         $response = $self->{plugin}->get_ua($central_server)->get_request(
             {
                 endpoint    => '/innreach/v2/contribution/locations',

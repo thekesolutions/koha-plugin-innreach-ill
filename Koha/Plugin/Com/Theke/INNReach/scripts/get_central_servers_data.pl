@@ -94,7 +94,7 @@ if ($locations) {
     print STDOUT "# Locations:\n";
     foreach my $central_server (@central_servers) {
         print STDOUT "## $central_server:\n";
-        $response = $plugin->contribution($central_server)->get_locations_list( { centralServer => $central_server } );
+        $response = $plugin->contribution($central_server)->get_locations_list();
         foreach my $location ( @{$response} ) {
             print STDOUT p($location);
         }

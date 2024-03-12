@@ -285,7 +285,7 @@ if ( $biblio_id or $biblios ) {
 }
 
 if ( $overwrite_locations ) {
-    my $response = $contribution->get_locations_list( { centralServer => $central_server } );
+    my $response = $contribution->get_locations_list();
 
     # delete current locations
     foreach my $location ( @{ $response } ) {
