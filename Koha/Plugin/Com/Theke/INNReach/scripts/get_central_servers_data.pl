@@ -83,7 +83,7 @@ if ($agencies) {
     print STDOUT "# Agencies:\n";
     foreach my $central_server (@central_servers) {
         print STDOUT "## $central_server:\n";
-        $response = $plugin->contribution($central_server)->get_agencies_list( { centralServer => $central_server } );
+        $response = $plugin->contribution($central_server)->get_agencies_list();
         foreach my $agency ( @{$response} ) {
             print STDOUT p($agency);
         }

@@ -917,23 +917,21 @@ sub get_locations_list {
 
 =head3 get_agencies_list
 
-    my $res = $contribution->get_agencies_list(
-        { centralServer => $central_server }
-    );
+    my $res = $contribution->get_agencies_list();
 
-Sends a a request for defined agencies to a central server.
+Sends a a request for defined agencies to a central server. It performs a
 
-GET /innreach/v2/contribution/agencies
+    GET /innreach/v2/contribution/agencies
 
 =cut
 
 sub get_agencies_list {
-    my ( $self, $args ) = @_;
+    my ( $self ) = @_;
 
     my $response;
 
     try {
-        my $central_server = $args->{centralServer};
+        my $central_server = $self->{centralServer};
         $response = $self->{plugin}->get_ua($central_server)->get_request(
             {
                 endpoint    => '/innreach/v2/contribution/localservers',

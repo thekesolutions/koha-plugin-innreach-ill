@@ -76,7 +76,7 @@ print STDOUT "Central servers:\n"
     if $verbose and scalar @central_servers > 0;
 
 foreach my $central_server (@central_servers) {
-    $response = $plugin->contribution($central_server)->get_agencies_list( { centralServer => $central_server } );
+    $response = $plugin->contribution($central_server)->get_agencies_list();
 
     print STDOUT "$central_server\n"
         if $verbose;
