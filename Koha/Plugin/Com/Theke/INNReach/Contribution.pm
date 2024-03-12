@@ -899,11 +899,10 @@ sub get_locations_list {
     my $response;
 
     try {
-        my $central_server = $self->{central_server};
-        $response = $self->{plugin}->get_ua($central_server)->get_request(
+        $response = $self->{plugin}->get_ua($self->{central_server})->get_request(
             {
                 endpoint    => '/innreach/v2/contribution/locations',
-                centralCode => $central_server
+                centralCode => $self->{central_server}
             }
         );
         warn p($response)
@@ -919,7 +918,7 @@ sub get_locations_list {
 
     my $res = $contribution->get_agencies_list();
 
-Sends a a request for defined agencies to a central server. It performs a
+Sends a a request for defined agencies to a central server. It performs a:
 
     GET /innreach/v2/contribution/agencies
 
@@ -931,11 +930,10 @@ sub get_agencies_list {
     my $response;
 
     try {
-        my $central_server = $self->{central_server};
-        $response = $self->{plugin}->get_ua($central_server)->get_request(
+        $response = $self->{plugin}->get_ua($self->{central_server})->get_request(
             {
                 endpoint    => '/innreach/v2/contribution/localservers',
-                centralCode => $central_server
+                centralCode => $self->{central_server}
             }
         );
         warn p($response)
@@ -949,28 +947,24 @@ sub get_agencies_list {
 
 =head3 get_central_patron_types_list
 
-    my $res = $contribution->get_central_patron_types_list(
-        { centralServer => $central_server }
-    );
+    my $res = $contribution->get_central_patron_types_list();
 
-Sends a a request for defined locations to a central server.
+Sends a a request for defined locations to a central server. It performs a:
 
-GET /innreach/v2/circ/patrontypes
+    GET /innreach/v2/circ/patrontypes
 
 =cut
 
 sub get_central_patron_types_list {
-    my ( $self, $args ) = @_;
+    my ( $self ) = @_;
 
     my $response;
 
     try {
-
-        my $central_server = $args->{centralServer};
-        $response = $self->{plugin}->get_ua($central_server)->get_request(
+        $response = $self->{plugin}->get_ua($self->{central_server})->get_request(
             {
                 endpoint    => '/innreach/v2/circ/patrontypes',
-                centralCode => $central_server
+                centralCode => $self->{central_server}
             }
         );
         warn p($response)
