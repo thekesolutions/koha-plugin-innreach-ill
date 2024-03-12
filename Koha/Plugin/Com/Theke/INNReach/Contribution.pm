@@ -931,7 +931,7 @@ sub get_agencies_list {
     my $response;
 
     try {
-        my $central_server = $self->{centralServer};
+        my $central_server = $self->{central_server};
         $response = $self->{plugin}->get_ua($central_server)->get_request(
             {
                 endpoint    => '/innreach/v2/contribution/localservers',
