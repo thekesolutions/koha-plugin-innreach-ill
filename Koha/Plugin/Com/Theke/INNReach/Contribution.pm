@@ -397,11 +397,11 @@ sub contribute_all_bib_items_in_batch {
 
 =head3 update_item_status
 
-    my $res = $contribution->update_item_status({ itemId => $itemId, [ centralServer => $central_server ] });
+    my $res = $contribution->update_item_status( { item_id => $item->id } );
 
-It sends updated item status to the central server(s).
+It sends updated item status to the Central Server. It performs a:
 
-POST /innreach/v2/contribution/bibstatus/<itemId>
+    POST /innreach/v2/contribution/bibstatus/<itemId>
 
 =cut
 
