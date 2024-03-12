@@ -304,7 +304,11 @@ sub do_item_contribute {
 
     try {
         my $result = $contribution->contribute_batch_items(
-            { item => $item, bibId => $biblio_id, centralServer => $central_server } );
+            {
+                items     => Koha::Items->search( { itemnumber => $item->itemnumber } ),
+                biblio_id => $biblio_id
+            }
+        );
         if ($result) {
             if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries} // 10 ) {
                 mark_task( { task => $task, status => 'retry', error => $result } );

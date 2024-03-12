@@ -251,25 +251,24 @@ if ( $biblio_id or $biblios ) {
                 if ( $items->count > 0 ) {
                     print STDOUT " - Items:\n"
                         unless $noout;
-                    while ( my $item = $items->next ) {
-                        my $errors = {};
-                        try {
-                            my $errors = $contribution->contribute_batch_items(
-                                {
-                                    bibId         => $biblio->biblionumber,
-                                    centralServer => $central_server,
-                                    item          => $item,
-                                }
-                            );
-                        }
-                        catch {
-                            $errors->{$central_server} = "$_";
-                        };
-                        if ( $errors->{$central_server} ) {
-                            print STDOUT "        > " . $item->id . ": Error (" . $errors->{$central_server} . ")\n"
-                                unless $noout;
-                        }
-                        else {
+                    my $errors = {};
+                    try {
+                        my $errors = $contribution->contribute_batch_items(
+                            {
+                                biblio_id => $biblio->biblionumber,
+                                items     => $items,
+                            }
+                        );
+                    } catch {
+                        $errors = "$_";
+                    };
+
+                    if ($errors) {
+                        print STDOUT "        > Error (" . $errors . ")\n"
+                            unless $noout;
+                    } else {
+                        $items->reset;
+                        while ( my $item = $items->next ) {
                             print STDOUT "        > " . $item->id . ": Ok\n"
                                 unless $noout;
                         }
@@ -377,9 +376,8 @@ if ( $recontribution ) {
             while( my $item = $items_to_recontribute->next ) {
                 my $errors = $contribution->contribute_batch_items(
                     {
-                        centralServer => $central_server,
-                        bibId         => $item->biblionumber,
-                        item          => $item,
+                        biblio_id => $item->biblionumber,
+                        items     => Koha::Items->search( { itemnumber => $item->itemnumber } ),
                     }
                 );
                 if ( $errors->{$central_server} ) {

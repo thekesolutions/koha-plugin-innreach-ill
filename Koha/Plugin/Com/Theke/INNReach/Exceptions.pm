@@ -19,6 +19,10 @@ use Modern::Perl;
 
 use Exception::Class (
     'INNReach::Ill',
+    'INNReach::Ill::BadParameter' => {
+        isa         => 'INNReach::Ill',
+        description => 'One or more parameters are wrong',
+    },
     'INNReach::Ill::BadPickupLocation' => {
         isa         => 'INNReach::Ill',
         description => 'The passed pickupLocation attribute does not contain a valid structure',

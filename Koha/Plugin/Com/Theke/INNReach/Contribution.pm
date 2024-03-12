@@ -156,165 +156,50 @@ sub contribute_bib {
 =head3 contribute_batch_items
 
     my $res = $contribution->contribute_batch_items(
-        {   bibId => $bibId,
-            item  => $item,
-            [ centralServer => $central_server ]
+        {
+            biblio_id => $biblio->id,
+            items     => $items
         }
     );
 
 Sends item information (for adding or modifying) to the central server(s). the
-I<bibId> param is mandatory. I<item> is optional, and needs to be a Koha::Item
-object, belonging to the biblio identified by bibId.
+I<biblio_id> param is mandatory. I<items> is mandatory and needs to be a
+I<Koha::Items> iterator. All items need to belong to the biblio, otherwise 
+an exception is thrown.
 
-POST /innreach/v2/contribution/items/<bibId>
+    POST /innreach/v2/contribution/items/<bibId>
 
 =cut
 
 sub contribute_batch_items {
     my ( $self, $args ) = @_;
 
-    my $bibId = $args->{bibId};
-    INNReach::Ill::MissingParameter->throw( param => "bibId" )
-        unless $bibId;
+    my $biblio_id = $args->{biblio_id};
+    INNReach::Ill::MissingParameter->throw( param => "biblio_id" )
+        unless $biblio_id;
 
-    my $biblio = Koha::Biblios->find($bibId);
+    my $biblio = Koha::Biblios->find($biblio_id);
     unless ($biblio) {
-        INNReach::Ill::UnknownBiblioId->throw( biblio_id => $bibId );
+        INNReach::Ill::UnknownBiblioId->throw( biblio_id => $biblio_id );
     }
 
-    my @items;
+    INNReach::Ill::MissingParameter->throw( param => "items" )
+        unless $args->{items} && ref($args->{items}) eq 'Koha::Items';
 
-    my $THE_item = $args->{item};
-    if ( $THE_item and ref($THE_item) eq 'Koha::Item' ) {
-        push @items, $THE_item;
-    } else {
-        @items = $biblio->items->as_list;
-    }
-
-    my @central_servers;
-    if ( $args->{centralServer} ) {
-        push @central_servers, $args->{centralServer};
-    } else {
-        @central_servers = @{ $self->{central_servers} };
+    my @items = $args->{items}->as_list;
+    # Error check before anything else
+    foreach my $item (@items) {
+        INNReach::Ill::BadParameter->throw("Item (" . $item->itemnumber . ") doesn't belong to bib record ($biblio_id)")
+            unless $item->biblionumber == $biblio_id;
     }
 
     my $errors;
 
-    for my $central_server (@central_servers) {
-
-        my $configuration = $self->{config}->{$central_server};
-
-        unless ( $self->is_bib_contributed( { biblio_id => $bibId } ) ) {
-            $self->contribute_bib( { biblio_id => $bibId } );
-        }
-
-        my $use_holding_library = exists $configuration->{contribution}->{use_holding_library}
-            && $configuration->{contribution}->{use_holding_library};
-
-        my @itemInfo;
-
-        foreach my $item (@items) {
-            unless ( $item->biblionumber == $bibId ) {
-                die "Item (" . $item->itemnumber . ") doesn't belong to bib record ($bibId)";
-            }
-
-            my $branch_to_use = $use_holding_library ? $item->holdingbranch : $item->homebranch;
-
-            my $centralItemType = $configuration->{local_to_central_itype}->{ $item->effective_itemtype };
-            my $locationKey     = $configuration->{library_to_location}->{$branch_to_use}->{location};
-
-            # Skip the item if has unmapped values (that are relevant)
-            unless ( $centralItemType && $locationKey ) {
-                unless ($centralItemType) {
-                    warn "$central_server: missing mapping for item type (" . $item->effective_itemtype // 'null' . ")";
-                }
-                unless ($locationKey) {
-                    warn "$central_server: missing mapping for branch ("
-                        . $branch_to_use . "). "
-                        . ($use_holding_library) ? 'NOTE: using holding library' : 'NOTE: using home library';
-                }
-                next;
-            }
-
-            my $itemInfo = {
-                itemId            => $item->itemnumber,
-                agencyCode        => $configuration->{mainAgency},
-                centralItemType   => $centralItemType,
-                locationKey       => $locationKey,
-                itemCircStatus    => $self->item_circ_status( { item => $item } ),
-                holdCount         => 0,
-                dueDateTime       => ( $item->onloan ) ? dt_from_string( $item->onloan )->epoch : undef,
-                callNumber        => $item->itemcallnumber,
-                volumeDesignation => $item->enumchron,
-                copyNumber        => $item->copynumber,
-                itemNote          => substr( $item->itemnotes // '', 0, 256 ),
-                suppress          => 'n',                                                                # TODO: revisit
-            };
-
-            push @itemInfo, $itemInfo;
-        }
-
-        my $response = $self->{plugin}->get_ua($central_server)->post_request(
-            {
-                endpoint    => '/innreach/v2/contribution/items/' . $bibId,
-                centralCode => $central_server,
-                data        => { itemInfo => \@itemInfo }
-            }
-        );
-
-        if ( !$response->is_success ) {    # HTTP code is not 2xx
-            $errors->{$central_server} = $response->status_line;
-        } else {                           # III encoding errors in the response body of a 2xx
-            my $response_content = decode_json( $response->decoded_content );
-
-            if ( $response_content->{status} eq 'failed' ) {
-                my @iii_errors = $response_content->{errors};
-
-                # we pick the first one
-                my $THE_error = $iii_errors[0]->[0];
-                $errors->{$central_server} =
-                      $THE_error->{reason} . q{: }
-                    . join( ' | ', map { $_->{messages} } @{ $THE_error->{errors} } ) . " "
-                    . p(@itemInfo);
-            } else {
-                foreach my $item (@items) {
-                    $self->mark_item_as_contributed( { item_id => $item->id } );
-                }
-            }
-        }
-    }
-
-    return $errors;
-}
-
-=head3 contribute_all_bib_items_in_batch
-
-    my $res = $contribution->contribute_all_bib_items_in_batch( { biblio => $biblio } );
-
-Sends item information from all (contributable) items on a bib to the central server(s).
-The I<biblio> param is mandatory.
-
-It performs a:
-
-    POST /innreach/v2/contribution/items/<bibId>
-
-=cut
-
-sub contribute_all_bib_items_in_batch {
-    my ( $self, $args ) = @_;
-
-    my $biblio = $args->{biblio};
-
-    INNReach::Ill::MissingParameter->throw( param => "biblio" )
-        unless $biblio and ref($biblio) eq 'Koha::Biblio';
-
-    my $errors;
     my $central_server = $self->{central_server};
+    my $configuration  = $self->{config}->{$central_server};
 
-    my $configuration = $self->{config}->{$central_server};
-
-    unless ( $self->is_bib_contributed( { biblio_id => $biblio->id } ) ) {
-        $self->contribute_bib( { biblio_id => $biblio->id } );
+    unless ( $self->is_bib_contributed( { biblio_id => $biblio_id } ) ) {
+        $self->contribute_bib( { biblio_id => $biblio_id } );
     }
 
     my $use_holding_library = exists $configuration->{contribution}->{use_holding_library}
@@ -322,49 +207,14 @@ sub contribute_all_bib_items_in_batch {
 
     my @itemInfo;
 
-    my $items = $self->filter_items_by_contributable( { items => $biblio->items } );
-
-    while ( my $item = $items->next ) {
-
-        my $branch_to_use = $use_holding_library ? $item->holdingbranch : $item->homebranch;
-
-        my $centralItemType = $configuration->{local_to_central_itype}->{ $item->effective_itemtype };
-        my $locationKey     = $configuration->{library_to_location}->{$branch_to_use}->{location};
-
-        # Skip the item if has unmapped values (that are relevant)
-        unless ( $centralItemType && $locationKey ) {
-            unless ($centralItemType) {
-                warn "$central_server: missing mapping for item type (" . $item->effective_itemtype // 'null' . ")";
-            }
-            unless ($locationKey) {
-                warn "$central_server: missing mapping for branch (" . $branch_to_use . "). " . ($use_holding_library)
-                    ? 'NOTE: using holding library'
-                    : 'NOTE: using home library';
-            }
-            next;
-        }
-
-        my $itemInfo = {
-            itemId            => $item->itemnumber,
-            agencyCode        => $configuration->{mainAgency},
-            centralItemType   => $centralItemType,
-            locationKey       => $locationKey,
-            itemCircStatus    => $self->item_circ_status( { item => $item } ),
-            holdCount         => 0,
-            dueDateTime       => ( $item->onloan ) ? dt_from_string( $item->onloan )->epoch : undef,
-            callNumber        => $item->itemcallnumber,
-            volumeDesignation => $item->enumchron,
-            copyNumber        => $item->copynumber,
-            itemNote          => substr( $item->itemnotes // '', 0, 256 ),
-            suppress          => 'n',                                                                  # TODO: revisit
-        };
-
+    foreach my $item (@items) {
+        my $itemInfo = $self->item_to_iteminfo( { item => $item, use_holding_library => $use_holding_library } );
         push @itemInfo, $itemInfo;
     }
 
     my $response = $self->{plugin}->get_ua($central_server)->post_request(
         {
-            endpoint    => '/innreach/v2/contribution/items/' . $biblio->id,
+            endpoint    => '/innreach/v2/contribution/items/' . $biblio_id,
             centralCode => $central_server,
             data        => { itemInfo => \@itemInfo }
         }
@@ -385,13 +235,40 @@ sub contribute_all_bib_items_in_batch {
                 . join( ' | ', map { $_->{messages} } @{ $THE_error->{errors} } ) . " "
                 . p(@itemInfo);
         } else {
-            foreach my $itemInfo (@itemInfo) {
-                $self->mark_item_as_contributed( { item_id => $itemInfo->{itemId} } );
+            foreach my $item (@items) {
+                $self->mark_item_as_contributed( { item_id => $item->id } );
             }
         }
     }
 
     return $errors;
+}
+
+=head3 contribute_all_bib_items_in_batch
+
+    my $res = $contribution->contribute_all_bib_items_in_batch( { biblio => $biblio } );
+
+Sends item information from all (contributable) items on a bib to the central server(s).
+The I<biblio> param is mandatory.
+
+    POST /innreach/v2/contribution/items/<bibId>
+
+=cut
+
+sub contribute_all_bib_items_in_batch {
+    my ( $self, $args ) = @_;
+
+    my $biblio = $args->{biblio};
+
+    INNReach::Ill::MissingParameter->throw( param => "biblio" )
+        unless $biblio and ref($biblio) eq 'Koha::Biblio';
+
+    return $self->contribute_batch_items(
+        {
+            biblio_id => $biblio->id,
+            items     => $self->filter_items_by_contributable( { items => $biblio->items } ),
+        }
+    );
 }
 
 =head3 update_item_status
@@ -1617,6 +1494,67 @@ sub is_item_contributed {
     my ($count) = $sth->fetchrow_array;
 
     return ($count) ? 1 : 0;
+}
+
+=head3 item_to_iteminfo
+
+    my $iteminfo = $contribution->item_to_iteminfo( { item => $item, use_holding_library => 0 / 1 } );
+
+Takes a I<Koha::Item> object, and returns a suitable data structure for the
+central server.
+
+=cut
+
+sub item_to_iteminfo {
+    my ( $self, $params ) = @_;
+
+    INNReach::Ill::MissingParameter->throw( param => 'item' )
+        unless $params->{item} && ref($params->{item}) eq 'Koha::Item';
+
+    my $item                = $params->{item};
+    my $use_holding_library = $params->{use_holding_library} ? 1 : 0;
+
+    my $central_server = $self->{central_server};
+    my $configuration  = $self->{config}->{$central_server};
+
+    my $branch_to_use = $use_holding_library ? $item->holdingbranch : $item->homebranch;
+
+    my $centralItemType = $configuration->{local_to_central_itype}->{ $item->effective_itemtype };
+    my $locationKey     = $configuration->{library_to_location}->{$branch_to_use}->{location};
+
+    # Skip the item if has unmapped values (that are relevant)
+    unless ( $centralItemType && $locationKey ) {
+        unless ($centralItemType) {
+            INNReach::Ill::MissingMapping->throw(
+                $self->{central_server} . ": missing mapping for item type (" . $item->effective_itemtype
+                    // 'null' . ")" );
+        }
+        unless ($locationKey) {
+            INNReach::Ill::MissingMapping->throw(
+                $self->{central_server}
+                    . ": missing mapping for branch ("
+                    . $branch_to_use . "). "
+                    . ($use_holding_library)
+                ? 'NOTE: using holding library'
+                : 'NOTE: using home library'
+            );
+        }
+    }
+
+    return {
+        itemId            => $item->itemnumber,
+        agencyCode        => $configuration->{mainAgency},
+        centralItemType   => $centralItemType,
+        locationKey       => $locationKey,
+        itemCircStatus    => $self->item_circ_status( { item => $item } ),
+        holdCount         => 0,
+        dueDateTime       => ( $item->onloan ) ? dt_from_string( $item->onloan )->epoch : undef,
+        callNumber        => $item->itemcallnumber,
+        volumeDesignation => $item->enumchron,
+        copyNumber        => $item->copynumber,
+        itemNote          => substr( $item->itemnotes // '', 0, 256 ),
+        suppress          => 'n',                                                                  # TODO: revisit
+    };
 }
 
 1;
