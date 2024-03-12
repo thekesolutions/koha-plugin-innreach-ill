@@ -565,63 +565,57 @@ sub decontribute_item {
 
 =head3 update_bib_status
 
-    my $res = $contribution->update_bib_status({ bibId => $bibId, [ centralServer => $central_server ] });
+    my $res = $contribution->update_bib_status( { biblio_id => $biblio_id } );
 
-It sends updated bib status to the central server(s).
+It sends updated bib status to the central server. It performs a:
 
-POST /innreach/v2/contribution/bibstatus/<bibId>
+    POST /innreach/v2/contribution/bibstatus/<bibId>
 
 =cut
 
 sub update_bib_status {
     my ( $self, $args ) = @_;
 
-    my $bibId = $args->{bibId};
-    die "bibId is mandatory" unless $bibId;
+    INNReach::Ill::MissingParameter->throw( param => "biblio_id" )
+        unless $args->{biblio_id};
+
+    my $biblio_id      = $args->{biblio_id};
+    my $central_server = $self->{central_server};
 
     my ( $biblio, $metadata, $record );
 
     my $errors;
 
     try {
-        $biblio = Koha::Biblios->find($bibId);
+        $biblio = Koha::Biblios->find($biblio_id);
         my $data = {
             titleHoldCount => $biblio->holds->count,
             itemCount      => $biblio->items->count,
         };
 
-        my @central_servers;
-        if ( $args->{centralServer} ) {
-            push @central_servers, $args->{centralServer};
-        } else {
-            @central_servers = @{ $self->{central_servers} };
-        }
+        my $response = $self->{plugin}->get_ua($central_server)->post_request(
+            {
+                endpoint    => '/innreach/v2/contribution/bibstatus/' . $biblio_id,
+                centralCode => $central_server,
+                data        => $data
+            }
+        );
 
-        for my $central_server (@central_servers) {
-            my $response = $self->{plugin}->get_ua($central_server)->post_request(
-                {
-                    endpoint    => '/innreach/v2/contribution/bibstatus/' . $bibId,
-                    centralCode => $central_server,
-                    data        => $data
-                }
-            );
+        if ( !$response->is_success ) {    # HTTP code is not 2xx
+            $errors = $response->status_line;
+        } else {                           # III encoding errors in the response body of a 2xx
+            my $response_content = decode_json( $response->decoded_content );
+            if ( $response_content->{status} eq 'failed' ) {
+                my @iii_errors = $response_content->{errors};
 
-            if ( !$response->is_success ) {    # HTTP code is not 2xx
-                $errors->{$central_server} = $response->status_line;
-            } else {                           # III encoding errors in the response body of a 2xx
-                my $response_content = decode_json( $response->decoded_content );
-                if ( $response_content->{status} eq 'failed' ) {
-                    my @iii_errors = $response_content->{errors};
-
-                    # we pick the first one
-                    my $THE_error = $iii_errors[0][0];
-                    $errors->{$central_server} =
-                        $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
-                }
+                # we pick the first one
+                my $THE_error = $iii_errors[0][0];
+                $errors =
+                    $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
             }
         }
     } catch {
-        die "Problem updating requested biblio ($bibId)";
+        die "Problem updating requested biblio ($biblio_id)";
     };
 
     return $errors;
