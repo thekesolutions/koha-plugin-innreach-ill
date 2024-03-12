@@ -168,8 +168,7 @@ sub do_biblio_contribute {
                 mark_task( { task => $task, status => 'error', error => $result } );
             }
         } else {
-            $result = $contribution->contribute_all_bib_items_in_batch(
-                { biblio => Koha::Biblios->find($biblio_id), centralServer => $central_server } );
+            $result = $contribution->contribute_all_bib_items_in_batch( { biblio => Koha::Biblios->find($biblio_id) } );
             if ($result) {
                 if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries}
                     // 10 )
