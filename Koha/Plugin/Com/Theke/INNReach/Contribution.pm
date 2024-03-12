@@ -204,7 +204,7 @@ sub contribute_batch_items {
 
         my $configuration = $self->{config}->{$central_server};
 
-        unless ( $self->is_bib_contributed( { biblio_id => $bibId, central_server => $central_server } ) ) {
+        unless ( $self->is_bib_contributed( { biblio_id => $bibId } ) ) {
             $self->contribute_bib( { biblio_id => $bibId } );
         }
 
