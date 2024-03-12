@@ -1113,10 +1113,7 @@ sub get_ill_request_from_item_id {
 
 =head3 should_item_be_contributed
 
-    if ( $contribution->should_item_be_contributed({
-                 item           => $item,
-                 central_server => $central_server }})
-       )
+    if ( $contribution->should_item_be_contributed( { item => $item } ) )
        { ... }
 
 Returns a I<boolean> telling if the B<$item> should be contributed to the specified
@@ -1139,10 +1136,7 @@ sub should_item_be_contributed {
 
 =head3 should_biblio_be_contributed
 
-    if ( $contribution->should_biblio_be_contributed({
-                 biblio         => $biblio,
-                 central_server => $central_server }})
-       )
+    if ( $contribution->should_biblio_be_contributed( { biblio => $biblio } ) )
        { ... }
 
 Returns a I<boolean> telling if the B<$biblio> should be contributed to the specified
