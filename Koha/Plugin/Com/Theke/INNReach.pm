@@ -552,25 +552,13 @@ sub after_biblio_action {
                 # exclude_empty_biblios
                 if ( $exclude_empty_biblios ) {
                     next
-                      unless $contribution->filter_items_by_contributable(
-                        {
-                            items          => scalar $biblio->items,
-                            central_server => $central_server
-                        }
-                    )->count > 0;
+                        unless $contribution->filter_items_by_contributable( { items => $biblio->items } )->count > 0;
                 }
             }
             elsif ( $action eq 'modify' ) {
-                if (
-                    $exclude_empty_biblios
-                    and $contribution->filter_items_by_contributable(
-                        {
-                            items          => scalar $biblio->items,
-                            central_server => $central_server
-                        }
-                    )->count == 0
-                    and $contribution->is_bib_contributed( { biblio_id => $biblio_id } )
-                    )
+                if (    $exclude_empty_biblios
+                    and $contribution->filter_items_by_contributable( { items => $biblio->items } )->count == 0
+                    and $contribution->is_bib_contributed( { biblio_id => $biblio_id } ) )
                 {
                     # decontribute
                     $self->schedule_task(
@@ -666,14 +654,11 @@ sub after_item_action {
                 my $biblio = Koha::Biblios->find( $item->biblionumber );
 
                 if (    $biblio
-                    and $contribution->filter_items_by_contributable(
-                        {   items          => scalar $biblio->items,
-                            central_server => $central_server,
-                        }
-                    )->count == 0
-                ) {
+                    and $contribution->filter_items_by_contributable( { items => $biblio->items } )->count == 0 )
+                {
                     $self->schedule_task(
-                        {   action         => 'delete',
+                        {
+                            action         => 'delete',
                             central_server => $central_server,
                             object_id      => $biblio->id,
                             object_type    => 'biblio',

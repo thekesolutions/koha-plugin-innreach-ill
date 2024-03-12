@@ -122,12 +122,7 @@ while ( my $biblio = $biblios->next ) {
             unless $noout;
     }
 
-    my $contributable_items = $contribution->filter_items_by_contributable(
-        {
-            items          => $biblio->items,
-            central_server => $central_server
-        }
-    );
+    my $contributable_items = $contribution->filter_items_by_contributable( { items => $biblio->items } );
 
     if ( $contributable_items->count > 0
         || !$plugin->configuration->{$central_server}->{contribution}->{exclude_empty_biblios} )

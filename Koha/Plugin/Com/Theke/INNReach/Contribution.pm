@@ -322,8 +322,7 @@ sub contribute_all_bib_items_in_batch {
 
     my @itemInfo;
 
-    my $items =
-        $self->filter_items_by_contributable( { items => $biblio->items, central_server => $central_server } );
+    my $items = $self->filter_items_by_contributable( { items => $biblio->items } );
 
     while ( my $item = $items->next ) {
 
@@ -1149,12 +1148,7 @@ sub should_item_be_contributed {
 
     my $items_rs = Koha::Items->search( { itemnumber => $item->itemnumber } );
 
-    return $self->filter_items_by_contributable(
-        {
-            items          => $items_rs,
-            central_server => $self->{central_server}
-        }
-    )->count > 0;
+    return $self->filter_items_by_contributable( { items => $items_rs } )->count > 0;
 }
 
 =head3 should_biblio_be_contributed
@@ -1186,26 +1180,16 @@ sub should_biblio_be_contributed {
 
     # FIXME: Should there be rules on biblio records?
     return ( $configuration->{contribution}->{exclude_empty_biblios} // 1 )
-        ? $self->filter_items_by_contributable(
-        {
-            items          => $biblio->items,
-            central_server => $central_server
-        }
-        )->count > 0
+        ? $self->filter_items_by_contributable( { items => $biblio->items } )->count > 0
         : 1;
 }
 
 =head3 filter_items_by_contributable
 
-    my $items = $contribution->filter_items_by_contributable(
-        {
-            items => $biblio->items,
-            central_server => $central_server
-        }
-    );
+    my $items = $contribution->filter_items_by_contributable( { items => $biblio->items } );
 
-Given a I<Koha::Items> iterator and a I<central server code>, it returns a new resultset,
-filtered by the configured rules for the specified central server.
+Given a I<Koha::Items> iterator, it returns a new resultset, filtered by the configured
+rules for the central server.
 
 =cut
 
@@ -1217,15 +1201,8 @@ sub filter_items_by_contributable {
     INNReach::Ill::MissingParameter->throw( param => 'items' )
         unless $items;
 
-    my $central_server = $params->{central_server};
-
-    INNReach::Ill::MissingParameter->throw( param => 'central_server' )
-        unless $central_server;
-
-    INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{ $self->{central_servers} };
-
-    my $configuration = $self->{config}->{$central_server};
+    my $central_server = $self->{central_server};
+    my $configuration  = $self->{config}->{$central_server};
 
     if ( exists $configuration->{contribution}->{included_items} ) {
 

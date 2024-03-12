@@ -168,12 +168,7 @@ if ($items) {
 
     while ( my $item = $items_rs->next ) {
         my $biblio              = $item->biblio;
-        my $contributable_items = $contribution->filter_items_by_contributable(
-            {
-                central_server => $central_server,
-                items          => $biblio->items
-            }
-        );
+        my $contributable_items = $contribution->filter_items_by_contributable( { items => $biblio->items } );
 
         if ( $contributable_items->count == 0 && $exclude_empty_biblios ) {
             print STDOUT "# Decontributing empty biblio: " . $biblio->id . "\n";
@@ -228,12 +223,7 @@ if ( $biblio_id or $biblios ) {
     else {
         while ( my $biblio = $biblios->next ) {
 
-            my $items = $contribution->filter_items_by_contributable(
-                {
-                    central_server => $central_server,
-                    items          => $biblio->items
-                }
-            );
+            my $items = $contribution->filter_items_by_contributable( { items => $biblio->items } );
 
             print STDOUT "# Contributing record: " . $biblio->id . "\n"
                 unless $noout;
