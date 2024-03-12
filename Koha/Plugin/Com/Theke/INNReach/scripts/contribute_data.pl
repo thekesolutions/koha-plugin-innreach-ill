@@ -251,9 +251,9 @@ if ( $biblio_id or $biblios ) {
                 if ( $items->count > 0 ) {
                     print STDOUT " - Items:\n"
                         unless $noout;
-                    my $errors = {};
+                    my $errors;
                     try {
-                        my $errors = $contribution->contribute_batch_items(
+                        $errors = $contribution->contribute_batch_items(
                             {
                                 biblio_id => $biblio->biblionumber,
                                 items     => $items,
@@ -373,18 +373,23 @@ if ( $recontribution ) {
             print STDOUT "# Recontributing items:\n"
                 unless $noout;
 
-            while( my $item = $items_to_recontribute->next ) {
-                my $errors = $contribution->contribute_batch_items(
-                    {
-                        biblio_id => $item->biblionumber,
-                        items     => Koha::Items->search( { itemnumber => $item->itemnumber } ),
-                    }
-                );
-                if ( $errors->{$central_server} ) {
-                    print STDOUT "\t" . $item->id . "\t> Error (" . $errors->{$central_server} . ")\n"
+            while ( my $item = $items_to_recontribute->next ) {
+                my $errors;
+                try {
+                    $errors = $contribution->contribute_batch_items(
+                        {
+                            biblio_id => $item->biblionumber,
+                            items     => Koha::Items->search( { itemnumber => $item->itemnumber } ),
+                        }
+                    );
+                } catch {
+                    $errors = "$_";
+                };
+
+                if ( $errors ) {
+                    print STDOUT "\t" . $item->id . "\t> Error (" . $errors . ")\n"
                         unless $noout;
-                }
-                else {
+                } else {
                     print STDOUT "\t" . $item->id . "\t> Ok\n"
                         unless $noout;
                 }
