@@ -209,9 +209,9 @@ sub do_biblio_decontribute {
 
     try {
         my $contribution = $plugin->contribution($central_server);
-        my $result       = $contribution->decontribute_bib( { bibId => $biblio_id, centralServer => $central_server } );
+        my $result       = $contribution->decontribute_bib( { biblio_id => $biblio_id } );
         if ($result) {
-            if ( $result->{$central_server} =~ m/No bib record found with specified recid/ ) {
+            if ( $result =~ m/No bib record found with specified recid/ ) {
                 mark_task( { task => $task, status => 'skipped', error => $result } );
             } else {
                 if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries}

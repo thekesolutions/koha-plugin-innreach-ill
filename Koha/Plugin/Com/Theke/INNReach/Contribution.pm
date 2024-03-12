@@ -476,61 +476,51 @@ sub update_item_status {
 
 =head3 decontribute_bib
 
-    my $res = $contribution->decontribute_bib(
-        {   bibId => $bibId,
-            [ centralServer => $central_server ]
-        }
-    );
+    my $res = $contribution->decontribute_bib( { biblio_id => $biblio->id } );
 
-Makes an API request to INN-Reach central server(s) to decontribute the specified record.
+Makes an API request to the Central Server to decontribute the specified record.
+It performs a:
 
-DELETE /innreach/v2/contribution/bib/<bibId>
+    DELETE /innreach/v2/contribution/bib/<bibId>
 
 =cut
 
 sub decontribute_bib {
     my ( $self, $args ) = @_;
 
-    my $bibId = $args->{bibId};
-    INNReach::Ill::MissingParameter->throw( param => "bibId" )
-        unless $bibId;
+    INNReach::Ill::MissingParameter->throw( param => "biblio_id" )
+        unless $args->{biblio_id};
 
-    my @central_servers;
-    if ( $args->{centralServer} ) {
-        push @central_servers, $args->{centralServer};
-    } else {
-        @central_servers = @{ $self->{central_servers} };
-    }
+    my $biblio_id = $args->{biblio_id};
 
     my $errors;
 
-    for my $central_server (@central_servers) {
-        my $response = $self->{plugin}->get_ua($central_server)->delete_request(
-            {
-                endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
-                centralCode => $central_server
-            }
-        );
+    my $response = $self->{plugin}->get_ua($self->{central_server})->delete_request(
+        {
+            endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
+            centralCode => $self->{central_server}
+        }
+    );
 
-        if ( !$response->is_success ) {    # HTTP code is not 2xx
-            $errors->{$central_server} = $response->status_line;
-        } else {                           # III encoding errors in the response body of a 2xx
-            my $response_content = decode_json( $response->decoded_content );
-            if ( $response_content->{status} eq 'failed' ) {
-                my @iii_errors = $response_content->{errors};
+    if ( !$response->is_success ) {    # HTTP code is not 2xx
+        $errors = $response->status_line;
+    } else {                           # III encoding errors in the response body of a 2xx
+        my $response_content = decode_json( $response->decoded_content );
+        if ( $response_content->{status} eq 'failed' ) {
+            my @iii_errors = $response_content->{errors};
 
-                # we pick the first one
-                my $THE_error = $iii_errors[0][0];
-                $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
-                if ( any { $_ =~ m/No bib record found with specified recid/ } @{ $THE_error->{messages} } ) {
-                    warn "Record $bibId not contributed but decontribution requested (leak)";
-                    $self->unmark_biblio_as_contributed( { biblio_id => $bibId } );
-                }
-            } else {
-                $self->unmark_biblio_as_contributed( { biblio_id => $bibId } );
+            # we pick the first one
+            my $THE_error = $iii_errors[0][0];
+            $errors = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+            if ( any { $_ =~ m/No bib record found with specified recid/ } @{ $THE_error->{messages} } ) {
+                warn "Record $biblio_id not contributed but decontribution requested (leak)";
+                $self->unmark_biblio_as_contributed( { biblio_id => $biblio_id } );
             }
+        } else {
+            $self->unmark_biblio_as_contributed( { biblio_id => $biblio_id } );
         }
     }
+
     return $errors;
 }
 

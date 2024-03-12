@@ -177,14 +177,9 @@ if ($items) {
 
         if ( $contributable_items->count == 0 && $exclude_empty_biblios ) {
             print STDOUT "# Decontributing empty biblio: " . $biblio->id . "\n";
-            my $errors = $contribution->decontribute_bib(
-                {
-                    bibId         => $biblio->id,
-                    centralServer => $central_server,
-                }
-            );
-            if ( $errors->{$central_server} ) {
-                print STDOUT " - Status: Error (" . $errors->{$central_server} . ")\n"
+            my $errors = $contribution->decontribute_bib( { biblio_id => $biblio->id } );
+            if ( $errors ) {
+                print STDOUT " - Status: Error (" . $errors . ")\n"
                     unless $noout;
             } else {
                 print STDOUT " - Status: OK\n"
@@ -224,14 +219,9 @@ if ( $biblio_id or $biblios ) {
         while ( my $biblio = $biblios->next ) {
             print STDOUT "# Decontributing record: " . $biblio->id . "\n"
                 unless $noout;
-            my $errors = $contribution->decontribute_bib(
-                {
-                    bibId         => $biblio->biblionumber,
-                    centralServer => $central_server
-                }
-            );
-            if ( $errors->{$central_server} ) {
-                print STDOUT " - Status: Error (" . $errors->{$central_server} . ")\n"
+            my $errors = $contribution->decontribute_bib( { biblio_id => $biblio->id } );
+            if ( $errors ) {
+                print STDOUT " - Status: Error (" . $errors . ")\n"
                     unless $noout;
             }
             else {
