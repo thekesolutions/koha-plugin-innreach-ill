@@ -1251,13 +1251,7 @@ sub filter_items_by_contributed {
     INNReach::Ill::MissingParameter->throw( param => 'items' )
         unless $items;
 
-    my $central_server = $params->{central_server};
-
-    INNReach::Ill::MissingParameter->throw( param => 'central_server' )
-        unless $central_server;
-
-    INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{ $self->{central_servers} };
+    my $central_server = $self->{central_server};
 
     my $dbh               = C4::Context->dbh;
     my $contributed_items = $self->{plugin}->get_qualified_table_name('contributed_items');
@@ -1303,12 +1297,7 @@ sub filter_items_by_to_be_decontributed {
     INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
         unless any { $_ eq $central_server } @{ $self->{central_servers} };
 
-    $items = $self->filter_items_by_contributed(
-        {
-            central_server => $central_server,
-            items          => $items,
-        }
-    );
+    $items = $self->filter_items_by_contributed( { items => $items } );
 
     my $configuration = $self->{config}->{$central_server};
 

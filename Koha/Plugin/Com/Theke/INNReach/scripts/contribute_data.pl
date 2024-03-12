@@ -368,12 +368,7 @@ if ( $recontribution ) {
             }
         }
 
-        my $items_to_recontribute = $contribution->filter_items_by_contributed(
-            {
-                central_server => $central_server,
-                items          => Koha::Items->new,
-            }
-        );
+        my $items_to_recontribute = $contribution->filter_items_by_contributed( { items => Koha::Items->new } );
 
         if ( $items_to_recontribute->count > 0 ) {
             print STDOUT "# Recontributing items:\n"
