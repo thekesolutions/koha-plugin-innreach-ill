@@ -1565,7 +1565,7 @@ sub unmark_item_as_contributed {
 sub is_bib_contributed {
     my ( $self, $params ) = @_;
 
-    my @mandatory_params = qw(item_id);
+    my @mandatory_params = qw(biblio_id);
     foreach my $param (@mandatory_params) {
         INNReach::Ill::MissingParameter->throw( param => $param )
             unless exists $params->{$param};
