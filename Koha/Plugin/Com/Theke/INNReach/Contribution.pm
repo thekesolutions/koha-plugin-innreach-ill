@@ -90,7 +90,7 @@ sub contribute_bib {
     INNReach::Ill::MissingParameter->throw( param => "biblio_id" )
         unless $biblio_id;
 
-    my $biblio = Koha::Biblios->find( $biblio_id );
+    my $biblio = Koha::Biblios->find($biblio_id);
 
     unless ($biblio) {
         INNReach::Ill::UnknownBiblioId->throw( biblio_id => $biblio_id );
@@ -127,7 +127,7 @@ sub contribute_bib {
 
     my $errors;
 
-    my $response = $self->{plugin}->get_ua($self->{central_server})->post_request(
+    my $response = $self->{plugin}->get_ua( $self->{central_server} )->post_request(
         {
             endpoint    => '/innreach/v2/contribution/bib/' . $biblio_id,
             centralCode => $self->{central_server},
@@ -337,9 +337,9 @@ sub contribute_all_bib_items_in_batch {
                 warn "$central_server: missing mapping for item type (" . $item->effective_itemtype // 'null' . ")";
             }
             unless ($locationKey) {
-                warn "$central_server: missing mapping for branch ("
-                    . $branch_to_use . "). "
-                    . ($use_holding_library) ? 'NOTE: using holding library' : 'NOTE: using home library';
+                warn "$central_server: missing mapping for branch (" . $branch_to_use . "). " . ($use_holding_library)
+                    ? 'NOTE: using holding library'
+                    : 'NOTE: using home library';
             }
             next;
         }
@@ -356,7 +356,7 @@ sub contribute_all_bib_items_in_batch {
             volumeDesignation => $item->enumchron,
             copyNumber        => $item->copynumber,
             itemNote          => substr( $item->itemnotes // '', 0, 256 ),
-            suppress          => 'n',                                                                # TODO: revisit
+            suppress          => 'n',                                                                  # TODO: revisit
         };
 
         push @itemInfo, $itemInfo;
@@ -381,7 +381,7 @@ sub contribute_all_bib_items_in_batch {
             # we pick the first one
             my $THE_error = $iii_errors[0]->[0];
             $errors =
-                    $THE_error->{reason} . q{: }
+                  $THE_error->{reason} . q{: }
                 . join( ' | ', map { $_->{messages} } @{ $THE_error->{errors} } ) . " "
                 . p(@itemInfo);
         } else {
@@ -423,7 +423,7 @@ sub update_item_status {
             dueDateTime    => ( $item->onloan ) ? dt_from_string( $item->onloan )->epoch : undef,
         };
 
-        my $response = $self->{plugin}->get_ua($self->{central_server})->post_request(
+        my $response = $self->{plugin}->get_ua( $self->{central_server} )->post_request(
             {
                 endpoint    => '/innreach/v2/contribution/itemstatus/' . $item_id,
                 centralCode => $self->{central_server},
@@ -472,7 +472,7 @@ sub decontribute_bib {
 
     my $errors;
 
-    my $response = $self->{plugin}->get_ua($self->{central_server})->delete_request(
+    my $response = $self->{plugin}->get_ua( $self->{central_server} )->delete_request(
         {
             endpoint    => '/innreach/v2/contribution/bib/' . $biblio_id,
             centralCode => $self->{central_server}
@@ -523,7 +523,7 @@ sub decontribute_item {
 
     my $errors;
 
-    my $response = $self->{plugin}->get_ua($self->{central_server})->delete_request(
+    my $response = $self->{plugin}->get_ua( $self->{central_server} )->delete_request(
         {
             endpoint    => '/innreach/v2/contribution/item/' . $item_id,
             centralCode => $self->{central_server}
@@ -859,12 +859,12 @@ Sends a a request for defined item types to a central server. It performs a:
 =cut
 
 sub get_central_item_types {
-    my ( $self ) = @_;
+    my ($self) = @_;
 
     my $response;
 
     try {
-        $response = $self->{plugin}->get_ua($self->{central_server})->get_request(
+        $response = $self->{plugin}->get_ua( $self->{central_server} )->get_request(
             {
                 endpoint    => '/innreach/v2/contribution/itemtypes',
                 centralCode => $self->{central_server}
@@ -890,12 +890,12 @@ Sends a a request for defined locations to a central server. It performs a:
 =cut
 
 sub get_locations_list {
-    my ( $self ) = @_;
+    my ($self) = @_;
 
     my $response;
 
     try {
-        $response = $self->{plugin}->get_ua($self->{central_server})->get_request(
+        $response = $self->{plugin}->get_ua( $self->{central_server} )->get_request(
             {
                 endpoint    => '/innreach/v2/contribution/locations',
                 centralCode => $self->{central_server}
@@ -921,12 +921,12 @@ Sends a a request for defined agencies to a central server. It performs a:
 =cut
 
 sub get_agencies_list {
-    my ( $self ) = @_;
+    my ($self) = @_;
 
     my $response;
 
     try {
-        $response = $self->{plugin}->get_ua($self->{central_server})->get_request(
+        $response = $self->{plugin}->get_ua( $self->{central_server} )->get_request(
             {
                 endpoint    => '/innreach/v2/contribution/localservers',
                 centralCode => $self->{central_server}
@@ -952,12 +952,12 @@ Sends a a request for defined locations to a central server. It performs a:
 =cut
 
 sub get_central_patron_types_list {
-    my ( $self ) = @_;
+    my ($self) = @_;
 
     my $response;
 
     try {
-        $response = $self->{plugin}->get_ua($self->{central_server})->get_request(
+        $response = $self->{plugin}->get_ua( $self->{central_server} )->get_request(
             {
                 endpoint    => '/innreach/v2/circ/patrontypes',
                 centralCode => $self->{central_server}
@@ -1372,7 +1372,7 @@ sub mark_biblio_as_contributed {
     }
 
     my $central_server = $self->{central_server};
-    my $biblio_id       = $params->{biblio_id};
+    my $biblio_id      = $params->{biblio_id};
 
     my $dbh = C4::Context->dbh;
 
@@ -1507,7 +1507,7 @@ sub unmark_biblio_as_contributed {
     }
     );
 
-    unless ($params->{skip_items}) {
+    unless ( $params->{skip_items} ) {
         my $biblio = Koha::Biblios->find($biblio_id);
         if ($biblio) {
             my $items = $biblio->items;
@@ -1571,9 +1571,8 @@ sub is_bib_contributed {
             unless exists $params->{$param};
     }
 
-    my $central_server = $self->{central_server};
-    my $biblio_id      = $params->{biblio_id};
-    my $dbh            = C4::Context->dbh;
+    my $biblio_id = $params->{biblio_id};
+    my $dbh       = C4::Context->dbh;
 
     my $contributed_biblios = $self->{plugin}->get_qualified_table_name('contributed_biblios');
 
@@ -1585,7 +1584,42 @@ sub is_bib_contributed {
     }
     );
 
-    $sth->execute( $central_server, $biblio_id );
+    $sth->execute( $self->{central_server}, $biblio_id );
+    my ($count) = $sth->fetchrow_array;
+
+    return ($count) ? 1 : 0;
+}
+
+=head3 is_item_contributed
+
+    if ( $self->is_item_contributed( { item_id => $item_id } ) )
+    { ... }
+
+=cut
+
+sub is_item_contributed {
+    my ( $self, $params ) = @_;
+
+    my @mandatory_params = qw(item_id);
+    foreach my $param (@mandatory_params) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $params->{$param};
+    }
+
+    my $item_id = $params->{item_id};
+    my $dbh     = C4::Context->dbh;
+
+    my $contributed_items = $self->{plugin}->get_qualified_table_name('contributed_items');
+
+    my $sth = $dbh->prepare(
+        qq{
+        SELECT COUNT(*) FROM $contributed_items
+        WHERE central_server = ?
+          AND item_id = ?;
+    }
+    );
+
+    $sth->execute( $self->{central_server}, $item_id );
     my ($count) = $sth->fetchrow_array;
 
     return ($count) ? 1 : 0;
