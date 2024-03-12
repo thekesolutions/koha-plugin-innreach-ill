@@ -75,27 +75,25 @@ sub new {
 
 =head3 contribute_bib
 
-    my $res = $contribution->contribute_bib({ bibId => $bibId, [ centralServer => $central_server ] });
+    my $res = $contribution->contribute_bib( { biblio_id => $biblio_id } );
 
-By default it sends the MARC record and the required metadata
-to all Central servers. If a centralServer parameter is passed,
-then data is sent only to the specified one.
+It sends the MARC record and the required metadata to the Central Server. It performs a
 
-POST /innreach/v2/contribution/bib/<bibId>
+    POST /innreach/v2/contribution/bib/<bibId>
 
 =cut
 
 sub contribute_bib {
     my ( $self, $args ) = @_;
 
-    my $bibId = $args->{bibId};
-    INNReach::Ill::MissingParameter->throw( param => "bibId" )
-        unless $bibId;
+    my $biblio_id = $args->{biblio_id};
+    INNReach::Ill::MissingParameter->throw( param => "biblio_id" )
+        unless $biblio_id;
 
-    my $biblio = Koha::Biblios->find( { biblionumber => $bibId } );
+    my $biblio = Koha::Biblios->find( $biblio_id );
 
     unless ($biblio) {
-        INNReach::Ill::UnknownBiblioId->throw( biblio_id => $bibId );
+        INNReach::Ill::UnknownBiblioId->throw( biblio_id => $biblio_id );
     }
 
     my $record = $biblio->metadata->record;
@@ -119,7 +117,7 @@ sub contribute_bib {
     my $encoded_record = encode_base64( encode( "UTF-8", $record->as_usmarc ), "" );
 
     my $data = {
-        bibId           => "$bibId",
+        bibId           => "$biblio_id",
         marc21BibFormat => 'ISO2709',                   # Only supported value
         marc21BibData   => $encoded_record,
         titleHoldCount  => $biblio->holds->count + 0,
@@ -127,42 +125,33 @@ sub contribute_bib {
         suppress        => $suppress
     };
 
-    my @central_servers;
-    if ( $args->{centralServer} ) {
-        push @central_servers, $args->{centralServer};
-    } else {
-        @central_servers = @{ $self->{central_servers} };
-    }
-
     my $errors;
 
-    foreach my $central_server (@central_servers) {
-        my $response = $self->{plugin}->get_ua($central_server)->post_request(
-            {
-                endpoint    => '/innreach/v2/contribution/bib/' . $bibId,
-                centralCode => $central_server,
-                data        => $data
-            }
-        );
+    my $response = $self->{plugin}->get_ua($self->{central_server})->post_request(
+        {
+            endpoint    => '/innreach/v2/contribution/bib/' . $biblio_id,
+            centralCode => $self->{central_server},
+            data        => $data
+        }
+    );
 
-        if ( !$response->is_success ) {    # HTTP code is not 2xx
-            $errors->{$central_server} = $response->status_line;
-        } else {                           # III encoding errors in the response body of a 2xx
-            my $response_content = decode_json( $response->decoded_content );
-            if ( $response_content->{status} eq 'failed' ) {
-                my @iii_errors = $response_content->{errors};
+    if ( !$response->is_success ) {    # HTTP code is not 2xx
+        $errors = $response->status_line;
+    } else {                           # III encoding errors in the response body of a 2xx
+        my $response_content = decode_json( $response->decoded_content );
+        if ( $response_content->{status} eq 'failed' ) {
+            my @iii_errors = $response_content->{errors};
 
-                # we pick the first one
-                my $THE_error = $iii_errors[0][0];
-                $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
-            } else {
-                $self->mark_biblio_as_contributed(
-                    {
-                        biblio_id      => $bibId,
-                        central_server => $central_server,
-                    }
-                );
-            }
+            # we pick the first one
+            my $THE_error = $iii_errors[0][0];
+            $errors = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+        } else {
+            $self->mark_biblio_as_contributed(
+                {
+                    biblio_id      => $biblio_id,
+                    central_server => $self->{central_server},
+                }
+            );
         }
     }
 
@@ -221,12 +210,7 @@ sub contribute_batch_items {
         my $configuration = $self->{config}->{$central_server};
 
         unless ( $self->is_bib_contributed( { biblio_id => $bibId, central_server => $central_server } ) ) {
-            $self->contribute_bib(
-                {
-                    bibId         => $bibId,
-                    centralServer => $central_server,
-                }
-            );
+            $self->contribute_bib( { biblio_id => $bibId } );
         }
 
         my $use_holding_library = exists $configuration->{contribution}->{use_holding_library}
@@ -350,12 +334,7 @@ sub contribute_all_bib_items_in_batch {
         my $configuration = $self->{config}->{$central_server};
 
         unless ( $self->is_bib_contributed( { biblio_id => $biblio->id, central_server => $central_server } ) ) {
-            $self->contribute_bib(
-                {
-                    bibId         => $biblio->id,
-                    centralServer => $central_server,
-                }
-            );
+            $self->contribute_bib( { biblio_id => $biblio->id } );
         }
 
         my $use_holding_library = exists $configuration->{contribution}->{use_holding_library}

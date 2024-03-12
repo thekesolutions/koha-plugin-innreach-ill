@@ -254,15 +254,10 @@ if ( $biblio_id or $biblios ) {
                 unless $noout;
 
             if ( $items->count > 0 or $force ) {
-                my $errors = $contribution->contribute_bib(
-                    {
-                        bibId         => $biblio->biblionumber,
-                        centralServer => $central_server
-                    }
-                );
+                my $errors = $contribution->contribute_bib( { biblio_id => $biblio->id } );
 
-                if ( $errors->{$central_server} ) {
-                    print STDOUT " - Status: Error (" . $errors->{$central_server} . ")\n"
+                if ( $errors ) {
+                    print STDOUT " - Status: Error (" . $errors . ")\n"
                         unless $noout;
                     next;
                 }

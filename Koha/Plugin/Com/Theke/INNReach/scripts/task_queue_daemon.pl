@@ -160,7 +160,7 @@ sub do_biblio_contribute {
 
     try {
         my $contribution = $plugin->contribution($central_server);
-        my $result       = $contribution->contribute_bib( { bibId => $biblio_id, centralServer => $central_server } );
+        my $result       = $contribution->contribute_bib( { biblio_id => $biblio_id } );
         if ($result) {
             if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries} // 10 ) {
                 mark_task( { task => $task, status => 'retry', error => $result } );
