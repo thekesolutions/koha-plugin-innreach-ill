@@ -634,14 +634,7 @@ sub after_item_action {
 
             # Skip if rules say so
             next
-                if (
-                !$contribution->should_item_be_contributed(
-                    {
-                        item           => $item,
-                        central_server => $central_server
-                    }
-                )
-                );
+                if ( !$contribution->should_item_be_contributed( { item => $item } ) );
 
             # Skip if item type is not mapped
             if ( !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type} ) {

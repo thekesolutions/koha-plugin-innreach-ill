@@ -1158,20 +1158,12 @@ sub should_item_be_contributed {
     INNReach::Ill::MissingParameter->throw( param => 'item' )
         unless $item;
 
-    my $central_server = $params->{central_server};
-
-    INNReach::Ill::MissingParameter->throw( param => 'central_server' )
-        unless $central_server;
-
-    INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{ $self->{central_servers} };
-
     my $items_rs = Koha::Items->search( { itemnumber => $item->itemnumber } );
 
     return $self->filter_items_by_contributable(
         {
             items          => $items_rs,
-            central_server => $central_server
+            central_server => $self->{central_server}
         }
     )->count > 0;
 }
@@ -1192,17 +1184,14 @@ B<$central_server>.
 sub should_biblio_be_contributed {
     my ( $self, $params ) = @_;
 
-    my @mandatory_params = qw(central_server biblio);
+    my @mandatory_params = qw(biblio);
     foreach my $param (@mandatory_params) {
         INNReach::Ill::MissingParameter->throw( param => $param )
             unless exists $params->{$param};
     }
 
     my $biblio         = $params->{biblio};
-    my $central_server = $params->{central_server};
-
-    INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{ $self->{central_servers} };
+    my $central_server = $self->{central_server};
 
     my $configuration = $self->{config}->{$central_server};
 

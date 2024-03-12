@@ -258,7 +258,7 @@ sub handle_item_action {
             return 1;
         }
 
-        if ( $contribution->should_item_be_contributed( { item => $item, central_server => $central_server } ) ) {
+        if ( $contribution->should_item_be_contributed( { item => $item } ) ) {
 
             # It is contributable.
             return do_item_contribute($args);
