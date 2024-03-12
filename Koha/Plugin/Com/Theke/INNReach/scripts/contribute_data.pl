@@ -188,14 +188,9 @@ if ($items) {
 
         } else {
             print STDOUT "# Decontributing item: " . $item->id . "\n";
-            my $errors = $contribution->decontribute_item(
-                {
-                    itemId        => $item->id,
-                    centralServer => $central_server,
-                }
-            );
-            if ( $errors->{$central_server} ) {
-                print STDOUT " - Status: Error (" . $errors->{$central_server} . ")\n"
+            my $errors = $contribution->decontribute_item( { item_id => $item->id } );
+            if ( $errors ) {
+                print STDOUT " - Status: Error (" . $errors . ")\n"
                     unless $noout;
             } else {
                 print STDOUT " - Status: OK\n"
@@ -347,14 +342,9 @@ if ( $recontribution ) {
                 unless $noout;
 
             foreach my $item_id ( @{$deleted_contributed_items} ) {
-                my $errors = $contribution->decontribute_item(
-                    {
-                        centralServer => $central_server,
-                        itemId        => $item_id,
-                    }
-                );
-                if ( $errors->{$central_server} ) {
-                    print STDOUT "\t$item_id\t> Error (" . $errors->{$central_server} . ")\n"
+                my $errors = $contribution->decontribute_item( { item_id => $item_id } );
+                if ( $errors ) {
+                    print STDOUT "\t$item_id\t> Error (" . $errors . ")\n"
                         unless $noout;
                 }
                 else {
@@ -376,14 +366,9 @@ if ( $recontribution ) {
                 unless $noout;
 
             while( my $item = $items_to_be_decontributed->next ) {
-                my $errors = $contribution->decontribute_item(
-                    {
-                        centralServer => $central_server,
-                        itemId        => $item->id,
-                    }
-                );
-                if ( $errors->{$central_server} ) {
-                    print STDOUT "\t" . $item->id . "\t> Error (" . $errors->{$central_server} . ")\n"
+                my $errors = $contribution->decontribute_item( { item_id => $item->id } );
+                if ( $errors ) {
+                    print STDOUT "\t" . $item->id . "\t> Error (" . $errors . ")\n"
                         unless $noout;
                 }
                 else {

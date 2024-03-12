@@ -515,57 +515,48 @@ sub decontribute_bib {
 
 =head3 decontribute_item
 
-    my $res = $contribution->decontribute_item(
-        {   itemId => $itemId,
-            [ centralServer => $central_server ]
-        }
-    );
+    my $res = $contribution->decontribute_item( { item_id => $item->id } );
 
-Makes an API request to INN-Reach central server(s) to decontribute the specified item.
+Makes an API request to decontribute the specified item.
 
-DELETE /innreach/v2/contribution/item/<itemId>
+It performs a:
+
+    DELETE /innreach/v2/contribution/item/<itemId>
 
 =cut
 
 sub decontribute_item {
     my ( $self, $args ) = @_;
 
-    my $itemId = $args->{itemId};
-    die "itemId is mandatory" unless $itemId;
+    INNReach::Ill::MissingParameter->throw( param => "item_id" )
+        unless $args->{item_id};
 
-    my @central_servers;
-    if ( $args->{centralServer} ) {
-        push @central_servers, $args->{centralServer};
-    } else {
-        @central_servers = @{ $self->{central_servers} };
-    }
+    my $item_id = $args->{item_id};
 
     my $errors;
 
-    for my $central_server (@central_servers) {
-        my $response = $self->{plugin}->get_ua($central_server)->delete_request(
-            {
-                endpoint    => '/innreach/v2/contribution/item/' . $itemId,
-                centralCode => $central_server
-            }
-        );
+    my $response = $self->{plugin}->get_ua($self->{central_server})->delete_request(
+        {
+            endpoint    => '/innreach/v2/contribution/item/' . $item_id,
+            centralCode => $self->{central_server}
+        }
+    );
 
-        if ( !$response->is_success ) {    # HTTP code is not 2xx
-            $errors->{$central_server} = $response->status_line;
-        } else {                           # III encoding errors in the response body of a 2xx
-            my $response_content = decode_json( $response->decoded_content );
-            if ( $response_content->{status} eq 'failed' ) {
-                my @iii_errors = $response_content->{errors};
+    if ( !$response->is_success ) {    # HTTP code is not 2xx
+        $errors = $response->status_line;
+    } else {                           # III encoding errors in the response body of a 2xx
+        my $response_content = decode_json( $response->decoded_content );
+        if ( $response_content->{status} eq 'failed' ) {
+            my @iii_errors = $response_content->{errors};
 
-                # we pick the first one
-                my $THE_error = $iii_errors[0][0];
-                $errors->{$central_server} = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
-                if ( any { $_ =~ m/No item record found with specified recid/ } @{ $THE_error->{messages} } ) {
-                    $self->unmark_item_as_contributed( { item_id => $itemId } );
-                }
-            } else {
-                $self->unmark_item_as_contributed( { item_id => $itemId } );
+            # we pick the first one
+            my $THE_error = $iii_errors[0][0];
+            $errors = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+            if ( any { $_ =~ m/No item record found with specified recid/ } @{ $THE_error->{messages} } ) {
+                $self->unmark_item_as_contributed( { item_id => $item_id } );
             }
+        } else {
+            $self->unmark_item_as_contributed( { item_id => $item_id } );
         }
     }
 

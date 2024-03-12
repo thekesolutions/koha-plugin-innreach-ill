@@ -336,9 +336,9 @@ sub do_item_decontribute {
     my $contribution   = $plugin->contribution($central_server);
 
     try {
-        my $result = $contribution->decontribute_item( { itemId => $item_id, centralServer => $central_server } );
+        my $result = $contribution->decontribute_item( { item_id => $item_id } );
         if ($result) {
-            if ( $result->{$central_server} =~ m/No item record found with specified recid/ ) {
+            if ( $result =~ m/No item record found with specified recid/ ) {
                 mark_task( { task => $task, status => 'skipped', error => $result } );
             } else {
                 if ( $task->{attempts} <= $plugin->configuration->{$central_server}->{contribution}->{max_retries}
