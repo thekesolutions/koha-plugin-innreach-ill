@@ -532,61 +532,46 @@ sub after_biblio_action {
 
         my $contribution = $self->contribution($central_server);
 
-        if ( $action ne 'delete' ) {
-
-            my $item_type = $biblio->itemtype;
-
-            # We don't contribute ILL-generated records
-            # or unmapped types
-            next
-                if $item_type eq $configuration->{$central_server}->{default_item_type}
-                   or !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type};
-
-            my $exclude_empty_biblios =
-              ( !exists $configuration->{$central_server}->{contribution} )
-              ? 1
-              : $configuration->{$central_server}->{contribution}->{exclude_empty_biblios};
-
-            if ( $action eq 'create' ) {
-                ## We are adding, check some configurations
-                # exclude_empty_biblios
-                if ( $exclude_empty_biblios ) {
-                    next
-                        unless $contribution->filter_items_by_contributable( { items => $biblio->items } )->count > 0;
-                }
+        if ( $action eq 'create' || $action eq 'modify' ) {
+            if ( $contribution->should_biblio_be_contributed( { biblio => $biblio } )
+                )
+            {
+                $self->schedule_task(
+                    {
+                        action         => $action,
+                        central_server => $central_server,
+                        object_id      => $biblio_id,
+                        object_type    => 'biblio',
+                        status         => 'queued',
+                    }
+                );
+            } elsif (
+                $contribution->is_bib_contributed( { biblio_id => $biblio_id } ) )
+            {
+                # decontribute
+                $self->schedule_task(
+                    {
+                        action         => 'delete',
+                        central_server => $central_server,
+                        object_id      => $biblio_id,
+                        object_type    => 'biblio',
+                        status         => 'queued',
+                    }
+                );
             }
-            elsif ( $action eq 'modify' ) {
-                if (    $exclude_empty_biblios
-                    and $contribution->filter_items_by_contributable( { items => $biblio->items } )->count == 0
-                    and $contribution->is_bib_contributed( { biblio_id => $biblio_id } ) )
-                {
-                    # decontribute
-                    $self->schedule_task(
-                        {
-                            action         => 'delete',
-                            central_server => $central_server,
-                            object_id      => $biblio_id,
-                            object_type    => 'biblio',
-                            status         => 'queued',
-                        }
-                    );
-                    next;
-                }
+        } elsif ( $action eq 'delete' ) {
+            if ( $contribution->is_bib_contributed( { biblio_id => $biblio_id } ) ) {
+                $self->schedule_task(
+                    {
+                        action         => 'delete',
+                        central_server => $central_server,
+                        object_id      => $biblio_id,
+                        object_type    => 'biblio',
+                        status         => 'queued',
+                    }
+                );
             }
         }
-        else { # $action eq 'delete'
-            next
-                unless $contribution->is_bib_contributed( { biblio_id => $biblio_id } );
-        }
-
-        $self->schedule_task(
-            {   action         => $action,
-                central_server => $central_server,
-                object_id      => $biblio_id,
-                object_type    => 'biblio',
-                status         => 'queued',
-            }
-        );
     }
 
     return;
