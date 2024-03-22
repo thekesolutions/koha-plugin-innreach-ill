@@ -1400,4 +1400,92 @@ sub check_configuration {
     return \@errors;
 }
 
+=head3 sync_agencies
+
+    my $errors = $self->sync_agencies;
+
+Syncs server agencies with the current patron's database.
+
+=cut
+
+sub sync_agencies {
+    my ($self, $central_server) = @_;
+
+    my $response = $self->contribution($central_server)->get_agencies_list();
+
+    my $result = {};
+
+    foreach my $server (@{$response}) {
+        my $local_server = $server->{localCode};
+        my $agency_list  = $server->{agencyList};
+
+        foreach my $agency ( @{$agency_list} ) {
+
+            my $agency_id   = $agency->{agencyCode};
+            my $description = $agency->{description};
+
+            $result->{$local_server}->{$agency_id}->{description} = $description;
+
+            my $patron_id = $self->get_patron_id_from_agency(
+                {
+                    central_server => $central_server,
+                    agency_id      => $agency_id,
+                }
+            );
+
+            my $patron;
+
+            $result->{$local_server}->{$agency_id}->{current_status} = 'no_entry';
+
+            if ( $patron_id ) {
+                $result->{$local_server}->{$agency_id}->{current_status} = 'entry_exists';
+                $patron = Koha::Patrons->find( $patron_id );
+            }
+
+            if ($patron_id && !$patron) {
+
+                # cleanup needed!
+                innreach_warn( "There is a 'agency_to_patron' entry for '$agency_id', but the patron is not present on the DB!");
+                my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
+
+                my $sth = C4::Context->dbh->prepare(qq{
+                    DELETE FROM $agency_to_patron
+                    WHERE patron_id='$patron_id';
+                });
+
+                $sth->execute();
+                $result->{$local_server}->{$agency_id}->{current_status} = 'invalid_entry';
+            }
+
+            if ($patron) {
+
+                # Update description
+                $self->update_patron_for_agency(
+                    {
+                        agency_id      => $agency_id,
+                        description    => $description,
+                        local_server   => $local_server,
+                        central_server => $central_server
+                    }
+                );
+                $result->{$local_server}->{$agency_id}->{status} = 'created';
+            } else {
+
+                # Create it
+                $self->generate_patron_for_agency(
+                    {
+                        agency_id      => $agency_id,
+                        description    => $description,
+                        local_server   => $local_server,
+                        central_server => $central_server
+                    }
+                );
+                $result->{$local_server}->{$agency_id}->{status} = 'updated';
+            }
+        }
+    }
+
+    return $result;
+}
+
 1;
