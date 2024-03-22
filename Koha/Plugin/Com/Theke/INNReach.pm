@@ -1416,9 +1416,22 @@ sub check_configuration {
 
 =head3 sync_agencies
 
-    my $errors = $self->sync_agencies;
+    my $result = $self->sync_agencies;
 
-Syncs server agencies with the current patron's database.
+Syncs server agencies with the current patron's database. Returns a hashref
+with the following structure:
+
+    {
+        localCode_1 => {
+            agencyCode_1 => {
+                description    => "The agency name",
+                current_status => no_entry|entry_exists|invalid_entry,
+                status         => created|updated
+            },
+            ...
+        },
+        ...
+    }
 
 =cut
 

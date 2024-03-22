@@ -59,8 +59,6 @@ Valid options are:
 _USAGE_
 }
 
-my $response;
-
 my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
 
 my @central_servers = $plugin->central_servers;
@@ -72,70 +70,25 @@ unless ( scalar @central_servers > 0 ) {
     print STDERR "No central servers to sync.\n";
 }
 
-print STDOUT "Central servers:\n"
-    if $verbose and scalar @central_servers > 0;
-
 foreach my $central_server (@central_servers) {
-    $response = $plugin->contribution($central_server)->get_agencies_list();
 
-    print STDOUT "$central_server\n"
-        if $verbose;
-    print STDOUT "\tLocal servers:\n"
-        if $verbose and scalar @{$response} > 0;
-    foreach my $server ( @{$response} ) {
+    my $result = $plugin->sync_agencies($central_server);
 
-        next if $local_server and $server->{localCode} ne $local_server;
-
-        print STDOUT "\t\t* " . $server->{localCode} . "\n"
-            if $verbose;
-
-        my $local_server = $server->{localCode};
-        my $agency_list  = $server->{agencyList};
-
-        foreach my $agency ( @{$agency_list} ) {
-
-            my $agency_id   = $agency->{agencyCode};
-            my $description = $agency->{description};
-
-            print STDOUT "\t\t\t- $description ($agency_id)\n"
-                if $verbose;
-
-            my $patron_id = $plugin->get_patron_id_from_agency(
-                {
-                    central_server => $central_server,
-                    agency_id      => $agency_id,
-                    plugin         => $plugin
-                }
-            );
-
-            my $patron;
-
-            unless ($dry_run) {
-                if ($patron_id) {
-
-                    # Update description
-                    $plugin->update_patron_for_agency(
-                        {
-                            plugin         => $plugin,
-                            agency_id      => $agency_id,
-                            description    => $description,
-                            local_server   => $local_server,
-                            central_server => $central_server
-                        }
-                    );
-                } else {
-
-                    # Create it
-                    $plugin->generate_patron_for_agency(
-                        {
-                            plugin         => $plugin,
-                            agency_id      => $agency_id,
-                            description    => $description,
-                            local_server   => $local_server,
-                            central_server => $central_server
-                        }
-                    );
-                }
+    print STDOUT 'central_server' . "\t"
+        . 'local_code' . "\t"
+        . 'agency_code' . "\t"
+        . 'description' . "\t"
+        . 'current_status' . "\t"
+        . 'new_status' . "\n";
+    if ($verbose) {
+        foreach my $server ( keys %{$result} ) {
+            foreach my $agency_id ( keys %{ $result->{$server} } ) {
+                print STDOUT $central_server . "\t"
+                    . $server . "\t"
+                    . $agency_id . "\t"
+                    . $result->{$server}->{description} . "\t"
+                    . $result->{$server}->{current_status} . "\t"
+                    . $result->{$server}->{status} . "\n";
             }
         }
     }
