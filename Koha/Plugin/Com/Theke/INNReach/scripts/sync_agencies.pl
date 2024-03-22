@@ -86,9 +86,9 @@ foreach my $central_server (@central_servers) {
                 print STDOUT $central_server . "\t"
                     . $server . "\t"
                     . $agency_id . "\t"
-                    . $result->{$server}->{description} . "\t"
-                    . $result->{$server}->{current_status} . "\t"
-                    . $result->{$server}->{status} . "\n";
+                    . $result->{$server}->{$agency_id}->{description} . "\t"
+                    . $result->{$server}->{$agency_id}->{current_status} . "\t"
+                    . $result->{$server}->{$agency_id}->{status} . "\n";
             }
         }
     }
