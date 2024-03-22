@@ -1468,7 +1468,7 @@ sub sync_agencies {
                         central_server => $central_server
                     }
                 );
-                $result->{$local_server}->{$agency_id}->{status} = 'created';
+                $result->{$local_server}->{$agency_id}->{status} = 'updated';
             } else {
 
                 # Create it
@@ -1480,7 +1480,7 @@ sub sync_agencies {
                         central_server => $central_server
                     }
                 );
-                $result->{$local_server}->{$agency_id}->{status} = 'updated';
+                $result->{$local_server}->{$agency_id}->{status} = 'created';
             }
         }
     }
