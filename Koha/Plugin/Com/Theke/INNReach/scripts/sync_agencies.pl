@@ -22,6 +22,7 @@ use Modern::Perl;
 
 use DDP;
 use Getopt::Long;
+use Text::Table;
 
 use Koha::Plugin::Com::Theke::INNReach;
 
@@ -70,28 +71,36 @@ unless ( scalar @central_servers > 0 ) {
     print STDERR "No central servers to sync.\n";
 }
 
+my @rows;
+
 foreach my $central_server (@central_servers) {
 
     my $result = $plugin->sync_agencies($central_server);
 
-    print STDOUT 'central_server' . "\t"
-        . 'local_code' . "\t"
-        . 'agency_code' . "\t"
-        . 'description' . "\t"
-        . 'current_status' . "\t"
-        . 'new_status' . "\n";
     if ($verbose) {
         foreach my $server ( keys %{$result} ) {
             foreach my $agency_id ( keys %{ $result->{$server} } ) {
-                print STDOUT $central_server . "\t"
-                    . $server . "\t"
-                    . $agency_id . "\t"
-                    . $result->{$server}->{$agency_id}->{description} . "\t"
-                    . $result->{$server}->{$agency_id}->{current_status} . "\t"
-                    . $result->{$server}->{$agency_id}->{status} . "\n";
+                push @rows,
+                    [
+                    $central_server, $server, $agency_id, $result->{$server}->{$agency_id}->{description},
+                    $result->{$server}->{$agency_id}->{current_status}, $result->{$server}->{$agency_id}->{status}
+                    ];
             }
         }
     }
+}
+
+if ( scalar @rows && $verbose) {
+    my $table = Text::Table->new(
+        'central_server',
+        'local_code',
+        'agency_code',
+        'description',
+        'current_status',
+        'new_status',
+    );
+    $table->load(@rows);
+    print STDOUT $table;
 }
 
 1;
