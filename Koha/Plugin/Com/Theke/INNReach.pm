@@ -921,6 +921,20 @@ sub template_include_paths {
     ];
 }
 
+=head3 cronjob_nightly
+
+Plugin hook for running nightly tasks
+
+=cut
+
+sub cronjob_nightly {
+    my ($self) = @_;
+
+    foreach my $central_server ( $self->central_servers ) {
+        $self->sync_agencies($central_server);
+    }
+}
+
 =head2 Business methods
 
 =head3 generate_patron_for_agency
