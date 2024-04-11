@@ -37,11 +37,13 @@ my $help;
 my $limit;
 my $noout;
 my $where;
+my $force;
 
 my $result = GetOptions(
     'biblio_id=s'      => \$biblio_id,
     'central_server=s' => \$central_server,
     'exclude_items'    => \$exclude_items,
+    'force'            => \$force,
     'help'             => \$help,
     'limit=i'          => \$limit,
     'noout'            => \$noout,
@@ -71,6 +73,16 @@ if ( $biblio_id and $where ) {
     exit 1;
 }
 
+my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
+if (   !$plugin->configuration->{$central_server}->{contribution}->{enabled}
+    && !$force )
+{
+    print_usage();
+    say "Contribution is disabled for '$central_server'.\nPlease use --force if you know what you are doing.";
+    exit 1;
+}
+
 sub print_usage {
     print <<_USAGE_;
 
@@ -93,7 +105,6 @@ Options:
 _USAGE_
 }
 
-my $plugin       = Koha::Plugin::Com::Theke::INNReach->new;
 my $contribution = $plugin->contribution($central_server);
 
 my $query      = {};

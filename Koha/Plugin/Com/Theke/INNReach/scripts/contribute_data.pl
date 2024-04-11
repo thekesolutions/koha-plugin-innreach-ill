@@ -142,6 +142,16 @@ unless ( any { $_ eq $central_server } $plugin->central_servers ) { # valid?
     exit 1;
 }
 
+if ( $items || $biblio_id || $biblios || $recontribution ) {
+    if (   !$plugin->configuration->{$central_server}->{contribution}->{enabled}
+        && !$force )
+    {
+        print_usage();
+        say "Contribution is disabled for '$central_server'.\nPlease use --force if you know what you are doing.";
+        exit 1;
+    }
+}
+
 my $contribution = $plugin->contribution($central_server);
 
 if ($items) {
