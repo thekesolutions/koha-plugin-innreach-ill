@@ -530,6 +530,10 @@ sub after_biblio_action {
 
     foreach my $central_server ( @central_servers ) {
 
+        # skip if contribution disabled
+        next
+            unless $configuration->{$central_server}->{contribution}->{enabled};
+
         my $contribution = $self->contribution($central_server);
 
         if ( $action eq 'create' || $action eq 'modify' ) {
@@ -594,6 +598,10 @@ sub after_item_action {
     my @central_servers = $self->central_servers;
 
     foreach my $central_server ( @central_servers ) {
+
+        # skip if contribution disabled
+        next
+            unless $configuration->{$central_server}->{contribution}->{enabled};
 
         my $contribution = $self->contribution($central_server);
 
@@ -697,7 +705,12 @@ sub after_circ_action {
     return
         unless $req;
 
-    my $central_server = $req->extended_attributes->find( { type => 'centralCode' } )->value;
+    my $configuration  = $self->configuration;
+    my $central_server = $self->get_req_central_server($req);
+
+    # skip if contribution disabled
+    return
+        unless $configuration->{$central_server}->{contribution}->{enabled};
 
     if ( $action eq 'renewal' ) {
 
@@ -727,13 +740,13 @@ sub after_circ_action {
                 {
                     ill_request_id => $req->id,
                 }
-            ) if $self->configuration->{$central_server}->{lending}->{automatic_final_checkin};
+            ) if $configuration->{$central_server}->{lending}->{automatic_final_checkin};
         } elsif ( any { $req->status eq $_ } qw{B_ITEM_RECEIVED B_ITEM_RECALLED} ) {
             INNReach::BackgroundJobs::BorrowingSite::ItemInTransit->new->enqueue(
                 {
                     ill_request_id => $req->id,
                 }
-            ) if $self->configuration->{$central_server}->{borrowing}->{automatic_item_in_transit};
+            ) if $configuration->{$central_server}->{borrowing}->{automatic_item_in_transit};
         }
     } elsif ( $action eq 'checkout' ) {
         if ( any { $req->status eq $_ } qw{B_ITEM_RECEIVED} ) {
@@ -774,6 +787,13 @@ sub after_hold_action {
     return
         unless $req;
 
+    my $configuration  = $self->configuration;
+    my $central_server = $self->get_req_central_server($req);
+
+    # skip if contribution disabled
+    return
+        unless $configuration->{$central_server}->{contribution}->{enabled};
+
     if ( $req->status =~ /^O_/ ) {
         if ( $action eq 'fill' || $action eq 'waiting' || $action eq 'transfer' ) {
 
@@ -785,7 +805,7 @@ sub after_hold_action {
                     {
                         ill_request_id => $req->id,
                     }
-                ) if $self->configuration->{$central_server}->{lending}->{automatic_item_shipped};
+                ) if $configuration->{$central_server}->{lending}->{automatic_item_shipped};
             }
         } elsif ( $action eq 'cancel' ) {
 
@@ -809,7 +829,7 @@ sub after_hold_action {
                     {
                         ill_request_id => $req->id,
                     }
-                ) if $self->configuration->{$central_server}->{borrowing}->{automatic_item_receive};
+                ) if $configuration->{$central_server}->{borrowing}->{automatic_item_receive};
             }
         }
     }
