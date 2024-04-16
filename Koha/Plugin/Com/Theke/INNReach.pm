@@ -1424,6 +1424,30 @@ sub check_configuration {
             unless Koha::Patron::Categories->find( $configuration->{$central_server}->{partners_category} );
     }
 
+    foreach my $central_server (@central_servers) {
+        my $library_to_location = $configuration->{$central_server}->{library_to_location};
+        foreach my $key ( keys %{$library_to_location} ) {
+
+            # do we have a location code?
+            push @errors,
+                {
+                code           => 'library_missing_location',
+                central_server => $central_server,
+                library        => $key,
+                }
+                unless $library_to_location->{$key}->{location};
+
+            # do we have a description?
+            push @errors,
+                {
+                code           => 'library_missing_description',
+                central_server => $central_server,
+                library        => $key,
+                }
+                unless $library_to_location->{$key}->{description};
+        }
+    }
+
     push @errors, { code => 'ILLModule_disabled' }
         unless C4::Context->preference('ILLModule');
 
