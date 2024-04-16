@@ -102,22 +102,14 @@ sub configure {
     my ( $self, $args ) = @_;
     my $cgi = $self->{'cgi'};
 
-    my $template = $self->get_template({ file => 'configure.tt' });
+    my $template = $self->get_template( { file => 'configure.tt' } );
 
     my $errors = $self->check_configuration;
 
     $template->param( errors => $errors );
 
-    unless ( scalar $cgi->param('save') ) {
+    if ( scalar $cgi->param('cud-save') ) {
 
-        ## Grab the values we already have for our settings, if any exist
-        $template->param(
-            configuration => $self->retrieve_data('configuration'),
-        );
-
-        $self->output_html( $template->output() );
-    }
-    else {
         $self->store_data(
             {
                 configuration => scalar $cgi->param('configuration'),
@@ -126,6 +118,13 @@ sub configure {
         $template->param(
             configuration => $self->retrieve_data('configuration'),
         );
+        $self->output_html( $template->output() );
+    } else {
+        ## Grab the values we already have for our settings, if any exist
+        $template->param(
+            configuration => $self->retrieve_data('configuration'),
+        );
+
         $self->output_html( $template->output() );
     }
 }
