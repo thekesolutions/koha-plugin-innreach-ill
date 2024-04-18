@@ -72,7 +72,7 @@
         <input type="hidden" name="step"   value="configure"/>
         <input type="hidden" name="save"   value="1"/>
         <input type="hidden" name="op"     value="cud-save"/>
-        [% INCLUDE 'csrf-token.inc' %]
+        [%## INCLUDE 'csrf-token.inc' %]
         <div class="input-group">
           <span class="input-group-addon" id="configuration_label">Configuration</span>
           <textarea rows="200"
