@@ -707,10 +707,6 @@ sub after_circ_action {
     my $configuration  = $self->configuration;
     my $central_server = $self->get_req_central_server($req);
 
-    # skip if contribution disabled
-    return
-        unless $configuration->{$central_server}->{contribution}->{enabled};
-
     if ( $action eq 'renewal' ) {
 
         $self->schedule_task(
@@ -794,8 +790,6 @@ sub after_hold_action {
 
             if ( $req->status eq 'O_ITEM_REQUESTED' ) {
 
-                my $central_server = $self->get_req_central_server($req);
-
                 INNReach::BackgroundJobs::OwningSite::ItemShipped->new->enqueue(
                     {
                         ill_request_id => $req->id,
@@ -817,8 +811,6 @@ sub after_hold_action {
     elsif ( $req->status =~ /^B_/ ) {
         if ( $action eq 'fill' || $action eq 'waiting' || $action eq 'transfer' ) {
             if ( $req->status eq 'B_ITEM_SHIPPED' ) {
-
-                my $central_server = $self->get_req_central_server($req);
 
                 INNReach::BackgroundJobs::BorrowingSite::ItemReceived->new->enqueue(
                     {
