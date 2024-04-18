@@ -789,10 +789,6 @@ sub after_hold_action {
     my $configuration  = $self->configuration;
     my $central_server = $self->get_req_central_server($req);
 
-    # skip if contribution disabled
-    return
-        unless $configuration->{$central_server}->{contribution}->{enabled};
-
     if ( $req->status =~ /^O_/ ) {
         if ( $action eq 'fill' || $action eq 'waiting' || $action eq 'transfer' ) {
 
