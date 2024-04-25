@@ -104,29 +104,23 @@ sub configure {
 
     my $template = $self->get_template( { file => 'configure.tt' } );
 
-    my $errors = $self->check_configuration;
-
-    $template->param( errors => $errors );
-
-    if ( scalar $cgi->param('cud-save') ) {
+    if ( scalar $cgi->param('op') eq 'cud-save' ) {
 
         $self->store_data(
             {
                 configuration => scalar $cgi->param('configuration'),
             }
         );
-        $template->param(
-            configuration => $self->retrieve_data('configuration'),
-        );
-        $self->output_html( $template->output() );
-    } else {
-        ## Grab the values we already have for our settings, if any exist
-        $template->param(
-            configuration => $self->retrieve_data('configuration'),
-        );
-
-        $self->output_html( $template->output() );
     }
+
+    my $errors = $self->check_configuration;
+
+    $template->param(
+        errors        => $errors,
+        configuration => $self->retrieve_data('configuration'),
+    );
+
+    $self->output_html( $template->output() );
 }
 
 =head3 configuration
