@@ -82,7 +82,8 @@ sub get_ill_request_from_attribute {
     my $requests_rs = Koha::Illrequests->search(
         {
             'illrequestattributes.type'  => $type,
-            'illrequestattributes.value' => $value
+            'illrequestattributes.value' => $value,
+            'me.backend'                 => 'INNReach',
         },
         { join => ['illrequestattributes'] }
     );
