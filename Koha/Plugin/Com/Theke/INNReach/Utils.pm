@@ -163,7 +163,7 @@ sub add_virtual_record_and_item {
     my $ccode                     = $config->{default_item_ccode};
     my $location                  = $config->{default_location};
     my $notforloan                = $config->{default_notforloan} // -1;
-    my $checkin_note              = $config->{default_checkin_note}        || 'Additional processing required (ILL)';
+    my $checkin_note              = $config->{default_checkin_note} || 'Additional processing required (ILL)';
     my $no_barcode_central_itypes = $config->{no_barcode_central_itypes} // [];
 
     my $materials;
