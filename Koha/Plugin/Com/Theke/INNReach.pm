@@ -680,12 +680,18 @@ sub after_circ_action {
 
     if ( $action eq 'checkout' )
     {    # we don't have a checkout_id yet. the item has been created by itemshipped so query using the barcode
-        $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
+         # this only applies to the borrowing side. On the lending side all the workflow is handled
+         # within the hold cancel/fill actions, which trigger plain cancellation or setting the status as
+         # O_ITEM_SHIPPED and generating the checkout right after, inside the same transaction.
+        $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_requests_from_attribute(
             {
                 type  => 'itemBarcode',
                 value => $checkout->item->barcode,
             }
-        );
+        )->search(
+            { 'me.status' => [ 'B_ITEM_RECEIVED', 'B_ITEM_RECALLED' ] },
+            { order_by    => { '-desc' => 'updated' }, rows => 1, }
+        )->single;
     } else {
         $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
             {
