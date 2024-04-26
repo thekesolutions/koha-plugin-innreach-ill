@@ -831,7 +831,6 @@ sub patronhold {
                         configuration  => $configuration
                     }
                 );
-                p($pickup_location);
 
                 # Create the request
                 my $req = Koha::Illrequest->new(
