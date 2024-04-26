@@ -96,6 +96,42 @@ sub get_ill_request_from_attribute {
         if $count > 0;
 }
 
+=head3 get_ill_requests_from_attribute
+
+    my $reqs = get_ill_requests_from_attribute(
+        {
+            type  => $type,
+            value => $value
+        }
+    );
+
+Retrieve all ILL requests for the I<INNReach> backend with extended attributes
+matching the passed parameters.
+
+=cut
+
+sub get_ill_requests_from_attribute {
+    my ($args) = @_;
+
+    my @mandatory_params = qw(type value);
+    foreach my $param (@mandatory_params) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $args->{$param};
+    }
+
+    my $type  = $args->{type};
+    my $value = $args->{value};
+
+    return Koha::Illrequests->search(
+        {
+            'illrequestattributes.type'  => $type,
+            'illrequestattributes.value' => $value,
+            'me.backend'                 => 'INNReach',
+        },
+        { join => ['illrequestattributes'] }
+    );
+}
+
 =head3 add_virtual_record_and_item
 
     my $item = add_virtual_record_and_item(
