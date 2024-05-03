@@ -68,7 +68,21 @@ sub process {
         $commands->item_in_transit($req);
         $self->step;
     } catch {
-        push @messages, "Error: $_";
+        if ( ref($_) eq 'INNReach::Ill::RequestFailed' ) {
+            push @messages, {
+                type     => 'error',
+                code     => 'request_failed',
+                response => $_->response->decoded_content,
+                method   => $_->method,
+            };
+        } else {
+            push @messages, {
+                type  => 'error',
+                code  => 'unhandled_error',
+                error => "$_",
+            };
+        }
+
         $self->set( { progress => 0, status => 'failed' } );
     };
 

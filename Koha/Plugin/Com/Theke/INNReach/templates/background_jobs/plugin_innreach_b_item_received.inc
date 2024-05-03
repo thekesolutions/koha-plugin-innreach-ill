@@ -28,8 +28,10 @@
                 <i class="fa fa-exclamation error"></i>
             [% END %]
             [% SWITCH m.code %]
-            [% CASE 'index_error' %]
-                Something went wrong during <b>itemreceived</b> automatization process: [% m.error | html %]
+                [% CASE 'request_failed' %]
+                    <span>Error sending <b>[% m.method | html %]</b> request: [% m.error | html %]<span>
+            [% CASE %]
+                    <span>Unhandled error: [% m.error | html %]<span>
             [% END %]
         </div>
     [% END %]
