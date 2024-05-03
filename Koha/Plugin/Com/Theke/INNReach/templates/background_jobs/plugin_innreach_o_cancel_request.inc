@@ -29,7 +29,7 @@
             [% END %]
             [% SWITCH m.code %]
                 [% CASE 'request_failed' %]
-                    <span>Error sending <b>[% m.method | html %]</b> request: [% m.error | html %]<span>
+                    <span>Error sending <b>[% m.method | html %]</b> request: [% m.response | html %]<span>
             [% CASE %]
                     <span>Unhandled error: [% m.error | html %]<span>
             [% END %]
