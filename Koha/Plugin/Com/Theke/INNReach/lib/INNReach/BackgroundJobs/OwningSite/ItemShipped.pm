@@ -65,13 +65,12 @@ sub process {
     my $req = Koha::Illrequests->find( $args->{ill_request_id} );
 
     try {
-        $commands->item_shipped( $req );
-    }
-    catch {
+        $commands->item_shipped($req);
+        $self->step;
+    } catch {
         push @messages, "Error: $_";
+        $self->set( { progress => 0, status => 'failed' } );
     };
-
-    $self->step;
 
     my $data = $self->decoded_data;
     $data->{messages} = \@messages;

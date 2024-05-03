@@ -66,11 +66,11 @@ sub process {
 
     try {
         $commands->item_received($req);
+        $self->step;
     } catch {
         push @messages, "Error: $_";
+        $self->set( { progress => 0, status => 'failed' } );
     };
-
-    $self->step;
 
     my $data = $self->decoded_data;
     $data->{messages} = \@messages;
