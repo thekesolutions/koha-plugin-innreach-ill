@@ -1,0 +1,83 @@
+---
+d2ir:
+    api_base_url: https://rssandbox-api.iii.com
+    api_token_base_url: https://rssandbox-api.iii.com
+    client_id: a_client_id
+    client_secret: a_client_secret
+    localServerCode: koha1
+    mainAgency: code2
+    require_patron_auth: true
+    partners_library_id: ILL
+    partners_category: IL
+    library_to_location:
+        CPL:
+            location: code1
+            description: Library 1
+        MPL:
+            location: code2
+            description: Library 2
+    local_to_central_itype:
+        BK: 200
+        CF: 201
+        CR: 200
+        MP: 200
+        MU: 201
+        MX: 201
+        REF: 202
+        VM: 201
+    local_to_central_patron_type:
+        AP: 200
+        CH: 200
+        DR: 200
+        DR2: 200
+        ILL: 202
+        LIBSTAFF: 201
+        NR: 200
+        SR: 202
+    central_to_local_itype:
+        200: D2IR_BK
+        201: D2IR_CF
+    no_barcode_central_itypes:
+        - 201
+        - 202
+    contribution:
+        enabled: true
+        max_retries: 10
+        exclude_empty_biblios: true
+        use_holding_library: false # if true, holding library will be used for the location
+        included_items:
+            biblionumber: [ 1, 2, 3 ]
+            ccode: [ a, b, c ]
+        excluded_items:
+            biblionumber: [ 1, 2, 3 ]
+            ccode: [ a, b, c ]
+    # Default values for biblios/items configuration
+    default_marc_framework: FA
+    default_barcode_normalizers:
+        - remove_all_spaces
+        - trim
+        - ltrim
+        - rtrim
+    borrowing:
+        automatic_item_in_transit: false
+        automatic_item_receive: false
+    lending:
+        automatic_final_checkin: false
+        automatic_item_shipped: false
+    default_item_type: ILL
+    default_item_ccode: GENERAL_STACKS
+    default_notforloan: -1 | null
+    materials_specified: true
+    default_materials_specified: Additional processing required (ILL)
+    default_location:
+    default_checkin_note: Additional processing required (ILL)
+    default_hold_note: Placed by ILL
+    # Patron validation restrictions
+    debt_blocks_holds: true
+    max_debt_blocks_holds: 100
+    expiration_blocks_holds: true
+    restriction_blocks_holds: true
+    # Debugging
+    debug_mode: false
+    debug_requests: false
+    dev_mode: true
