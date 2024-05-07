@@ -749,7 +749,22 @@ sub receive_unshipped {
                         }
                     );
 
-                    INNReach::Commands::BorrowingSite->new( { plugin => $self->{plugin} } )->receive_unshipped($req);
+                    my $commands = INNReach::Commands::BorrowingSite->new( { plugin => $self->{plugin} } );
+                    try {
+                        $commands->receive_unshipped($req);
+                    } catch {
+                        if ( ref($_) eq 'INNReach::Ill::RequestFailed' ) {
+                            my $response = $_->response;
+                            if ( $response->headers->header('X-IR-Allowed-Circulation') eq '[ITEM RECEIVED]' ) {
+                                # we missed an 'itemshipped' message, and INN-Reach is rejecting
+                                # the 'receiveunshipped' message we try to send. We are good, send itemreceived.
+                                return $self->item_received($req);
+                            }
+                        } else {
+                            # unhandled exception!
+                            $_->rethrow();
+                        }
+                    };
                 }
             );
         } catch {
