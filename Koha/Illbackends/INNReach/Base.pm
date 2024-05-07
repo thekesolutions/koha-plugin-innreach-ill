@@ -758,7 +758,7 @@ sub receive_unshipped {
                             if ( $response->headers->header('X-IR-Allowed-Circulation') eq '[ITEM RECEIVED]' ) {
                                 # we missed an 'itemshipped' message, and INN-Reach is rejecting
                                 # the 'receiveunshipped' message we try to send. We are good, send itemreceived.
-                                return $self->item_received($req);
+                                return $commands->item_received($req);
                             }
                         } else {
                             # unhandled exception!
