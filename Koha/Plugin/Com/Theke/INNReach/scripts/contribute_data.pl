@@ -205,17 +205,27 @@ if ($items) {
     }
 }
 
-if ( $biblio_id or $biblios ) {
-    my $query = {};
-    if ($biblio_id) {
-        $query = { biblionumber => $biblio_id };
-    }
-    elsif ($where) {
-        $query = \[ $where ];
-    }
+if ( $biblios && $decontribute ) {
+    if ( $biblio_id ) {
+        print STDOUT "# Decontributing record: " . $biblio_id . "\n"
+            unless $noout;
+        my $errors = $contribution->decontribute_bib( { biblio_id => $biblio_id } );
+        if ($errors) {
+            print STDOUT " - Status: Error (" . $errors . ")\n"
+                unless $noout;
+        } else {
+            print STDOUT " - Status: OK\n"
+                unless $noout;
+        }
+    } else {
+        my $query = {};
 
-    my $biblios = Koha::Biblios->search($query);
-    if ( $decontribute ) {
+        if ($where) {
+            $query = \[ $where ];
+        }
+
+        my $biblios = Koha::Biblios->search($query);
+
         while ( my $biblio = $biblios->next ) {
             print STDOUT "# Decontributing record: " . $biblio->id . "\n"
                 unless $noout;
@@ -230,64 +240,74 @@ if ( $biblio_id or $biblios ) {
             }
         }
     }
-    else {
-        while ( my $biblio = $biblios->next ) {
+} elsif ($biblios) {
 
-            my $items = $contribution->filter_items_by_contributable( { items => $biblio->items } );
+    my $query = {};
+    if ($biblio_id) {
+        $query = { biblionumber => $biblio_id };
+    }
+    elsif ($where) {
+        $query = \[ $where ];
+    }
 
-            print STDOUT "# Contributing record: " . $biblio->id . "\n"
-                unless $noout;
+    my $biblios = Koha::Biblios->search($query);
 
-            if ( $items->count > 0 or $force ) {
-                my $errors = $contribution->contribute_bib( { biblio_id => $biblio->id } );
+    while ( my $biblio = $biblios->next ) {
 
-                if ( $errors ) {
-                    print STDOUT " - Status: Error (" . $errors . ")\n"
-                        unless $noout;
-                    next;
-                }
-                else {
-                    print STDOUT " - Status: OK\n"
-                        unless $noout;
-                }
-            }
-            else {
-                print STDOUT " - Status: Skipped (no items)\n"
+        my $items = $contribution->filter_items_by_contributable( { items => $biblio->items } );
+
+        print STDOUT "# Contributing record: " . $biblio->id . "\n"
+            unless $noout;
+
+        if ( $items->count > 0 or $force ) {
+            my $errors = $contribution->contribute_bib( { biblio_id => $biblio->id } );
+
+            if ( $errors ) {
+                print STDOUT " - Status: Error (" . $errors . ")\n"
                     unless $noout;
                 next;
             }
+            else {
+                print STDOUT " - Status: OK\n"
+                    unless $noout;
+            }
+        }
+        else {
+            print STDOUT " - Status: Skipped (no items)\n"
+                unless $noout;
+            next;
+        }
 
-            unless ( $exclude_items ) {
-                if ( $items->count > 0 ) {
-                    print STDOUT " - Items:\n"
-                        unless $noout;
-                    my $errors;
-                    try {
-                        $errors = $contribution->contribute_batch_items(
-                            {
-                                biblio_id => $biblio->biblionumber,
-                                items     => $items,
-                            }
-                        );
-                    } catch {
-                        $errors = "$_";
-                    };
-
-                    if ($errors) {
-                        print STDOUT "        > Error (" . $errors . ")\n"
-                            unless $noout;
-                    } else {
-                        $items->reset;
-                        while ( my $item = $items->next ) {
-                            print STDOUT "        > " . $item->id . ": Ok\n"
-                                unless $noout;
+        unless ( $exclude_items ) {
+            if ( $items->count > 0 ) {
+                print STDOUT " - Items:\n"
+                    unless $noout;
+                my $errors;
+                try {
+                    $errors = $contribution->contribute_batch_items(
+                        {
+                            biblio_id => $biblio->biblionumber,
+                            items     => $items,
                         }
+                    );
+                } catch {
+                    $errors = "$_";
+                };
+
+                if ($errors) {
+                    print STDOUT "        > Error (" . $errors . ")\n"
+                        unless $noout;
+                } else {
+                    $items->reset;
+                    while ( my $item = $items->next ) {
+                        print STDOUT "        > " . $item->id . ": Ok\n"
+                            unless $noout;
                     }
                 }
-                else {
-                    print STDOUT " - Items: biblio has no items\n"
-                        unless $noout;
-                }
+            }
+            else {
+                print STDOUT " - Items: biblio has no items\n"
+                    unless $noout;
             }
         }
     }
