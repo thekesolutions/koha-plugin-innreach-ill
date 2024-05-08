@@ -186,7 +186,7 @@ sub status_graph {
             name           => 'Item received by borrowing library',
             ui_method_name => q{},
             method         => q{},
-            next_actions   => [ 'O_ITEM_RECALLED' ],
+            next_actions   => [ 'O_ITEM_RECALLED', 'O_ITEM_CHECKED_IN' ],
             ui_method_icon => q{},
         },
         O_ITEM_RECALLED => {
