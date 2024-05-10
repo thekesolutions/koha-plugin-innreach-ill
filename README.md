@@ -150,6 +150,7 @@ d2ir:
     lending:
         automatic_final_checkin: false
         automatic_item_shipped: false
+        automatic_item_shipped_debug: false
     default_item_type: ILL
     default_item_ccode: GENERAL_STACKS
     default_notforloan: -1 | null

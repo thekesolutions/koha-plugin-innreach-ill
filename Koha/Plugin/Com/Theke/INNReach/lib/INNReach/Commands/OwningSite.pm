@@ -129,6 +129,8 @@ Given a I<Koha::Illrequest> object, notifies the item has been shipped.
 sub item_shipped {
     my ( $self, $request ) = @_;
 
+    my $req_id = $request->id;
+
     INNReach::Ill::InconsistentStatus->throw( "Status is not correct: " . $request->status )
         unless $request->status =~ m/^O_ITEM_REQUESTED/;
 
@@ -138,17 +140,29 @@ sub item_shipped {
     my $centralCode = $attributes->find( { type => 'centralCode' } )->value;
     my $item_id     = $attributes->find( { type => 'itemId' } )->value;
 
+    my $debug =
+        $self->{plugin}->configuration->{$centralCode}->{lending}->{automatic_item_shipped_debug}
+        ? 1
+        : 0;
+
     INNReach::Ill::MissingParameter->throw( param => 'item_id' )
         unless $item_id;
 
     Koha::Database->schema->storage->txn_do(
         sub {
-
+            warn "innreach [$req_id] INSIDE TXN"
+                if $debug;
             my $item   = Koha::Items->find($item_id);
             my $patron = Koha::Patrons->find( $request->borrowernumber );
 
+            my $patron_id = $patron->id;
+            warn "innreach [$req_id] GOT patron ($patron_id) and item ($item_id)"
+                if $debug;
+
             # If calling this from the UI, things are set.
             unless ( C4::Context->userenv ) {
+                warn "innreach [$req_id] NO USERENV"
+                    if $debug;
 
                 # CLI => set userenv
                 C4::Context->_new_userenv(1);
@@ -164,8 +178,12 @@ sub item_shipped {
             # update status first, to avoid doubled jobs which could
             # happen if the item needs a transfer, etc
             $request->status('O_ITEM_SHIPPED')->store;
+            warn "innreach [$req_id] O_ITEM_SHIPPED saved and stored"
+                if $debug;
 
             my $checkout = $self->{plugin}->add_issue( { patron => $patron, barcode => $item->barcode } );
+            warn "innreach [$req_id] AddIssue called"
+                if $debug;
 
             # record checkout_id
             Koha::Illrequestattribute->new(
@@ -176,9 +194,13 @@ sub item_shipped {
                     readonly      => 0
                 }
             )->store;
+            warn "innreach [$req_id] checkoud_id stored: " . $checkout->id
+                if $debug;
 
             # skip actual INN-Reach interactions in dev_mode
             unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
+                warn "innreach [$req_id] calling POST"
+                    if $debug;
                 my $response = $self->{plugin}->get_ua($centralCode)->post_request(
                     {
                         endpoint    => "/innreach/v2/circ/itemshipped/$trackingId/$centralCode",
@@ -189,7 +211,15 @@ sub item_shipped {
                         }
                     }
                 );
-
+                warn "innreach [$req_id] POST success"
+                    if $debug && $response->is_success;
+                warn "innreach [$req_id] POST error"
+                    if $debug && !$response->is_success;
+                warn "innreach [$req_id] Response: " . $response->decoded_content
+                    if $debug;
+                warn "innreach [$req_id] X-IR-Allowed-Circulation: "
+                    . $response->headers->header('X-IR-Allowed-Circulation') // ''
+                    if $debug;
                 INNReach::Ill::RequestFailed->throw( method => 'item_shipped', response => $response )
                     unless $response->is_success;
             }
