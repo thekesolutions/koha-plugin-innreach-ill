@@ -112,12 +112,9 @@ subtest 'Full flow tests' => sub {
     # remove the duplicate request
     $r->delete;
 
-    warn "BEFORE";
     my $deleted_item    = $builder->build_sample_item;
-    warn "BETWEEN";
     my $deleted_item_id = $deleted_item->id;
     $deleted_item->delete;
-    warn "AFTER";
 
     $params->{itemId} = $deleted_item_id;
 
