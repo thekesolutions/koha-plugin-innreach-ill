@@ -17,6 +17,8 @@ package INNReach::Commands::BorrowingSite;
 
 use Modern::Perl;
 
+use C4::Biblio qw(DelBiblio);
+
 use Koha::Biblios;
 use Koha::Checkouts;
 use Koha::Database;
@@ -130,9 +132,11 @@ sub item_in_transit {
 
             my $biblio = Koha::Biblios->find( $request->biblio_id );
 
-            # Remove the virtual item
-            $biblio->items->delete;
-            $biblio->delete;
+            # Remove the virtual items. there should only be one
+            foreach my $item ( $biblio->items->as_list ) {
+                $item->delete( { skip_record_index => 1 } );
+            }
+            DelBiblio( $biblio->id );
 
             $request->status('B_ITEM_IN_TRANSIT')->store;
         }
