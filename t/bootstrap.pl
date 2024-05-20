@@ -35,6 +35,21 @@ my $plugin  = Koha::Plugin::Com::Theke::INNReach->new;
 C4::Context->set_preference( 'ILLModule', 1 )
     && step("ILLModule set");
 
+my $dbh = C4::Context->dbh;
+
+# Make sure the plugin is enabled
+$dbh->do(q{
+    UPDATE plugin_data SET plugin_value=1
+    WHERE plugin_key='__ENABLED__'
+      AND plugin_class='Koha::Plugin::Com::Theke::INNReach'
+}) && step("Enabled INNReach plugin");
+
+$dbh->do(q{
+    UPDATE plugin_data SET plugin_value=0
+    WHERE plugin_key='__ENABLED__'
+      AND plugin_class<>'Koha::Plugin::Com::Theke::INNReach'
+}) && step("Disabled other plugins");
+
 my $config_string = read_file('/kohadevbox/plugins/innreach/t/config.yaml');
 $plugin->store_data(
     {
