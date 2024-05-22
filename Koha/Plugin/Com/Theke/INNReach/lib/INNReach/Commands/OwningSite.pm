@@ -150,18 +150,18 @@ sub item_shipped {
 
     Koha::Database->schema->storage->txn_do(
         sub {
-            warn "innreach [$req_id] INSIDE TXN"
+            warn "[innreach]\t$req_id\tTXN_DO"
                 if $debug;
             my $item   = Koha::Items->find($item_id);
             my $patron = Koha::Patrons->find( $request->borrowernumber );
 
             my $patron_id = $patron->id;
-            warn "innreach [$req_id] GOT patron ($patron_id) and item ($item_id)"
+            warn "[innreach]\t$req_id\tpatron ($patron_id) and item ($item_id) found"
                 if $debug;
 
             # If calling this from the UI, things are set.
             unless ( C4::Context->userenv ) {
-                warn "innreach [$req_id] NO USERENV"
+                warn "[innreach]\t$req_id\tNO USERENV - CLI run?"
                     if $debug;
 
                 # CLI => set userenv
@@ -178,11 +178,11 @@ sub item_shipped {
             # update status first, to avoid doubled jobs which could
             # happen if the item needs a transfer, etc
             $request->status('O_ITEM_SHIPPED')->store;
-            warn "innreach [$req_id] O_ITEM_SHIPPED saved and stored"
+            warn "[innreach]\t$req_id\tO_ITEM_SHIPPED status saved"
                 if $debug;
 
             my $checkout = $self->{plugin}->add_issue( { patron => $patron, barcode => $item->barcode } );
-            warn "innreach [$req_id] AddIssue called"
+            warn "[innreach]\t$req_id\tAddIssue called"
                 if $debug;
 
             # record checkout_id
@@ -194,12 +194,12 @@ sub item_shipped {
                     readonly      => 0
                 }
             )->store;
-            warn "innreach [$req_id] checkoud_id stored: " . $checkout->id
+            warn "[innreach]\t$req_id\tcheckoud_id attribute stored: " . $checkout->id
                 if $debug;
 
             # skip actual INN-Reach interactions in dev_mode
             unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
-                warn "innreach [$req_id] calling POST"
+                warn "[innreach]\t$req_id\tPOST to be called"
                     if $debug;
                 my $response = $self->{plugin}->get_ua($centralCode)->post_request(
                     {
@@ -211,14 +211,14 @@ sub item_shipped {
                         }
                     }
                 );
-                warn "innreach [$req_id] POST success"
+                warn "[innreach]\t$req_id\tPOST success"
                     if $debug && $response->is_success;
-                warn "innreach [$req_id] POST error"
+                warn "[innreach]\t$req_id\tPOST error"
                     if $debug && !$response->is_success;
-                warn "innreach [$req_id] Response: " . $response->decoded_content
+                warn "[innreach]\t$req_id\tResponse: " . $response->decoded_content
                     if $debug;
-                warn "innreach [$req_id] X-IR-Allowed-Circulation: "
-                    . $response->headers->header('X-IR-Allowed-Circulation') // ''
+                warn "[innreach]\t$req_id\tX-IR-Allowed-Circulation: "
+                    . $response->headers->header('X-IR-Allowed-Circulation') // '<empty>'
                     if $debug;
                 INNReach::Ill::RequestFailed->throw( method => 'item_shipped', response => $response )
                     unless $response->is_success;

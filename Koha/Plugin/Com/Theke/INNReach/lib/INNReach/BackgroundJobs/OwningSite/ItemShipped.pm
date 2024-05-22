@@ -75,12 +75,19 @@ sub process {
                 response => $_->response->decoded_content,
                 method   => $_->method,
             };
+
+            warn sprintf(
+                "[innreach]\t%s request error: %s (X-IR-Allowed-Circulation: %s)", $_->method,
+                $_->response->decoded_content, $_->response->headers->header('X-IR-Allowed-Circulation') // '<empty>'
+            );
         } else {
             push @messages, {
                 type  => 'error',
                 code  => 'unhandled_error',
                 error => "$_",
             };
+
+            warn sprintf( "[innreach]\t%s unhandled error: %s", $_ );
         }
 
         $self->set( { progress => 0, status => 'failed' } );
@@ -89,7 +96,12 @@ sub process {
     my $data = $self->decoded_data;
     $data->{messages} = \@messages;
 
-    return $self->finish($data);
+    return try {
+        $self->finish($data);
+    } catch {
+        warn sprintf( "[innreach]\t%s fatal error saving the job status: %s", $_ );
+        die "Something really bad happened: $_";
+    };
 }
 
 =head3 enqueue
