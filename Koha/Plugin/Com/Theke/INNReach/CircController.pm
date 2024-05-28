@@ -49,7 +49,7 @@ use Koha::Illbackends::INNReach::Base;
 use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 use Koha::Plugin::Com::Theke::INNReach::Normalizer;
-use Koha::Plugin::Com::Theke::INNReach::Utils qw(innreach_warn);
+use Koha::Plugin::Com::Theke::INNReach::Utils qw(innreach_warn add_or_update_attributes);
 
 use Mojo::Base 'Mojolicious::Controller';
 
@@ -435,6 +435,8 @@ sub itemreceived {
     #     centralCode       => $centralCode
     # };
 
+    my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
     return try {
 
         # Get/validate the request
@@ -443,7 +445,29 @@ sub itemreceived {
         return $c->invalid_request_id( { trackingId => $trackingId, centralCode => $centralCode } )
             unless $req;
 
-        $req->status('O_ITEM_RECEIVED_DESTINATION')->store;
+        Koha::Database->new->schema->txn_do(
+            sub {
+                if ( !$req->extended_attributes->search( { type => q{checkout_id} } )->count ) {
+                    my $item   = Koha::Items->find( $body->{itemId} );
+                    my $patron = Koha::Patrons->find( $req->borrowernumber );
+
+                    my $checkout = $plugin->add_issue( { patron => $patron, barcode => $item->barcode } );
+
+                    add_or_update_attributes(
+                        {
+                            request    => $req,
+                            attributes => {
+                                checkout_id => $checkout->id,
+                            }
+                        }
+                    );
+
+                    innreach_warn(sprintf("Request %s set to O_ITEM_RECEIVED_DESTINATION but didn't have a 'checkout_id' attribute", $req->id));
+                }
+
+                $req->status('O_ITEM_RECEIVED_DESTINATION')->store;
+            }
+        );
 
         return $c->render(
             status  => 200,
@@ -489,6 +513,8 @@ sub intransit {
     #     centralCode       => $centralCode
     # };
 
+    my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
     return try {
 
         # Get/validate the request
@@ -497,7 +523,29 @@ sub intransit {
         return $c->invalid_request_id( { trackingId => $trackingId, centralCode => $centralCode } )
             unless $req;
 
-        $req->status('O_ITEM_IN_TRANSIT')->store;
+        Koha::Database->new->schema->txn_do(
+            sub {
+                if ( !$req->extended_attributes->search( { type => q{checkout_id} } )->count ) {
+                    my $item   = Koha::Items->find( $body->{itemId} );
+                    my $patron = Koha::Patrons->find( $req->borrowernumber );
+
+                    my $checkout = $plugin->add_issue( { patron => $patron, barcode => $item->barcode } );
+
+                    add_or_update_attributes(
+                        {
+                            request    => $req,
+                            attributes => {
+                                checkout_id => $checkout->id,
+                            }
+                        }
+                    );
+
+                    innreach_warn(sprintf("Request %s set to O_ITEM_IN_TRANSIT but didn't have a 'checkout_id' attribute", $req->id));
+                }
+
+                $req->status('O_ITEM_IN_TRANSIT')->store;
+            }
+        );
 
         return $c->render(
             status  => 200,
