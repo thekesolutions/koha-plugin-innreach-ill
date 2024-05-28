@@ -27,6 +27,7 @@ use YAML::XS;
 
 use C4::Context;
 use C4::Circulation qw(AddIssue AddReturn);
+use C4::Reserves qw(AddReserve);
 
 use Koha::Biblios;
 use Koha::Database;
@@ -1376,6 +1377,50 @@ sub add_return {
     }
 
     return AddReturn( $params->{barcode} );
+}
+
+=head3 add_hold
+
+    my $hold_id = $plugin->add_hold(
+        {
+            library_id => $library_id,
+            patron_id  => $patron_id,
+            biblio_id  => $biblio_id,
+            notes      => $notes,
+            item_id    => $item_id,
+        }
+    );
+
+Wrapper for I<C4::Reserves::AddReserve>.
+
+Parameters: all AddReserve parameters
+
+=cut
+
+sub add_hold {
+    my ( $self, $params ) = @_;
+
+    my @mandatory_params = qw(library_id patron_id biblio_id item_id);
+    foreach my $param (@mandatory_params) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $params->{$param};
+    }
+
+    return AddReserve(
+        {
+            branchcode       => $params->{library_id},
+            borrowernumber   => $params->{patron_id},
+            biblionumber     => $params->{biblio_id},
+            priority         => 1,
+            reservation_date => undef,
+            expiration_date  => undef,
+            notes            => $params->{notes} // 'Placed by ILL',
+            title            => '',
+            itemnumber       => $params->{item_id},
+            found            => undef,
+            itemtype         => undef
+        }
+    );
 }
 
 =head3 check_configuration
