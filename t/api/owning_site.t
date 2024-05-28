@@ -17,8 +17,9 @@
 
 use Modern::Perl;
 
-use Test::More tests => 1;
+use Test::More tests => 3;
 use Test::Mojo;
+use Test::Warn;
 
 use DDP;
 
@@ -135,6 +136,202 @@ subtest 'Full flow tests' => sub {
     is( $r->biblio_id,      $item->biblionumber );
     is( $r->backend,        'INNReach' );
     is( $r->borrowernumber, $patron->id );
+
+    $schema->storage->txn_rollback;
+};
+
+subtest 'intransit() tests' => sub {
+
+    plan tests => 12;
+
+    $schema->storage->txn_begin;
+
+    my $centralCode = "d2ir";
+    my $agency_id   = "code2";
+    my $password    = 'thePassword123';
+    my $user        = add_superlibrarian($password);
+    my $userid      = $user->userid;
+
+    my $item = $builder->build_sample_item;
+
+    my $configuration = $plugin->configuration->{$centralCode};
+    my $patron        = $plugin->generate_patron_for_agency(
+        {
+            central_server => $centralCode,
+            local_server   => $configuration->{localServerCode},
+            description    => 'Sample external library',
+            agency_id      => $agency_id,
+        }
+    );
+
+    my $r = $builder->build_object(
+        {
+            class => 'Koha::Illrequests',
+            value => {
+                backend           => 'INNReach',
+                status            => 'O_ITEM_REQUESTED',
+                biblio_id         => $item->biblionumber,
+                deleted_biblio_id => undef,
+                completed         => undef,
+                medium            => undef,
+                orderid           => undef,
+                borrowernumber    => $patron->id,
+                branchcode        => $patron->branchcode,
+            }
+        }
+    );
+
+    my $hold_id = $plugin->add_hold(
+        {
+            library_id => $patron->branchcode,
+            patron_id  => $patron->id,
+            biblio_id  => $item->biblionumber,
+            item_id    => $item->id,
+        }
+    );
+
+    my $trackingId = "123456789";
+
+    add_or_update_attributes(
+        {
+            request    => $r,
+            attributes => {
+                trackingId  => "$trackingId",
+                centralCode => "$centralCode",
+                hold_id     => $hold_id,
+            }
+        }
+    );
+
+    my $params = {
+        transactionTime  => dt_from_string->epoch,
+        patronId         => $patron->id,
+        patronAgencyCode => $configuration->{mainAgency},
+        itemAgencyCode   => $configuration->{mainAgency},
+        itemId           => $item->id,
+    };
+
+    warnings_exist {
+        $t->put_ok(
+            "//$userid:$password@/api/v1/contrib/innreach/v2/circ/intransit/$trackingId/$centralCode" => json =>
+                $params )->status_is(200)->json_is( { errors => [], reason => q{}, status => q{ok} } );
+    }
+    qr{^innreach_plugin_warn: Request \d+ set to O_ITEM_IN_TRANSIT but didn't have a 'checkout_id' attribute};
+
+    $r->discard_changes;
+    is( $r->status, 'O_ITEM_IN_TRANSIT',                                            'Status updated correctly' );
+    is( $r->extended_attributes->search( { type => 'checkout_id' } )->count, 1,     'The item has been checked out' );
+    is( Koha::Holds->find($hold_id),                                         undef, 'No hold' );
+
+    my $checkout_id = $r->extended_attributes->search( { type => 'checkout_id' } )->next->value;
+
+    $t->put_ok(
+        "//$userid:$password@/api/v1/contrib/innreach/v2/circ/intransit/$trackingId/$centralCode" => json => $params )
+        ->status_is(200)->json_is( { errors => [], reason => q{}, status => q{ok} } );
+
+    is( $r->extended_attributes->search( { type => 'checkout_id' } )->count, 1, 'No new checkout_id added' );
+
+    my $new_checkou_id = $r->extended_attributes->search( { type => 'checkout_id' } )->next->value;
+
+    is( $new_checkou_id, $checkout_id, 'checkout_id unchanged' );
+
+    $schema->storage->txn_rollback;
+};
+
+subtest 'itemreceived() tests' => sub {
+
+    plan tests => 12;
+
+    $schema->storage->txn_begin;
+
+    my $centralCode = "d2ir";
+    my $agency_id   = "code2";
+    my $password    = 'thePassword123';
+    my $user        = add_superlibrarian($password);
+    my $userid      = $user->userid;
+
+    my $item = $builder->build_sample_item;
+
+    my $configuration = $plugin->configuration->{$centralCode};
+    my $patron        = $plugin->generate_patron_for_agency(
+        {
+            central_server => $centralCode,
+            local_server   => $configuration->{localServerCode},
+            description    => 'Sample external library',
+            agency_id      => $agency_id,
+        }
+    );
+
+    my $r = $builder->build_object(
+        {
+            class => 'Koha::Illrequests',
+            value => {
+                backend           => 'INNReach',
+                status            => 'O_ITEM_REQUESTED',
+                biblio_id         => $item->biblionumber,
+                deleted_biblio_id => undef,
+                completed         => undef,
+                medium            => undef,
+                orderid           => undef,
+                borrowernumber    => $patron->id,
+                branchcode        => $patron->branchcode,
+            }
+        }
+    );
+
+    my $hold_id = $plugin->add_hold(
+        {
+            library_id => $patron->branchcode,
+            patron_id  => $patron->id,
+            biblio_id  => $item->biblionumber,
+            item_id    => $item->id,
+        }
+    );
+
+    my $trackingId = "123456789";
+
+    add_or_update_attributes(
+        {
+            request    => $r,
+            attributes => {
+                trackingId  => "$trackingId",
+                centralCode => "$centralCode",
+                hold_id     => $hold_id,
+            }
+        }
+    );
+
+    my $params = {
+        transactionTime  => dt_from_string->epoch,
+        patronId         => $patron->id,
+        patronAgencyCode => $configuration->{mainAgency},
+        itemAgencyCode   => $configuration->{mainAgency},
+        itemId           => $item->id,
+    };
+
+    warnings_exist {
+        $t->put_ok(
+            "//$userid:$password@/api/v1/contrib/innreach/v2/circ/itemreceived/$trackingId/$centralCode" => json =>
+                $params )->status_is(200)->json_is( { errors => [], reason => q{}, status => q{ok} } );
+    }
+    qr{^innreach_plugin_warn: Request \d+ set to O_ITEM_RECEIVED_DESTINATION but didn't have a 'checkout_id' attribute};
+
+    $r->discard_changes;
+    is( $r->status, 'O_ITEM_RECEIVED_DESTINATION',                                            'Status updated correctly' );
+    is( $r->extended_attributes->search( { type => 'checkout_id' } )->count, 1,     'The item has been checked out' );
+    is( Koha::Holds->find($hold_id),                                         undef, 'No hold' );
+
+    my $checkout_id = $r->extended_attributes->search( { type => 'checkout_id' } )->next->value;
+
+    $t->put_ok(
+        "//$userid:$password@/api/v1/contrib/innreach/v2/circ/itemreceived/$trackingId/$centralCode" => json => $params )
+        ->status_is(200)->json_is( { errors => [], reason => q{}, status => q{ok} } );
+
+    is( $r->extended_attributes->search( { type => 'checkout_id' } )->count, 1, 'No new checkout_id added' );
+
+    my $new_checkou_id = $r->extended_attributes->search( { type => 'checkout_id' } )->next->value;
+
+    is( $new_checkou_id, $checkout_id, 'checkout_id unchanged' );
 
     $schema->storage->txn_rollback;
 };
