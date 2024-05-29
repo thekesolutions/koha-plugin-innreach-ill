@@ -77,8 +77,12 @@ sub process {
             };
 
             warn sprintf(
-                "[innreach]\t%s request error: %s (X-IR-Allowed-Circulation: %s)", $_->method,
-                $_->response->decoded_content, $_->response->headers->header('X-IR-Allowed-Circulation') // '<empty>'
+                "[innreach] [job_id=%s] [ill_req=%s]\t%s request error: %s (X-IR-Allowed-Circulation: %s)",
+                $self->id,
+                $req->id,
+                $_->method,
+                $_->response->decoded_content // '',
+                $_->response->headers->header('X-IR-Allowed-Circulation') // '<empty>'
             );
         } else {
             push @messages, {
@@ -87,7 +91,12 @@ sub process {
                 error => "$_",
             };
 
-            warn sprintf( "[innreach]\t%s unhandled error: %s", $_ );
+            warn sprintf(
+                "[innreach] [job_id=%s] [ill_req=%s]\tunhandled error: %s",
+                $self->id,
+                $req->id,
+                $_
+            );
         }
 
         $self->set( { progress => 0, status => 'failed' } );
@@ -99,7 +108,12 @@ sub process {
     return try {
         $self->finish($data);
     } catch {
-        warn sprintf( "[innreach]\t%s fatal error saving the job status: %s", $_ );
+        warn sprintf(
+            "[innreach] [job_id=%s] [ill_req=%s]\t fatal error saving the job status: %s",
+            $self->id,
+            $req->id,
+            $_
+        );
         die "Something really bad happened: $_";
     };
 }
