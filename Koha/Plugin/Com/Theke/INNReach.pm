@@ -1423,6 +1423,30 @@ sub add_hold {
     );
 }
 
+=head3 get_ill_rs
+
+    my $ill_rs = $self->get_ill_rs;
+
+This method wraps the ILL resultset class to make it future proof.
+
+=cut
+
+sub get_ill_rs {
+    my ( $self ) = @_;
+
+    my $rs;
+
+    if ( C4::Context->preference('Version') ge '24.050000' ) {
+        require Koha::ILL::Requests;
+        $rs = Koha::ILL::Requests->new;
+    } else {
+        require Koha::Illrequests;
+        $rs = Koha::Illrequests->new;
+    }
+
+    return $rs;
+}
+
 =head3 check_configuration
 
     my $errors = $self->check_configuration;
