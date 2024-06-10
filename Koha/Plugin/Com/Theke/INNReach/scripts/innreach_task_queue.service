@@ -4,7 +4,6 @@ Description=INN-Reach task queue server daemon.
 [Service]
 Environment=KOHA_INSTANCE=kohadev
 ExecStart=/usr/sbin/koha-shell ${KOHA_INSTANCE} -c "PERL5LIB=$PERL5LIB:/var/lib/koha/${KOHA_INSTANCE}/plugins:/var/lib/koha/${KOHA_INSTANCE}/plugins/Koha/Plugin/Com/Theke/INNReach/lib/ perl /var/lib/koha/${KOHA_INSTANCE}/plugins/Koha/Plugin/Com/Theke/INNReach/scripts/task_queue_daemon.pl ${KOHA_INSTANCE}"
-WatchdogSec=90s
 Restart=always
 RestartSec=5
 
