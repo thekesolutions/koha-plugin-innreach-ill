@@ -46,11 +46,9 @@ d2ir:
         exclude_empty_biblios: true
         use_holding_library: false # if true, holding library will be used for the location
         included_items:
-            biblionumber: [ 1, 2, 3 ]
             ccode: [ a, b, c ]
         excluded_items:
-            biblionumber: [ 1, 2, 3 ]
-            ccode: [ a, b, c ]
+            ccode: [ c, d ]
     # Default values for biblios/items configuration
     default_marc_framework: FA
     default_barcode_normalizers:
