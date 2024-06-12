@@ -1043,10 +1043,18 @@ sub should_biblio_be_contributed {
 
 =head3 filter_items_by_contributable
 
-    my $items = $contribution->filter_items_by_contributable( { items => $biblio->items } );
+    my $items = $contribution->filter_items_by_contributable(
+        {
+            items         => $biblio->items,
+          [ force_enabled => 1, ]
+        }
+    );
 
 Given a I<Koha::Items> iterator, it returns a new resultset, filtered by the configured
 rules for the central server.
+
+The optional parameter I<force_enabled> can be used to override the check on the
+I<contribution: enabled> flag in the configuration.
 
 =cut
 
@@ -1058,29 +1066,27 @@ sub filter_items_by_contributable {
     INNReach::Ill::MissingParameter->throw( param => 'items' )
         unless $items;
 
+    my $force_enabled = $params->{force_enabled};
+
     my $central_server = $self->{central_server};
     my $configuration  = $self->{config}->{$central_server};
 
-    if ( exists $configuration->{contribution}->{included_items} ) {
+    return $items->empty
+        unless $configuration->{contribution}->{enabled}
+        || $force_enabled;
 
-        # Allow-list case, overrides any deny-list setup
-        if ( $configuration->{contribution}->{included_items} ) {
+    if ( exists $configuration->{contribution}->{included_items}
+        && $configuration->{contribution}->{included_items} )
+    {
+        # there are rules!
+        $items = $items->search( $configuration->{contribution}->{included_items} );
+    }
 
-            # there are rules!
-            $items = $items->search( $configuration->{contribution}->{included_items} );
-        } else {
-            $items = $items->empty    # No items if the rules exist but are empty
-        }
-    } else {
-
-        # Deny-list case
-        if ( $configuration->{contribution}->{excluded_items} ) {
-
-            # there are rules!
-            $items = $items->search( { '-not' => $configuration->{contribution}->{excluded_items} } );
-        }
-
-        # else {  } # no filter
+    if ( exists $configuration->{contribution}->{excluded_items}
+        && $configuration->{contribution}->{excluded_items} )
+    {
+        # there are rules!
+        $items = $items->search( { '-not' => $configuration->{contribution}->{excluded_items} } );
     }
 
     return $items;
