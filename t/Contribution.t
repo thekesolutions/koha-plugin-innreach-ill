@@ -35,7 +35,7 @@ my $central_server = 'd2ir';
 
 subtest 'filter_items_by_contributable() tests' => sub {
 
-    plan tests => 5;
+    plan tests => 6;
 
     $schema->storage->txn_begin;
 
@@ -74,6 +74,10 @@ subtest 'filter_items_by_contributable() tests' => sub {
 
     my $c = Koha::Plugin::Com::Theke::INNReach->new->contribution($central_server);
     is( $c->filter_items_by_contributable( { items => $items } )->count, 0, 'Contribution disabled, empty resultset' );
+    is(
+        $c->filter_items_by_contributable( { items => $items, force_enabled => 1 } )->count, 2,
+        'Contribution disabled, empty resultset'
+    );
 
     $contribution_enabled = 1;
 
