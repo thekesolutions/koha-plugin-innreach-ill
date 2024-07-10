@@ -164,12 +164,8 @@ sub itemhold {
 
                 my $can_item_be_reserved;
 
-                if ( C4::Context->preference('Version') ge '21.120000' ) {
-                    my $patron = Koha::Patrons->find($patron_id);
-                    $can_item_be_reserved = CanItemBeReserved( $patron, $item, $library_id )->{status};
-                } else {
-                    $can_item_be_reserved = CanItemBeReserved( $patron_id, $item->itemnumber, $library_id )->{status};
-                }
+                my $patron = Koha::Patrons->find($patron_id);
+                $can_item_be_reserved = CanItemBeReserved( $patron, $item, $library_id )->{status};
 
                 unless ( $can_item_be_reserved eq 'OK' ) {
                     $plugin->innreach_warn(
@@ -350,7 +346,7 @@ sub localhold {
                 $c->tx->on(
                     finish => sub {
                         my $can_item_be_reserved =
-                            CanItemBeReserved( $patron->borrowernumber, $item->itemnumber, $library_id )->{status};
+                            CanItemBeReserved( $patron, $item->itemnumber, $library_id )->{status};
                         if ( $can_item_be_reserved eq 'OK' ) {
 
                             # hold can be placed, just do it
