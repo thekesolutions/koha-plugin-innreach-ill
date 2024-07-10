@@ -345,8 +345,7 @@ sub localhold {
 
                 $c->tx->on(
                     finish => sub {
-                        my $can_item_be_reserved =
-                            CanItemBeReserved( $patron, $item->itemnumber, $library_id )->{status};
+                        my $can_item_be_reserved = CanItemBeReserved( $patron, $item, $library_id )->{status};
                         if ( $can_item_be_reserved eq 'OK' ) {
 
                             # hold can be placed, just do it
