@@ -1,6 +1,6 @@
 {
   "name": "koha-plugin-innreach",
-  "version": "5.2.19",
+  "version": "5.3.0",
   "previous_version": "2.0.7",
   "description": "INN-Reach connector plugin for Koha",
   "devDependencies": {
