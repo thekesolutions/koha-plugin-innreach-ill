@@ -36,8 +36,6 @@ use C4::Reserves qw(AddReserve CanItemBeReserved);
 
 use Koha::Biblios;
 use Koha::Checkouts;
-use Koha::Illrequests;
-use Koha::Illrequestattributes;
 use Koha::Items;
 use Koha::Patrons;
 
@@ -49,7 +47,6 @@ use Koha::Illbackends::INNReach::Base;
 use Koha::Plugin::Com::Theke::INNReach;
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 use Koha::Plugin::Com::Theke::INNReach::Normalizer;
-use Koha::Plugin::Com::Theke::INNReach::Utils qw(innreach_warn add_or_update_attributes);
 
 use Mojo::Base 'Mojolicious::Controller';
 
@@ -140,7 +137,7 @@ sub itemhold {
                 }
 
                 # Create the request
-                my $req = Koha::Illrequest->new(
+                my $req = $plugin->new_ill_request(
                     {
                         branchcode     => $library_id,
                         borrowernumber => $patron_id,
@@ -154,7 +151,7 @@ sub itemhold {
                 # Add the custom attributes
                 while ( my ( $type, $value ) = each %{$attributes} ) {
                     if ( $value && length $value > 0 ) {
-                        Koha::Illrequestattribute->new(
+                        $plugin->new_ill_request_attr(
                             {
                                 illrequest_id => $req->illrequest_id,
                                 type          => $type,
@@ -175,7 +172,7 @@ sub itemhold {
                 }
 
                 unless ( $can_item_be_reserved eq 'OK' ) {
-                    Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn(
+                    $plugin->innreach_warn(
                               "Placing the hold, but rules woul've prevented it. FIXME! (patron_id=$patron_id, item_id="
                             . $item->itemnumber
                             . ", library_id=$library_id, status=$can_item_be_reserved)" );
@@ -214,7 +211,7 @@ sub itemhold {
                     );
                 }
 
-                Koha::Illrequestattribute->new(
+                $plugin->new_ill_request_attr(
                     {
                         illrequest_id => $req->illrequest_id,
                         type          => 'hold_id',
@@ -316,7 +313,7 @@ sub localhold {
                 my $library_id = $config->{partners_library_id};
 
                 # Create the request
-                my $req = Koha::Illrequest->new(
+                my $req = $plugin->new_ill_request(
                     {
                         branchcode     => $library_id,
                         borrowernumber => $patron_id,
@@ -330,7 +327,7 @@ sub localhold {
                 # Add the custom attributes
                 while ( my ( $type, $value ) = each %{$attributes} ) {
                     if ( $value && length $value > 0 ) {
-                        Koha::Illrequestattribute->new(
+                        $plugin->new_ill_request_attr(
                             {
                                 illrequest_id => $req->illrequest_id,
                                 type          => $type,
@@ -453,7 +450,7 @@ sub itemreceived {
 
                     my $checkout = $plugin->add_issue( { patron => $patron, barcode => $item->barcode } );
 
-                    add_or_update_attributes(
+                    $plugin->add_or_update_attributes(
                         {
                             request    => $req,
                             attributes => {
@@ -462,7 +459,7 @@ sub itemreceived {
                         }
                     );
 
-                    innreach_warn(sprintf("Request %s set to O_ITEM_RECEIVED_DESTINATION but didn't have a 'checkout_id' attribute", $req->id));
+                    $plugin->innreach_warn(sprintf("Request %s set to O_ITEM_RECEIVED_DESTINATION but didn't have a 'checkout_id' attribute", $req->id));
                 }
 
                 $req->status('O_ITEM_RECEIVED_DESTINATION')->store;
@@ -531,7 +528,7 @@ sub intransit {
 
                     my $checkout = $plugin->add_issue( { patron => $patron, barcode => $item->barcode } );
 
-                    add_or_update_attributes(
+                    $plugin->add_or_update_attributes(
                         {
                             request    => $req,
                             attributes => {
@@ -540,7 +537,7 @@ sub intransit {
                         }
                     );
 
-                    innreach_warn(sprintf("Request %s set to O_ITEM_IN_TRANSIT but didn't have a 'checkout_id' attribute", $req->id));
+                    $plugin->innreach_warn(sprintf("Request %s set to O_ITEM_IN_TRANSIT but didn't have a 'checkout_id' attribute", $req->id));
                 }
 
                 $req->status('O_ITEM_IN_TRANSIT')->store;
@@ -768,6 +765,8 @@ sub claimsreturned {
 
     return try {
 
+        my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
         my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
         return $c->render(
@@ -792,7 +791,7 @@ sub claimsreturned {
         $schema->txn_do(
             sub {
                 $req->status('O_ITEM_CLAIMED_RETURNED')->store;
-                Koha::Illrequestattribute->new(
+                $plugin->new_ill_request_attr(
                     {
                         illrequest_id => $req->illrequest_id,
                         type          => 'claimsReturnedDate',
@@ -872,7 +871,9 @@ sub patronhold {
         my $schema = Koha::Database->new->schema;
         $schema->txn_do(
             sub {
-                my $configuration = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
+                my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
+                my $configuration   = $plugin->configuration->{$centralCode};
                 my $pickup_location = $c->pickup_location_to_library_id(
                     {
                         pickupLocation => $attributes->{pickupLocation},
@@ -881,7 +882,7 @@ sub patronhold {
                 );
 
                 # Create the request
-                my $req = Koha::Illrequest->new(
+                my $req = $plugin->new_ill_request(
                     {
                         branchcode     => $pickup_location,
                         borrowernumber => $user_id,
@@ -895,7 +896,7 @@ sub patronhold {
                 # Add the custom attributes
                 while ( my ( $type, $value ) = each %{$attributes} ) {
                     if ( $value && length $value > 0 ) {
-                        Koha::Illrequestattribute->new(
+                        $plugin->new_ill_request_attr(
                             {
                                 illrequest_id => $req->illrequest_id,
                                 type          => $type,
@@ -958,7 +959,8 @@ sub itemshipped {
         return $c->out_of_sequence( { current_status => 'B_ITEM_SHIPPED', requested_status => 'B_ITEM_SHIPPED' } )
             unless $req->status eq 'B_ITEM_REQUESTED';
 
-        my $config = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
+        my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+        my $config = $plugin->configuration->{$centralCode};
 
         my $schema = Koha::Database->new->schema;
         $schema->txn_do(
@@ -1044,7 +1046,7 @@ sub itemshipped {
                 # Add new attributes for tracking
                 while ( my ( $type, $value ) = each %{$attributes} ) {
                     if ( $value && length $value > 0 ) {
-                        my $attribute = Koha::Illrequestattributes->find(
+                        my $attribute = $req->extended_attributes->find(
                             {
                                 illrequest_id => $req->illrequest_id,
                                 type          => $type
@@ -1054,7 +1056,7 @@ sub itemshipped {
                         # If already exists, overwrite
                         $attribute->delete if $attribute;
 
-                        Koha::Illrequestattribute->new(
+                        $plugin->new_ill_request_attr(
                             {
                                 illrequest_id => $req->illrequest_id,
                                 type          => $type,
@@ -1065,7 +1067,7 @@ sub itemshipped {
                     }
                 }
 
-                Koha::Illrequestattribute->new(
+                $plugin->new_ill_request_attr(
                     {
                         illrequest_id => $req->illrequest_id,
                         type          => 'hold_id',
@@ -1151,8 +1153,10 @@ sub recall {
 
     return try {
 
+        my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
         # record this due date for later UI use
-        Koha::Illrequestattribute->new(
+        $plugin->new_ill_request_attr(
             {
                 illrequest_id => $req->illrequest_id,
                 type          => 'recallDueDateTime',
@@ -1244,6 +1248,8 @@ sub borrowerrenew {
 
     return try {
 
+        my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
         # the current status is valid, retrieve the checkout object
         my $checkout_attribute = $req->extended_attributes->find( { type => 'checkout_id' } );
         my $checkout;
@@ -1251,7 +1257,7 @@ sub borrowerrenew {
         if ($checkout_attribute) {
             $checkout = Koha::Checkouts->find( $checkout_attribute->value );
         } else {
-            Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn(
+            $plugin->innreach_warn(
                 "Old request: fallback to search by itemnumber a.k.a. might not be accurate!");
             $checkout = Koha::Checkouts->search( { itemnumber => $itemId } )->next;
         }
@@ -1313,6 +1319,8 @@ sub cancelrequest {
 
     return try {
 
+        my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
         my $req = $c->get_ill_request( { trackingId => $trackingId, centralCode => $centralCode } );
 
         return $c->render(
@@ -1336,7 +1344,7 @@ sub cancelrequest {
         my $notice_result   = $req->send_patron_notice("ILL_REQUEST_UNAVAIL");
         my @notice_failures = $notice_result->{result}->{fail};
         if ( scalar @notice_failures ) {
-            Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn( "Error sending notificaiton for request "
+            $plugin->innreach_warn( "Error sending notificaiton for request "
                     . $req->id
                     . ". Transports: "
                     . join( ', ', @{ $notice_failures[0] } ) );
@@ -1463,7 +1471,7 @@ sub get_print_slip {
         $plugin->{cgi} = CGI->new;    # required by C4::Auth::gettemplate and friends
         my $template = $plugin->get_template( { file => 'print_slip.tt' } );
 
-        my $req = Koha::Illrequests->find($illrequest_id);
+        my $req = $plugin->get_ill_rs()->find($illrequest_id);
 
         unless ($req) {
             return $c->render(
@@ -1508,7 +1516,7 @@ sub get_print_slip {
                 }
             }
         } else {
-            Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("Not sure where I am");
+            $plugin->innreach_warn("Not sure where I am");
         }
 
         my $slip = C4::Letters::GetPreparedLetter(
@@ -1564,6 +1572,8 @@ sub get_ill_request {
     my $trackingId  = $args->{trackingId};
     my $centralCode = $args->{centralCode};
 
+    my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
     # Get/validate the request
     my $dbh = C4::Context->dbh;
     my $sth = $dbh->prepare(
@@ -1581,7 +1591,7 @@ sub get_ill_request {
 
     my $req;
 
-    $req = Koha::Illrequests->find( $result->{illrequest_id} )
+    $req = $plugin->get_ill_rs()->find( $result->{illrequest_id} )
         if $result->{illrequest_id};
 
     return $req;
@@ -1600,6 +1610,8 @@ sub get_ill_request_from_barcode {
     my $barcode = $args->{barcode};
     my $status  = $args->{status} // 'B_ITEM_SHIPPED';    # borrowing site, item shipped, receiving
 
+    my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+
     my $item = Koha::Items->find( { barcode => $barcode } );
 
     unless ($item) {
@@ -1608,7 +1620,7 @@ sub get_ill_request_from_barcode {
 
     my $biblio_id = $item->biblionumber;
 
-    my $reqs = Koha::Illrequests->search(
+    my $reqs = $plugin->get_ill_rs()->search(
         {
             biblio_id => $biblio_id,
             status    => [$status]
@@ -1616,7 +1628,7 @@ sub get_ill_request_from_barcode {
     );
 
     if ( $reqs->count > 1 ) {
-        Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn(
+        $plugin->innreach_warn(
             "More than one ILL request for barcode ($barcode). Beware!");
     }
 
@@ -1654,6 +1666,7 @@ sub add_virtual_record_and_item {
     my $call_number = $args->{call_number};
     my $barcode     = $args->{barcode};
 
+    my $plugin     = Koha::Plugin::Com::Theke::INNReach->new;
     my $attributes = $req->extended_attributes;
 
     my $centralItemType = $attributes->search( { type => 'centralItemType' } )->next->value;
@@ -1687,7 +1700,7 @@ sub add_virtual_record_and_item {
             unless ( any { $_ eq $method } @{ $normalizer->available_normalizers } ) {
 
                 # not a valid normalizer
-                Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn(
+                $plugin->innreach_warn(
                     "Invalid barcode normalizer configured: $method");
             } else {
                 $normalizer->$method;
@@ -1710,7 +1723,7 @@ sub add_virtual_record_and_item {
     }
 
     unless ($item_type) {
-        Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn("'default_item_type' entry missing in configuration");
+        $plugin->innreach_warn("'default_item_type' entry missing in configuration");
         return $c->render(
             status  => 500,
             openapi => {
@@ -1879,7 +1892,8 @@ Helper method for rendering unhandled exceptions correctly
 sub unhandled_innreach_exception {
     my ( $self, $exception ) = @_;
 
-    Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn($exception);
+    my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
+    $plugin->innreach_warn($exception);
 
     return $self->render(
         status  => 500,

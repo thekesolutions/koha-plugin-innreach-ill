@@ -31,8 +31,6 @@ use C4::Reserves qw(AddReserve);
 
 use Koha::Biblios;
 use Koha::Database;
-use Koha::Illrequestattributes;
-use Koha::Illrequests;
 use Koha::Items;
 use Koha::Libraries;
 use Koha::Patron::Categories;
@@ -40,7 +38,6 @@ use Koha::Patrons;
 
 use Koha::Plugin::Com::Theke::INNReach::Contribution;
 use Koha::Plugin::Com::Theke::INNReach::OAuth2;
-use Koha::Plugin::Com::Theke::INNReach::Utils qw(innreach_warn);
 
 BEGIN {
     my $path = Module::Metadata->find_module_by_name(__PACKAGE__);
@@ -613,7 +610,7 @@ sub after_item_action {
 
             # Skip if item type is not mapped
             if ( !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type} ) {
-                innreach_warn("No 'local_to_central_itype' mapping for $item_type ($central_server)");
+                $self->innreach_warn("No 'local_to_central_itype' mapping for $item_type ($central_server)");
                 next;
             }
         }
@@ -684,7 +681,7 @@ sub after_circ_action {
          # this only applies to the borrowing side. On the lending side all the workflow is handled
          # within the hold cancel/fill actions, which trigger plain cancellation or setting the status as
          # O_ITEM_SHIPPED and generating the checkout right after, inside the same transaction.
-        $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_requests_from_attribute(
+        $req = $self->get_ill_requests_from_attribute(
             {
                 type  => 'itemBarcode',
                 value => $checkout->item->barcode,
@@ -694,7 +691,7 @@ sub after_circ_action {
             { order_by    => { '-desc' => 'updated' }, rows => 1, }
         )->single;
     } else {
-        $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
+        $req = $self->get_ill_request_from_attribute(
             {
                 type  => 'checkout_id',
                 value => $checkout->id,
@@ -746,7 +743,7 @@ sub after_circ_action {
         }
     } elsif ( $action eq 'checkout' ) {
         if ( any { $req->status eq $_ } qw{B_ITEM_RECEIVED} ) {
-            Koha::Plugin::Com::Theke::INNReach::Utils::add_or_update_attributes(
+            $self->add_or_update_attributes(
                 {
                     request    => $req,
                     attributes => { checkout_id => $checkout->id }
@@ -772,7 +769,7 @@ sub after_hold_action {
     my $payload = $params->{payload};
     my $hold    = $payload->{hold};
 
-    my $req = Koha::Plugin::Com::Theke::INNReach::Utils::get_ill_request_from_attribute(
+    my $req = $self->get_ill_request_from_attribute(
         {
             type  => 'hold_id',
             value => $hold->id,
@@ -1203,7 +1200,7 @@ sub central_servers {
 
 =head3 get_ill_request_from_biblio_id
 
-This method retrieves the Koha::ILLRequest using a biblio_id.
+This method retrieves the ILL request using a biblio_id.
 
 =cut
 
@@ -1216,10 +1213,10 @@ sub get_ill_request_from_biblio_id {
         INNReach::Ill::UnknownBiblioId->throw( biblio_id => $biblio_id );
     }
 
-    my $reqs = Koha::Illrequests->search({ biblio_id => $biblio_id });
+    my $reqs = $self->get_ill_rs()->search({ biblio_id => $biblio_id });
 
     if ( $reqs->count > 1 ) {
-        innreach_warn( "More than one ILL request for biblio_id ($biblio_id). Beware!");
+        $self->innreach_warn( "More than one ILL request for biblio_id ($biblio_id). Beware!");
     }
 
     return unless $reqs->count > 0;
@@ -1447,6 +1444,56 @@ sub get_ill_rs {
     return $rs;
 }
 
+=head3 new_ill_request
+
+    my $req = $self->new_ill_request( $params );
+
+This method wraps the method to create a new ILL request
+to make it future proof.
+
+=cut
+
+sub new_ill_request {
+    my ( $self, $params ) = @_;
+
+    my $req;
+
+    if ( C4::Context->preference('Version') ge '24.050000' ) {
+        require Koha::ILL::Request;
+        $req = Koha::ILL::Request->new($params);
+    } else {
+        require Koha::Illrequest;
+        $req = Koha::Illrequest->new($params);
+    }
+
+    return $req;
+}
+
+=head3 new_ill_request_attr
+
+    my $req = $self->new_ill_request_attr( $params );
+
+This method wraps the method to create a new ILL request attribute
+to make it future proof.
+
+=cut
+
+sub new_ill_request_attr {
+    my ( $self, $params ) = @_;
+
+    my $attr;
+
+    if ( C4::Context->preference('Version') ge '24.050000' ) {
+        require Koha::ILL::Request::Attribute;
+        $attr = Koha::ILL::Request::Attribute->new($params);
+    } else {
+        require Koha::Illrequestattribute;
+        $attr = Koha::Illrequestattribute->new($params);
+    }
+
+    return $attr;
+}
+
 =head3 check_configuration
 
     my $errors = $self->check_configuration;
@@ -1572,7 +1619,7 @@ sub sync_agencies {
             if ($patron_id && !$patron) {
 
                 # cleanup needed!
-                innreach_warn( "There is a 'agency_to_patron' entry for '$agency_id', but the patron is not present on the DB!");
+                $self->innreach_warn( "There is a 'agency_to_patron' entry for '$agency_id', but the patron is not present on the DB!");
                 my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
 
                 my $sth = C4::Context->dbh->prepare(qq{
@@ -1613,6 +1660,146 @@ sub sync_agencies {
     }
 
     return $result;
+}
+
+=head3 get_ill_request_from_attribute
+
+    my $req = $plugin->get_ill_request_from_attribute(
+        {
+            type  => $type,
+            value => $value
+        }
+    );
+
+Retrieve an ILL request using some attribute.
+
+=cut
+
+sub get_ill_request_from_attribute {
+    my ( $self, $args ) = @_;
+
+    my @mandatory_params = qw(type value);
+    foreach my $param (@mandatory_params) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $args->{$param};
+    }
+
+    my $type  = $args->{type};
+    my $value = $args->{value};
+
+    my $requests_rs = $self->get_ill_rs()->search(
+        {
+            'illrequestattributes.type'  => $type,
+            'illrequestattributes.value' => $value,
+            'me.backend'                 => 'INNReach',
+        },
+        { join => ['illrequestattributes'] }
+    );
+
+    my $count = $requests_rs->count;
+
+    $self->innreach_warn("more than one result searching requests with type='$type' value='$value'")
+        if $count > 1;
+
+    return $requests_rs->next
+        if $count > 0;
+}
+
+=head3 get_ill_requests_from_attribute
+
+    my $reqs = $plugin->get_ill_requests_from_attribute(
+        {
+            type  => $type,
+            value => $value
+        }
+    );
+
+Retrieve all ILL requests for the I<INNReach> backend with extended attributes
+matching the passed parameters.
+
+=cut
+
+sub get_ill_requests_from_attribute {
+    my ( $self, $args ) = @_;
+
+    my @mandatory_params = qw(type value);
+    foreach my $param (@mandatory_params) {
+        INNReach::Ill::MissingParameter->throw( param => $param )
+            unless exists $args->{$param};
+    }
+
+    my $type  = $args->{type};
+    my $value = $args->{value};
+
+    return $self->get_ill_rs()->search(
+        {
+            'illrequestattributes.type'  => $type,
+            'illrequestattributes.value' => $value,
+            'me.backend'                 => 'INNReach',
+        },
+        { join => ['illrequestattributes'] }
+    );
+}
+
+=head3 add_or_update_attributes
+
+    $plugin->add_or_update_attributes(
+        {
+            request    => $request,
+            attributes => {
+                $type_1 => $value_1,
+                $type_2 => $value_2,
+                ...
+            },
+        }
+    );
+
+Takes care of updating or adding attributes if they don't already exist.
+
+=cut
+
+sub add_or_update_attributes {
+    my ( $self, $params ) = @_;
+
+    my $request    = $params->{request};
+    my $attributes = $params->{attributes};
+
+    Koha::Database->new->schema->txn_do(
+        sub {
+            while ( my ( $type, $value ) = each %{$attributes} ) {
+
+                my $attr = $request->extended_attributes->find( { type => $type } );
+
+                if ($attr) {    # update
+                    if ( $attr->value ne $value ) {
+                        $attr->update( { value => $value, } );
+                    }
+                } else {        # new
+                    $attr = $self->new_ill_request_attr->new(
+                        {
+                            illrequest_id => $request->id,
+                            type          => $type,
+                            value         => $value,
+                        }
+                    )->store;
+                }
+            }
+        }
+    );
+
+    return;
+}
+
+=head3 innreach_warn
+
+Helper method for logging warnings for the INN-Reach plugin homogeneously.
+
+=cut
+
+sub innreach_warn {
+    my ($warning) = @_;
+
+    warn "innreach_plugin_warn: $warning";
 }
 
 1;

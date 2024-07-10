@@ -24,10 +24,7 @@ BEGIN {
     @ISA = qw(Exporter);
 
     @EXPORT_OK = qw(
-        add_or_update_attributes
         add_virtual_record_and_item
-        get_ill_request_from_attribute
-        innreach_warn
     );
 }
 
@@ -39,8 +36,6 @@ use C4::Context;
 use C4::Biblio qw(AddBiblio);
 
 use Koha::Database;
-use Koha::Illrequests;
-use Koha::Illrequestattributes;
 use Koha::Items;
 
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
@@ -53,85 +48,6 @@ A class implementing the controller methods for the circulation-related endpoint
 =head1 API
 
 =head2 Class methods
-
-=head3 get_ill_request_from_attribute
-
-    my $req = get_ill_request_from_attribute(
-        {
-            type  => $type,
-            value => $value
-        }
-    );
-
-Retrieve an ILL request using some attribute.
-
-=cut
-
-sub get_ill_request_from_attribute {
-    my ($args) = @_;
-
-    my @mandatory_params = qw(type value);
-    foreach my $param (@mandatory_params) {
-        INNReach::Ill::MissingParameter->throw( param => $param )
-            unless exists $args->{$param};
-    }
-
-    my $type  = $args->{type};
-    my $value = $args->{value};
-
-    my $requests_rs = Koha::Illrequests->search(
-        {
-            'illrequestattributes.type'  => $type,
-            'illrequestattributes.value' => $value,
-            'me.backend'                 => 'INNReach',
-        },
-        { join => ['illrequestattributes'] }
-    );
-
-    my $count = $requests_rs->count;
-
-    innreach_warn("more than one result searching requests with type='$type' value='$value'")
-        if $count > 1;
-
-    return $requests_rs->next
-        if $count > 0;
-}
-
-=head3 get_ill_requests_from_attribute
-
-    my $reqs = get_ill_requests_from_attribute(
-        {
-            type  => $type,
-            value => $value
-        }
-    );
-
-Retrieve all ILL requests for the I<INNReach> backend with extended attributes
-matching the passed parameters.
-
-=cut
-
-sub get_ill_requests_from_attribute {
-    my ($args) = @_;
-
-    my @mandatory_params = qw(type value);
-    foreach my $param (@mandatory_params) {
-        INNReach::Ill::MissingParameter->throw( param => $param )
-            unless exists $args->{$param};
-    }
-
-    my $type  = $args->{type};
-    my $value = $args->{value};
-
-    return Koha::Illrequests->search(
-        {
-            'illrequestattributes.type'  => $type,
-            'illrequestattributes.value' => $value,
-            'me.backend'                 => 'INNReach',
-        },
-        { join => ['illrequestattributes'] }
-    );
-}
 
 =head3 add_virtual_record_and_item
 
@@ -263,67 +179,6 @@ sub add_virtual_record_and_item {
     );
 
     return $item;
-}
-
-=head3 add_or_update_attributes
-
-    add_or_update_attributes(
-        {
-            request    => $request,
-            attributes => {
-                $type_1 => $value_1,
-                $type_2 => $value_2,
-                ...
-            },
-        }
-    );
-
-Takes care of updating or adding attributes if they don't already exist.
-
-=cut
-
-sub add_or_update_attributes {
-    my ($params) = @_;
-
-    my $request    = $params->{request};
-    my $attributes = $params->{attributes};
-
-    Koha::Database->new->schema->txn_do(
-        sub {
-            while ( my ( $type, $value ) = each %{$attributes} ) {
-
-                my $attr = $request->extended_attributes->find( { type => $type } );
-
-                if ($attr) {    # update
-                    if ( $attr->value ne $value ) {
-                        $attr->update( { value => $value, } );
-                    }
-                } else {        # new
-                    $attr = Koha::Illrequestattribute->new(
-                        {
-                            illrequest_id => $request->id,
-                            type          => $type,
-                            value         => $value,
-                        }
-                    )->store;
-                }
-            }
-        }
-    );
-
-    return;
-}
-
-=head3 innreach_warn
-
-Helper method for logging warnings for the INN-Reach plugin homogeneously.
-
-=cut
-
-sub innreach_warn {
-    my ($warning) = @_;
-
-    warn "innreach_plugin_warn: $warning";
 }
 
 1;

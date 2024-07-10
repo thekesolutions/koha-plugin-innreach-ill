@@ -31,7 +31,6 @@ use C4::Context;
 use Koha::Biblios;
 use Koha::Biblio::Metadatas;
 use Koha::DateUtils qw(dt_from_string);
-use Koha::Illrequests;
 use Koha::Items;
 use Koha::Libraries;
 
@@ -967,7 +966,7 @@ sub get_ill_request_from_item_id {
 
     my $biblio_id = $item->biblionumber;
 
-    my $reqs = Koha::Illrequests->search(
+    my $reqs = $self->{plugin}->get_ill_rs->search(
         {
             biblio_id => $biblio_id,
             status    => [$status]

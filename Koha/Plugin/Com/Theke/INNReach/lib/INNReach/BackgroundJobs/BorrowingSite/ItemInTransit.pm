@@ -19,7 +19,6 @@ use base 'Koha::BackgroundJob';
 
 use Try::Tiny qw(catch try);
 
-use Koha::Illrequests;
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 
 use INNReach::Commands::BorrowingSite;
@@ -59,10 +58,11 @@ sub process {
     my @messages;
 
     require Koha::Plugin::Com::Theke::INNReach;
-    my $commands = INNReach::Commands::BorrowingSite->new( { plugin => Koha::Plugin::Com::Theke::INNReach->new } );
+    my $plugin   = Koha::Plugin::Com::Theke::INNReach->new;
+    my $commands = INNReach::Commands::BorrowingSite->new( { plugin => $plugin } );
 
     # ill_request_id param required by ->enqueue()
-    my $req = Koha::Illrequests->find( $args->{ill_request_id} );
+    my $req = $plugin->get_ill_rs()->find( $args->{ill_request_id} );
 
     try {
         $commands->item_in_transit($req);

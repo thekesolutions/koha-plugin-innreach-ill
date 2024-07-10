@@ -20,7 +20,6 @@ use Modern::Perl;
 use C4::Context;
 
 use Koha::Database;
-use Koha::Illrequestattribute;
 use Koha::Items;
 use Koha::Patrons;
 
@@ -40,7 +39,7 @@ to INN-Reach central servers
 
     $command->cancel_request( $request );
 
-Given a I<Koha::Illrequest> object, notifies it got cancelled by the owning site.
+Given an I<ILL request> object, notifies it got cancelled by the owning site.
 
 =cut
 

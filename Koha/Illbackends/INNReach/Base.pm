@@ -31,13 +31,11 @@ use Koha::Biblios;
 use Koha::Checkouts;
 use Koha::DateUtils qw(dt_from_string);
 use Koha::Holds;
-use Koha::Illrequests;
-use Koha::Illrequestattributes;
 use Koha::Items;
 use Koha::Patrons;
 
 use Koha::Plugin::Com::Theke::INNReach;
-use Koha::Plugin::Com::Theke::INNReach::Utils qw(add_or_update_attributes add_virtual_record_and_item innreach_warn);
+use Koha::Plugin::Com::Theke::INNReach::Utils qw(add_virtual_record_and_item);
 
 use INNReach::Commands::BorrowingSite;
 
@@ -383,7 +381,7 @@ sub item_shipped {
                 }
 
                 # record checkout_id
-                Koha::Illrequestattribute->new(
+                $self->{plugin}->new_ill_request_attr(
                     {
                         illrequest_id => $req->illrequest_id,
                         type          => 'checkout_id',
@@ -742,7 +740,7 @@ sub receive_unshipped {
                     # Update request
                     $req->biblio_id( $item->biblionumber )->status('B_ITEM_RECEIVED')->store;
 
-                    add_or_update_attributes(
+                    $self->{plugin}->add_or_update_attributes(
                         {
                             attributes => $attributes,
                             request    => $req,
@@ -768,7 +766,7 @@ sub receive_unshipped {
                 }
             );
         } catch {
-            innreach_warn("$_");
+            $self->{plugin}->innreach_warn("$_");
             return {
                 error   => 1,
                 status  => q{},
@@ -870,7 +868,7 @@ sub return_uncirculated {
                 DelBiblio( $req->biblio_id );
             }
             else {
-                Koha::Plugin::Com::Theke::INNReach::Utils::innreach_warn(
+                $self->{plugin}->innreach_warn(
                     'Linked biblio_id (' . $req->biblio_id . ') not on the DB for ILL request (' . $req->id . ')'
                 );
             }
