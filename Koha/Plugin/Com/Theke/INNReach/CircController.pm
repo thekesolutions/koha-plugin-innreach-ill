@@ -32,7 +32,7 @@ use C4::Context;
 use C4::Biblio qw(AddBiblio);
 use C4::Items;
 use C4::Letters;
-use C4::Reserves qw(AddReserve CanItemBeReserved);
+use C4::Reserves qw(CanItemBeReserved);
 
 use Koha::Biblios;
 use Koha::Checkouts;
@@ -174,19 +174,15 @@ sub itemhold {
                             . ", library_id=$library_id, status=$can_item_be_reserved)" );
                 }
 
-                my $hold_id = AddReserve(
+                my $hold_id = $plugin->add_hold(
                     {
-                        biblionumber     => $biblio->biblionumber,
-                        borrowernumber   => $patron_id,
-                        branchcode       => $req->branchcode,
-                        expiration_date  => undef,
-                        found            => undef,
-                        itemnumber       => $item->itemnumber,
-                        itemtype         => undef,
-                        notes            => $config->{default_hold_note} // 'Placed by ILL',
-                        priority         => 1,
-                        reservation_date => undef,
-                        title            => '',
+                        biblio_id  => $biblio->id,
+                        item_id    => $item->id,
+                        library_id => $req->branchcode,
+                        patron_id  => $patron_id,
+                        notes      => exists $config->{default_hold_note}
+                        ? $config->{default_hold_note}
+                        : 'Placed by ILL',
                     }
                 );
 
@@ -328,23 +324,21 @@ sub localhold {
 
                 $c->tx->on(
                     finish => sub {
+
                         my $can_item_be_reserved = CanItemBeReserved( $patron, $item, $library_id )->{status};
+
                         if ( $can_item_be_reserved eq 'OK' ) {
 
                             # hold can be placed, just do it
-                            my $hold_id = AddReserve(
+                            my $hold_id = $plugin->add_hold(
                                 {
-                                    biblionumber     => $biblio->biblionumber,
-                                    borrowernumber   => $patron->borrowernumber,
-                                    branchcode       => $req->branchcode,
-                                    expiration_date  => undef,
-                                    found            => undef,
-                                    itemnumber       => undef,
-                                    itemtype         => undef,
-                                    notes            => $config->{default_hold_note} // 'Placed by ILL',
-                                    priority         => 1,
-                                    reservation_date => undef,
-                                    title            => '',
+                                    biblio_id  => $biblio->id,
+                                    item_id    => undef,              # FIXME: document why setting a title-level hold
+                                    library_id => $req->branchcode,
+                                    patron_id  => $patron_id,
+                                    notes      => exists $config->{default_hold_note}
+                                    ? $config->{default_hold_note}
+                                    : 'Placed by ILL',
                                 }
                             );
 
@@ -967,20 +961,15 @@ sub itemshipped {
                 $item = Koha::Items->find($item_id);
 
                 # Place a hold on the item
-                my $patron_id = $req->borrowernumber;
-                my $hold_id = AddReserve(
+                my $hold_id   = $plugin->add_hold(
                     {
-                        biblionumber     => $biblio_id,
-                        borrowernumber   => $patron_id,
-                        branchcode       => $req->branchcode,
-                        expiration_date  => undef,
-                        found            => undef,
-                        itemnumber       => $item_id,
-                        itemtype         => $item->effective_itemtype,
-                        notes            => $config->{default_hold_note} // 'Placed by ILL',
-                        priority         => 1,
-                        reservation_date => undef,
-                        title            => '',
+                        biblio_id  => $biblio_id,
+                        item_id    => $item_id,
+                        library_id => $req->branchcode,
+                        patron_id  => $req->borrowernumber,
+                        notes      => exists $config->{default_hold_note}
+                        ? $config->{default_hold_note}
+                        : 'Placed by ILL',
                     }
                 );
 
@@ -1710,22 +1699,22 @@ sub add_virtual_record_and_item {
 
     my ( $biblio_id, $biblioitemnumber ) = AddBiblio( $record, $framework_code );
 
-    my $item_data = {
-        barcode             => $barcode,
-        biblioitemnumber    => $biblioitemnumber,
-        biblionumber        => $biblio_id,
-        ccode               => $ccode,
-        holdingbranch       => $req->branchcode,
-        homebranch          => $req->branchcode,
-        itemcallnumber      => $call_number,
-        itemnotes_nonpublic => $checkin_note,
-        itype               => $item_type,
-        location            => $location,
-        materials           => $materials,
-        notforloan          => $notforloan,
-    };
-
-    my $item = Koha::Item->new($item);
+    my $item = Koha::Item->new(
+        {
+            barcode             => $barcode,
+            biblioitemnumber    => $biblioitemnumber,
+            biblionumber        => $biblio_id,
+            ccode               => $ccode,
+            holdingbranch       => $req->branchcode,
+            homebranch          => $req->branchcode,
+            itemcallnumber      => $call_number,
+            itemnotes_nonpublic => $checkin_note,
+            itype               => $item_type,
+            location            => $location,
+            materials           => $materials,
+            notforloan          => $notforloan,
+        }
+    );
     $item->store->discard_changes;
 
     return ( $biblio_id, $item->id, $biblioitemnumber );
