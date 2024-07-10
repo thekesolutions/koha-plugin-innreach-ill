@@ -174,38 +174,21 @@ sub itemhold {
                             . ", library_id=$library_id, status=$can_item_be_reserved)" );
                 }
 
-                my $hold_id;
-                if ( C4::Context->preference('Version') ge '20.050000' ) {
-                    $hold_id = AddReserve(
-                        {
-                            branchcode       => $req->branchcode,
-                            borrowernumber   => $patron_id,
-                            biblionumber     => $biblio->biblionumber,
-                            priority         => 1,
-                            reservation_date => undef,
-                            expiration_date  => undef,
-                            notes            => $config->{default_hold_note} // 'Placed by ILL',
-                            title            => '',
-                            itemnumber       => $item->itemnumber,
-                            found            => undef,
-                            itemtype         => undef
-                        }
-                    );
-                } else {
-                    $hold_id = AddReserve(
-                        $req->branchcode,                                   # branch
-                        $patron_id,                                         # borrowernumber
-                        $biblio->biblionumber,                              # biblionumber
-                        undef,                                              # biblioitemnumber
-                        1,                                                  # priority
-                        undef,                                              # resdate
-                        undef,                                              # expdate
-                        $config->{default_hold_note} // 'Placed by ILL',    # notes
-                        '',                                                 # title
-                        $item->itemnumber,                                  # checkitem
-                        undef                                               # found
-                    );
-                }
+                my $hold_id = AddReserve(
+                    {
+                        biblionumber     => $biblio->biblionumber,
+                        borrowernumber   => $patron_id,
+                        branchcode       => $req->branchcode,
+                        expiration_date  => undef,
+                        found            => undef,
+                        itemnumber       => $item->itemnumber,
+                        itemtype         => undef,
+                        notes            => $config->{default_hold_note} // 'Placed by ILL',
+                        priority         => 1,
+                        reservation_date => undef,
+                        title            => '',
+                    }
+                );
 
                 $plugin->new_ill_request_attr(
                     {
@@ -349,38 +332,22 @@ sub localhold {
                         if ( $can_item_be_reserved eq 'OK' ) {
 
                             # hold can be placed, just do it
-                            my $hold_id;
-                            if ( C4::Context->preference('Version') ge '20.050000' ) {
-                                $hold_id = AddReserve(
-                                    {
-                                        branchcode       => $req->branchcode,
-                                        borrowernumber   => $patron->borrowernumber,
-                                        biblionumber     => $biblio->biblionumber,
-                                        priority         => 1,
-                                        reservation_date => undef,
-                                        expiration_date  => undef,
-                                        notes            => $config->{default_hold_note} // 'Placed by ILL',
-                                        title            => '',
-                                        itemnumber       => undef,
-                                        found            => undef,
-                                        itemtype         => undef
-                                    }
-                                );
-                            } else {
-                                $hold_id = AddReserve(
-                                    $req->branchcode,                                   # branch
-                                    $patron->borrowernumber,                            # borrowernumber
-                                    $biblio->biblionumber,                              # biblionumber
-                                    undef,                                              # biblioitemnumber
-                                    1,                                                  # priority
-                                    undef,                                              # resdate
-                                    undef,                                              # expdate
-                                    $config->{default_hold_note} // 'Placed by ILL',    # notes
-                                    '',                                                 # title
-                                    undef,                                              # checkitem
-                                    undef                                               # found
-                                );
-                            }
+                            my $hold_id = AddReserve(
+                                {
+                                    biblionumber     => $biblio->biblionumber,
+                                    borrowernumber   => $patron->borrowernumber,
+                                    branchcode       => $req->branchcode,
+                                    expiration_date  => undef,
+                                    found            => undef,
+                                    itemnumber       => undef,
+                                    itemtype         => undef,
+                                    notes            => $config->{default_hold_note} // 'Placed by ILL',
+                                    priority         => 1,
+                                    reservation_date => undef,
+                                    title            => '',
+                                }
+                            );
+
                         } else {
 
                             # hold cannot be placed, notify them
@@ -1001,39 +968,21 @@ sub itemshipped {
 
                 # Place a hold on the item
                 my $patron_id = $req->borrowernumber;
-                my $hold_id;
-
-                if ( C4::Context->preference('Version') ge '20.050000' ) {
-                    $hold_id = AddReserve(
-                        {
-                            branchcode       => $req->branchcode,
-                            borrowernumber   => $patron_id,
-                            biblionumber     => $biblio_id,
-                            priority         => 1,
-                            reservation_date => undef,
-                            expiration_date  => undef,
-                            notes            => $config->{default_hold_note} // 'Placed by ILL',
-                            title            => '',
-                            itemnumber       => $item_id,
-                            found            => undef,
-                            itemtype         => $item->effective_itemtype
-                        }
-                    );
-                } else {
-                    $hold_id = AddReserve(
-                        $req->branchcode,                                   # branch
-                        $patron_id,                                         # borrowernumber
-                        $biblio_id,                                         # biblionumber
-                        $biblioitemnumber,                                  # biblioitemnumber
-                        1,                                                  # priority
-                        undef,                                              # resdate
-                        undef,                                              # expdate
-                        $config->{default_hold_note} // 'Placed by ILL',    # notes
-                        '',                                                 # title
-                        $item_id,                                           # checkitem
-                        undef                                               # found
-                    );
-                }
+                my $hold_id = AddReserve(
+                    {
+                        biblionumber     => $biblio_id,
+                        borrowernumber   => $patron_id,
+                        branchcode       => $req->branchcode,
+                        expiration_date  => undef,
+                        found            => undef,
+                        itemnumber       => $item_id,
+                        itemtype         => $item->effective_itemtype,
+                        notes            => $config->{default_hold_note} // 'Placed by ILL',
+                        priority         => 1,
+                        reservation_date => undef,
+                        title            => '',
+                    }
+                );
 
                 # Update request
                 $req->biblio_id($biblio_id)->status('B_ITEM_SHIPPED')->store;
@@ -1761,29 +1710,25 @@ sub add_virtual_record_and_item {
 
     my ( $biblio_id, $biblioitemnumber ) = AddBiblio( $record, $framework_code );
 
-    my $item = {
+    my $item_data = {
         barcode             => $barcode,
+        biblioitemnumber    => $biblioitemnumber,
+        biblionumber        => $biblio_id,
+        ccode               => $ccode,
         holdingbranch       => $req->branchcode,
         homebranch          => $req->branchcode,
-        itype               => $item_type,
         itemcallnumber      => $call_number,
-        ccode               => $ccode,
+        itemnotes_nonpublic => $checkin_note,
+        itype               => $item_type,
         location            => $location,
         materials           => $materials,
         notforloan          => $notforloan,
-        itemnotes_nonpublic => $checkin_note,
     };
-    my $item_id;
-    if ( C4::Context->preference('Version') ge '20.050000' ) {
-        $item->{biblionumber}     = $biblio_id;
-        $item->{biblioitemnumber} = $biblioitemnumber;
-        my $item_obj = Koha::Item->new($item);
-        $item_obj->store->discard_changes;
-        $item_id = $item_obj->itemnumber;
-    } else {
-        ( undef, undef, $item_id ) = C4::Items::AddItem( $item, $biblio_id );
-    }
-    return ( $biblio_id, $item_id, $biblioitemnumber );
+
+    my $item = Koha::Item->new($item);
+    $item->store->discard_changes;
+
+    return ( $biblio_id, $item->id, $biblioitemnumber );
 }
 
 =head3 pickup_location_to_library_id
