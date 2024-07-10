@@ -148,26 +148,19 @@ sub itemhold {
                     }
                 )->store;
 
-                # Add the custom attributes
-                while ( my ( $type, $value ) = each %{$attributes} ) {
-                    if ( $value && length $value > 0 ) {
-                        $plugin->new_ill_request_attr(
-                            {
-                                illrequest_id => $req->illrequest_id,
-                                type          => $type,
-                                value         => $value,
-                                readonly      => 1
-                            }
-                        )->store;
+                # Add attributes
+                $plugin->add_or_update_attributes(
+                    {
+                        attributes => $attributes,
+                        request    => $req,
                     }
-                }
+                );
 
-                my $can_item_be_reserved;
 
                 my $patron = Koha::Patrons->find($patron_id);
-                $can_item_be_reserved = CanItemBeReserved( $patron, $item, $library_id )->{status};
+                my $can_item_be_reserved = CanItemBeReserved( $patron, $item, $library_id )->{status};
 
-                unless ( $can_item_be_reserved eq 'OK' ) {
+                if ( $can_item_be_reserved ne 'OK' ) {
                     $plugin->innreach_warn(
                               "Placing the hold, but rules woul've prevented it. FIXME! (patron_id=$patron_id, item_id="
                             . $item->itemnumber
@@ -299,19 +292,13 @@ sub localhold {
                     }
                 )->store;
 
-                # Add the custom attributes
-                while ( my ( $type, $value ) = each %{$attributes} ) {
-                    if ( $value && length $value > 0 ) {
-                        $plugin->new_ill_request_attr(
-                            {
-                                illrequest_id => $req->illrequest_id,
-                                type          => $type,
-                                value         => $value,
-                                readonly      => 1
-                            }
-                        )->store;
+                # Add attributes
+                $plugin->add_or_update_attributes(
+                    {
+                        attributes => $attributes,
+                        request    => $req,
                     }
-                }
+                );
 
                 $c->render(
                     status  => 200,
@@ -849,19 +836,13 @@ sub patronhold {
                     }
                 )->store;
 
-                # Add the custom attributes
-                while ( my ( $type, $value ) = each %{$attributes} ) {
-                    if ( $value && length $value > 0 ) {
-                        $plugin->new_ill_request_attr(
-                            {
-                                illrequest_id => $req->illrequest_id,
-                                type          => $type,
-                                value         => $value,
-                                readonly      => 1
-                            }
-                        )->store;
+                # Add attributes
+                $plugin->add_or_update_attributes(
+                    {
+                        attributes => $attributes,
+                        request    => $req,
                     }
-                }
+                );
 
                 return $c->render(
                     status  => 200,
@@ -961,7 +942,7 @@ sub itemshipped {
                 $item = Koha::Items->find($item_id);
 
                 # Place a hold on the item
-                my $hold_id   = $plugin->add_hold(
+                my $hold_id = $plugin->add_hold(
                     {
                         biblio_id  => $biblio_id,
                         item_id    => $item_id,
@@ -973,41 +954,19 @@ sub itemshipped {
                     }
                 );
 
+                # We need to store the hold_id
+                $attributes->{hold_id} = $hold_id;
+
                 # Update request
                 $req->biblio_id($biblio_id)->status('B_ITEM_SHIPPED')->store;
 
-                # Add new attributes for tracking
-                while ( my ( $type, $value ) = each %{$attributes} ) {
-                    if ( $value && length $value > 0 ) {
-                        my $attribute = $req->extended_attributes->find(
-                            {
-                                illrequest_id => $req->illrequest_id,
-                                type          => $type
-                            }
-                        );
-
-                        # If already exists, overwrite
-                        $attribute->delete if $attribute;
-
-                        $plugin->new_ill_request_attr(
-                            {
-                                illrequest_id => $req->illrequest_id,
-                                type          => $type,
-                                value         => $value,
-                                readonly      => 0
-                            }
-                        )->store;
-                    }
-                }
-
-                $plugin->new_ill_request_attr(
+                # Update attributes
+                $plugin->add_or_update_attributes(
                     {
-                        illrequest_id => $req->illrequest_id,
-                        type          => 'hold_id',
-                        value         => $hold_id,
-                        readonly      => 0
+                        attributes => $attributes,
+                        request    => $req,
                     }
-                )->store;
+                );
 
                 return $c->render(
                     status  => 200,
