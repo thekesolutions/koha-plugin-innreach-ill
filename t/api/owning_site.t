@@ -31,11 +31,17 @@ use t::lib::TestBuilder;
 
 # INN-Reach specific
 use Koha::Plugin::Com::Theke::INNReach;
-use Koha::Plugin::Com::Theke::INNReach::Utils qw(add_or_update_attributes);
 
 my $schema  = Koha::Database->new->schema;
 my $builder = t::lib::TestBuilder->new;
 my $plugin  = Koha::Plugin::Com::Theke::INNReach->new;
+
+my $ill_reqs_class;
+if ( C4::Context->preference('Version') ge '24.050000' ) {
+    $ill_reqs_class = "Koha::ILL::Requests";
+} else {
+    $ill_reqs_class = "Koha::Illrequests";
+}
 
 t::lib::Mocks::mock_preference( 'RESTBasicAuth', 1 );
 
@@ -67,7 +73,7 @@ subtest 'Full flow tests' => sub {
 
     my $r = $builder->build_object(
         {
-            class => 'Koha::Illrequests',
+            class => $ill_reqs_class,
             value => {
                 backend           => 'INNReach',
                 status            => 'O_ITEM_SHIPPED',
@@ -84,7 +90,7 @@ subtest 'Full flow tests' => sub {
 
     my $trackingId = "123456789";
 
-    add_or_update_attributes(
+    $plugin->add_or_update_attributes(
         {
             request    => $r,
             attributes => {
@@ -129,7 +135,7 @@ subtest 'Full flow tests' => sub {
         "//$userid:$password@/api/v1/contrib/innreach/v2/circ/itemhold/$trackingId/$centralCode" => json => $params )
         ->status_is(200)->json_is( { errors => [], reason => q{}, status => q{ok} } );
 
-    $r = get_ill_request( { centralCode => $centralCode, trackingId => $trackingId } );
+    $r = $plugin->get_ill_request( { centralCode => $centralCode, trackingId => $trackingId } );
 
     is( $r->status,         'O_ITEM_REQUESTED' );
     is( $r->branchcode,     $configuration->{partners_library_id} );
@@ -166,7 +172,7 @@ subtest 'intransit() tests' => sub {
 
     my $r = $builder->build_object(
         {
-            class => 'Koha::Illrequests',
+            class => $ill_reqs_class,
             value => {
                 backend           => 'INNReach',
                 status            => 'O_ITEM_REQUESTED',
@@ -192,7 +198,7 @@ subtest 'intransit() tests' => sub {
 
     my $trackingId = "123456789";
 
-    add_or_update_attributes(
+    $plugin->add_or_update_attributes(
         {
             request    => $r,
             attributes => {
@@ -264,7 +270,7 @@ subtest 'itemreceived() tests' => sub {
 
     my $r = $builder->build_object(
         {
-            class => 'Koha::Illrequests',
+            class => $ill_reqs_class,
             value => {
                 backend           => 'INNReach',
                 status            => 'O_ITEM_REQUESTED',
@@ -290,7 +296,7 @@ subtest 'itemreceived() tests' => sub {
 
     my $trackingId = "123456789";
 
-    add_or_update_attributes(
+    $plugin->add_or_update_attributes(
         {
             request    => $r,
             attributes => {
@@ -348,33 +354,4 @@ sub add_superlibrarian {
     $patron->set_password( { password => $password, skip_validation => 1 } );
     $patron->discard_changes;
     return $patron;
-}
-
-sub get_ill_request {
-    my ($args) = @_;
-
-    my $trackingId  = $args->{trackingId};
-    my $centralCode = $args->{centralCode};
-
-    # Get/validate the request
-    my $dbh = C4::Context->dbh;
-    my $sth = $dbh->prepare(
-        qq{
-        SELECT * FROM illrequestattributes AS ra_a
-        INNER JOIN    illrequestattributes AS ra_b
-        ON ra_a.illrequest_id=ra_b.illrequest_id AND
-          (ra_a.type='trackingId'  AND ra_a.value='$trackingId') AND
-          (ra_b.type='centralCode' AND ra_b.value='$centralCode');
-    }
-    );
-
-    $sth->execute();
-    my $result = $sth->fetchrow_hashref;
-
-    my $req;
-
-    $req = Koha::Illrequests->find( $result->{illrequest_id} )
-        if $result->{illrequest_id};
-
-    return $req;
 }

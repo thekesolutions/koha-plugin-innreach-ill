@@ -29,11 +29,17 @@ use t::lib::TestBuilder;
 
 # INN-Reach specific
 use Koha::Plugin::Com::Theke::INNReach;
-use Koha::Plugin::Com::Theke::INNReach::Utils qw(add_or_update_attributes);
 
 my $schema  = Koha::Database->new->schema;
 my $builder = t::lib::TestBuilder->new;
 my $plugin  = Koha::Plugin::Com::Theke::INNReach->new;
+
+my $ill_reqs_class;
+if ( C4::Context->preference('Version') ge '24.050000' ) {
+    $ill_reqs_class = "Koha::ILL::Requests";
+} else {
+    $ill_reqs_class = "Koha::Illrequests";
+}
 
 t::lib::Mocks::mock_preference( 'SearchEngine', 'Zebra' );
 
@@ -66,7 +72,7 @@ subtest 'item_in_transit() tests' => sub {
 
     my $r = $builder->build_object(
         {
-            class => 'Koha::Illrequests',
+            class => $ill_reqs_class,
             value => {
                 backend           => 'INNReach',
                 status            => 'POTATO',
@@ -84,7 +90,7 @@ subtest 'item_in_transit() tests' => sub {
     my $trackingId  = "123456789";
     my $centralCode = "d2ir";
 
-    add_or_update_attributes(
+    $plugin->add_or_update_attributes(
         {
             request    => $r,
             attributes => {

@@ -185,7 +185,7 @@ sub item_shipped {
                 if $debug;
 
             # record checkout_id
-            Koha::Illrequestattribute->new(
+            $self->{plugin}->new_ill_request_attr(
                 {
                     illrequest_id => $request->illrequest_id,
                     type          => 'checkout_id',

@@ -1226,6 +1226,43 @@ sub get_ill_request_from_biblio_id {
     return $req;
 }
 
+=head3 get_ill_request
+
+This method retrieves the ILL request using the I<trackingId> and
+I<centralCode> attributes.
+
+=cut
+
+sub get_ill_request {
+    my ($self, $args) = @_;
+
+    my $trackingId  = $args->{trackingId};
+    my $centralCode = $args->{centralCode};
+
+    # Get/validate the request
+    my $dbh = C4::Context->dbh;
+    my $sth = $dbh->prepare(
+        qq{
+        SELECT * FROM illrequestattributes AS ra_a
+        INNER JOIN    illrequestattributes AS ra_b
+        ON ra_a.illrequest_id=ra_b.illrequest_id AND
+          (ra_a.type='trackingId'  AND ra_a.value='$trackingId') AND
+          (ra_b.type='centralCode' AND ra_b.value='$centralCode');
+    }
+    );
+
+    $sth->execute();
+    my $result = $sth->fetchrow_hashref;
+
+    my $req;
+
+    $req = $self->get_ill_rs->find( $result->{illrequest_id} )
+        if $result->{illrequest_id};
+
+    return $req;
+}
+
+
 =head3 get_ua
 
 This method retrieves a user agent to contact a central server.
@@ -1775,7 +1812,7 @@ sub add_or_update_attributes {
                         $attr->update( { value => $value, } );
                     }
                 } else {        # new
-                    $attr = $self->new_ill_request_attr->new(
+                    $attr = $self->new_ill_request_attr(
                         {
                             illrequest_id => $request->id,
                             type          => $type,
@@ -1797,7 +1834,7 @@ Helper method for logging warnings for the INN-Reach plugin homogeneously.
 =cut
 
 sub innreach_warn {
-    my ($warning) = @_;
+    my ( $self, $warning ) = @_;
 
     warn "innreach_plugin_warn: $warning";
 }
