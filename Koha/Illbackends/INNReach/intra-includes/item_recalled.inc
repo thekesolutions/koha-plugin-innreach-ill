@@ -9,12 +9,14 @@
   [% base_url = "/cgi-bin/koha/ill/ill-requests.pl" %]
   [% proceed_url = base_url _ "?method=item_recalled&stage=confirm" _
                    "&illrequest_id=" _ request.illrequest_id %]
-  <form id="innreach_recall_form" method="POST" action=[% proceed_url %]>
-      <input type="hidden" name="method" value="item_recalled" />
-      <input type="hidden" name="stage" value="confirm" />
-      <input type="hidden" name="backend" value="INNReach" />
-      <input type="hidden" name="illrequest_id" value="[% request.illrequest_id %]" />
-            <fieldset class="rows">
+    <form id="innreach_recall_form" method="POST" action=[% proceed_url %]>
+        [% INCLUDE 'csrf-token.inc' %]
+        <input type="hidden" name="op"     value="cud-item_recalled" />
+        <input type="hidden" name="method" value="item_recalled" />
+        <input type="hidden" name="stage" value="confirm" />
+        <input type="hidden" name="backend" value="INNReach" />
+        <input type="hidden" name="illrequest_id" value="[% request.illrequest_id %]" />
+        <fieldset class="rows">
             <ol>
                 <li>
                     <label for="recall_due_date" class="required">Due datet: </label>
@@ -27,7 +29,7 @@
             <input type="submit" value="Submit" />
             <a class="cancel" href="[% base_url %]">Cancel</a>
         </fieldset>
-  </form>
+    </form>
 </p>
 
 [% ELSE %]

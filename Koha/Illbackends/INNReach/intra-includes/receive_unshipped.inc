@@ -10,8 +10,10 @@
   [% proceed_url = base_url _ "?method=receive_unshipped&stage=confirm" _
                    "&illrequest_id=" _ request.illrequest_id %]
   <form id="innreach_receiveunshipped_form" method="POST" action=[% proceed_url %]>
-      <input type="hidden" name="method" value="receive_unshipped" />
-      <input type="hidden" name="stage" value="confirm" />
+      [% INCLUDE 'csrf-token.inc' %]
+      <input type="hidden" name="op"      value="cud-receive_unshipped" />
+      <input type="hidden" name="method"  value="receive_unshipped" />
+      <input type="hidden" name="stage"   value="confirm" />
       <input type="hidden" name="backend" value="INNReach" />
       <input type="hidden" name="illrequest_id" value="[% request.illrequest_id %]" />
             <fieldset class="rows">
@@ -32,6 +34,7 @@
             <input type="submit" value="Submit" />
             <a class="cancel" href="[% base_url %]">Cancel</a>
         </fieldset>
+
   </form>
 </p>
 
