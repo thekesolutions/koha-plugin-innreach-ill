@@ -35,6 +35,9 @@ my $plugin  = Koha::Plugin::Com::Theke::INNReach->new;
 C4::Context->set_preference( 'ILLModule', 1 )
     && step("ILLModule set");
 
+C4::Context->set_preference( 'RESTBasicAuth', 1 )
+    && step("RESTBasicAuth set");
+
 my $dbh = C4::Context->dbh;
 
 # Make sure the plugin is enabled
