@@ -904,11 +904,17 @@ sub cancel_request_by_us {
     my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
     my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
 
-    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
-        {   endpoint    => "/innreach/v2/circ/cancelitemhold/$trackingId/$centralCode",
-            centralCode => $centralCode,
-        }
-    );
+    # skip actual INN-Reach interactions in dev_mode
+    unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
+        my $response = $self->{plugin}->get_ua($centralCode)->post_request(
+            {   endpoint    => "/innreach/v2/circ/cancelitemhold/$trackingId/$centralCode",
+                centralCode => $centralCode,
+            }
+        );
+
+        INNReach::Ill::RequestFailed->throw( method => 'cancel_request', response => $response )
+            unless $response->is_success;
+    }
 
     $req->status('B_ITEM_CANCELLED_BY_US')->store;
 
