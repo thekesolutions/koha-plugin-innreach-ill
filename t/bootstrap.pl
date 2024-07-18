@@ -23,6 +23,7 @@ use Try::Tiny qw(catch try);
 
 use C4::Context;
 use Koha::Database;
+use Koha::ItemTypes;
 
 # For generating random data
 use t::lib::TestBuilder;
@@ -74,6 +75,16 @@ if (
 
 } else {
     step("Add 'ILL' library [SKIPPED]");
+}
+
+foreach my $item_type ( qw(D2IR_BK D2IR_CF) ) {
+
+    if ( !Koha::ItemTypes->search({ itemtype => $item_type })->count) {
+        Koha::ItemType->new({ itemtype => $item_type })->store();
+        step( "Add $item_type item type" );
+    } else {
+        step( "Add $item_type item type [SKIPPED]" );
+    }
 }
 
 sub step {
