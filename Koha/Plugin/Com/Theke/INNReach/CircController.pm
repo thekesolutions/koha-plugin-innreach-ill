@@ -878,7 +878,7 @@ sub itemshipped {
     my $body = $c->req->json;
 
     my $attributes = {
-        callNumber  => $body->{callNumber},
+        callNumber  => $body->{callNumber} // "",
         itemBarcode => $body->{itemBarcode},
     };
 

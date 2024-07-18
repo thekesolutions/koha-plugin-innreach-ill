@@ -1808,6 +1808,9 @@ sub add_or_update_attributes {
                 my $attr = $request->extended_attributes->find( { type => $type } );
 
                 if ($attr) {    # update
+                    warn "ERROR: Attempt to set 'undef' for attribute of type '$type'"
+                        unless defined $value;
+
                     if ( $attr->value ne $value ) {
                         $attr->update( { value => $value, } );
                     }

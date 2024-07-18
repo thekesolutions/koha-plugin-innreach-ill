@@ -594,6 +594,8 @@ sub cancel_request {
             }
         );
     } catch {
+        warn "[innreach] [cancel_request()] $_";
+
         $result->{status}   = 'innreach_error';
         $result->{error}    = 1;
         $result->{message}  = "$_ | " . $_->method . " - " . $_->response->decoded_content;
@@ -623,11 +625,17 @@ sub item_received {
     my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
     my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
 
-    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
-        {   endpoint    => "/innreach/v2/circ/itemreceived/$trackingId/$centralCode",
-            centralCode => $centralCode,
-        }
-    );
+    # skip actual INN-Reach interactions in dev_mode
+    unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
+        my $response = $self->{plugin}->get_ua($centralCode)->post_request(
+            {   endpoint    => "/innreach/v2/circ/itemreceived/$trackingId/$centralCode",
+                centralCode => $centralCode,
+            }
+        );
+
+        INNReach::Ill::RequestFailed->throw( method => 'cancel_request', response => $response )
+            unless $response->is_success;
+    }
 
     $req->status('B_ITEM_RECEIVED')->store;
 
