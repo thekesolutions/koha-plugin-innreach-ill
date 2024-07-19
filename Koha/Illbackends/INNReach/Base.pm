@@ -561,7 +561,8 @@ sub cancel_request {
 
                 # Cancel after the request status change, so the condition for the hook is not met
                 my $hold = Koha::Holds->find( $attrs->find( { type => 'hold_id' } )->value );
-                $hold->cancel;
+                $hold->cancel
+                    if $hold;
 
                 # Make sure we notify the item status
                 $self->{plugin}->schedule_task(
