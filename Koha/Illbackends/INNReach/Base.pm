@@ -907,49 +907,56 @@ is on B_ITEM_REQUESTED status.
 sub cancel_request_by_us {
     my ( $self, $params ) = @_;
 
-    my $req   = $params->{request};
-    my $attrs = $req->extended_attributes;
+    my $req = $params->{request};
 
-    my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
-    my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
-
-    # skip actual INN-Reach interactions in dev_mode
-    unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
-        my $response = $self->{plugin}->get_ua($centralCode)->post_request(
-            {   endpoint    => "/innreach/v2/circ/cancelitemhold/$trackingId/$centralCode",
-                centralCode => $centralCode,
-            }
-        );
-
-        INNReach::Ill::RequestFailed->throw( method => 'cancel_request', response => $response )
-            unless $response->is_success;
-    }
-
-    $req->status('B_ITEM_CANCELLED_BY_US')->store;
-
-    my $item_id   = $attrs->find( { type => 'itemId' } )->value;
-    my $patron_id = $attrs->find( { type => 'patronId' } )->value;
-
-    my $holds = Koha::Holds->search(
-        {
-            borrowernumber => $patron_id,
-            itemnumber     => $item_id
-        }
-    );
-
-    while ( my $hold = $holds->next ) {
-        $hold->cancel;
-    }
-
-    return {
-        error   => 0,
+    my $result = {
         status  => q{},
         message => q{},
-        method  => 'cancel_request_by_us',
+        method  => 'illview',
         stage   => 'commit',
-        next    => 'illview',
-        value   => q{},
     };
+
+    try {
+        Koha::Database->schema->storage->txn_do(
+            sub {
+                my $attrs = $req->extended_attributes;
+
+                my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
+                my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
+
+                $req->status('B_ITEM_CANCELLED_BY_US')->store;
+
+                # skip actual INN-Reach interactions in dev_mode
+                unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
+                    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
+                        {
+                            endpoint    => "/innreach/v2/circ/cancelitemhold/$trackingId/$centralCode",
+                            centralCode => $centralCode,
+                        }
+                    );
+
+                    INNReach::Ill::RequestFailed->throw( method => 'cancel_request_by_us', response => $response )
+                        unless $response->is_success;
+                }
+            }
+        );
+    } catch {
+        warn "[innreach] [cancel_request_by_us()] $_";
+
+        $result->{status}   = 'innreach_error';
+        $result->{error}    = 1;
+        $result->{stage}    = 'init';
+        $result->{method}   = 'cancel_request_by_us';
+        $result->{template} = 'cancel_request_by_us';
+
+        if ( ref($_) eq 'INNReach::Ill::RequestFailed' ) {
+            $result->{message} = "$_ | " . $_->method . " - " . $_->response->decoded_content;
+        } else {
+            $result->{message} = "$_";
+        }
+    };
+
+    return $result;
 }
 
 =head3 claims_returned
