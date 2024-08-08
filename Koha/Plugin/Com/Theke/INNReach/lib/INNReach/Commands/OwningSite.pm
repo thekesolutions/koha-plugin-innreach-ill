@@ -217,7 +217,7 @@ sub item_shipped {
                 warn "[innreach]\t$req_id\tResponse: " . $response->decoded_content
                     if $debug;
                 warn "[innreach]\t$req_id\tX-IR-Allowed-Circulation: "
-                    . $response->headers->header('X-IR-Allowed-Circulation') // '<empty>'
+                    . ( $response->headers->header('X-IR-Allowed-Circulation') // '<empty>' )
                     if $debug;
                 INNReach::Ill::RequestFailed->throw( method => 'item_shipped', response => $response )
                     unless $response->is_success;

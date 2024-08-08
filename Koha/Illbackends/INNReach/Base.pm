@@ -941,8 +941,6 @@ sub cancel_request_by_us {
             }
         );
     } catch {
-        warn "[innreach] [cancel_request_by_us()] $_";
-
         $result->{status}   = 'innreach_error';
         $result->{error}    = 1;
         $result->{stage}    = 'init';
@@ -951,8 +949,10 @@ sub cancel_request_by_us {
 
         if ( ref($_) eq 'INNReach::Ill::RequestFailed' ) {
             $result->{message} = "$_ | " . $_->method . " - " . $_->response->decoded_content;
+            warn "[innreach] [cancel_request_by_us()] " . $result->{message};
         } else {
             $result->{message} = "$_";
+            warn "[innreach] [cancel_request_by_us()] $_"
         }
     };
 
