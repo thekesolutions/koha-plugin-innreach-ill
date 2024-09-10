@@ -132,12 +132,12 @@ _USAGE_
 my $c =
     ($owning)
     ? INNReach::Commands::OwningSite->new( { plugin => $plugin } )
-    : INNReach::Commands::Borrowing->new( { plugin => $plugin } );
+    : INNReach::Commands::BorrowingSite->new( { plugin => $plugin } );
 
 my $req = $plugin->get_ill_rs()->find($request_id);
 
 try {
-    $c->$command($req, { skip_api_req => $skip_api_req });
+    $c->$command( $req, { skip_api_req => $skip_api_req } );
 } catch {
     if ( ref($_) eq 'INNReach::Ill::RequestFailed' ) {
         warn sprintf(

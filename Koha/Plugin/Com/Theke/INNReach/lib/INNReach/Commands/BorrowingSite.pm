@@ -105,7 +105,7 @@ sub item_in_transit {
         sub {
 
             # skip actual INN-Reach interactions in dev_mode
-            unless ( $self->{configuration}->{$centralCode}->{dev_mode} || ($options->{skip_api_request}) ) {
+            unless ( $self->{configuration}->{$centralCode}->{dev_mode} || !$options->{skip_api_request} ) {
 
                 my $response = $self->{plugin}->get_ua($centralCode)->post_request(
                     {
@@ -123,20 +123,25 @@ sub item_in_transit {
             # Return the item first
             my $barcode = $attrs->find( { type => 'itemBarcode' } )->value;
 
-            my $item     = Koha::Items->find( { barcode => $barcode } );
-            my $checkout = Koha::Checkouts->find( { itemnumber => $item->id } );
+            my $item = Koha::Items->find( { barcode => $barcode } );
 
-            if ($checkout) {
-                $self->{plugin}->add_return( { barcode => $barcode } );
+            if ($item) {    # is the item still on the database
+                my $checkout = Koha::Checkouts->find( { itemnumber => $item->id } );
+
+                if ($checkout) {
+                    $self->{plugin}->add_return( { barcode => $barcode } );
+                }
             }
 
             my $biblio = Koha::Biblios->find( $request->biblio_id );
 
-            # Remove the virtual items. there should only be one
-            foreach my $item ( $biblio->items->as_list ) {
-                $item->delete( { skip_record_index => 1 } );
+            if ($biblio) {    # is the biblio still on the database
+                              # Remove the virtual items. there should only be one
+                foreach my $item ( $biblio->items->as_list ) {
+                    $item->delete( { skip_record_index => 1 } );
+                }
+                DelBiblio( $biblio->id );
             }
-            DelBiblio( $biblio->id );
 
             $request->status('B_ITEM_IN_TRANSIT')->store;
         }
