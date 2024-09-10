@@ -32,6 +32,7 @@ my $help;
 my $list_commands;
 my $owning;
 my $request_id;
+my $skip_api_req;
 
 my $result = GetOptions(
     'borrowing'     => \$borrowing,
@@ -40,6 +41,7 @@ my $result = GetOptions(
     'list_commands' => \$list_commands,
     'owning'        => \$owning,
     'request_id=s'  => \$request_id,
+    'skip_api_req'  => \$skip_api_req,
 );
 
 unless ($result) {
@@ -120,6 +122,8 @@ Options:
 
     --command <command>    The command to be run
 
+    --skip_api_req         Skip actual API interaction (useful for cleanup) [optional]
+
     --help                 This help
 
 _USAGE_
@@ -133,7 +137,7 @@ my $c =
 my $req = $plugin->get_ill_rs()->find($request_id);
 
 try {
-    $c->$command($req);
+    $c->$command($req, { skip_api_req => $skip_api_req });
 } catch {
     if ( ref($_) eq 'INNReach::Ill::RequestFailed' ) {
         warn sprintf(

@@ -91,7 +91,7 @@ Given a I<Koha::Illrequest> object, notifies the item has been sent back
 =cut
 
 sub item_in_transit {
-    my ( $self, $request ) = @_;
+    my ( $self, $request, $options ) = @_;
 
     INNReach::Ill::InconsistentStatus->throw( "Status is not correct: " . $request->status )
         unless $request->status =~ m/^B/;    # needs to be borrowing site flow
@@ -105,7 +105,7 @@ sub item_in_transit {
         sub {
 
             # skip actual INN-Reach interactions in dev_mode
-            unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
+            unless ( $self->{configuration}->{$centralCode}->{dev_mode} || ($options->{skip_api_request}) ) {
 
                 my $response = $self->{plugin}->get_ua($centralCode)->post_request(
                     {
