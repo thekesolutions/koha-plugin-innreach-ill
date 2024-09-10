@@ -186,4 +186,24 @@ sub receive_unshipped {
     return $self;
 }
 
+=head3 final_checkin
+
+    $command->final_checkin( $ill_request );
+
+Given a I<Koha::Illrequest> object, marks the request as checked in at the owning library.
+
+=cut
+
+sub final_checkin {
+    my ( $self, $request ) = @_;
+
+    INNReach::Ill::InconsistentStatus->throw(
+        "Status is not correct: " . $request->status )
+      unless $request->status =~ m/^B/; # needs to be borrowing site flow
+
+    $request->status('B_ITEM_CHECKED_IN')->store;
+
+    return $self;
+}
+
 1;

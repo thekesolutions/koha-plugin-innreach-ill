@@ -78,7 +78,7 @@ if ( $owning && $borrowing ) {
 }
 
 my @valid_owning    = qw(cancel_request final_checkin item_shipped);
-my @valid_borrowing = qw(item_received item_in_transit receive_unshipped);
+my @valid_borrowing = qw(final_checkin item_received item_in_transit receive_unshipped);
 
 if ($list_commands) {
     if ($owning) {
