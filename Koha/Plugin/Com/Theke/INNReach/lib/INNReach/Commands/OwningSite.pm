@@ -37,14 +37,14 @@ to INN-Reach central servers
 
 =head3 cancel_request
 
-    $command->cancel_request( $request );
+    $command->cancel_request( $request, [ { skip_api_request => 1 } ] );
 
 Given an I<ILL request> object, notifies it got cancelled by the owning site.
 
 =cut
 
 sub cancel_request {
-    my ( $self, $request ) = @_;
+    my ( $self, $request, $options ) = @_;
 
     INNReach::Ill::InconsistentStatus->throw( "Status is not correct: " . $request->status )
         unless $request->status =~ m/^O/;    # needs to be owning site flow
@@ -60,7 +60,7 @@ sub cancel_request {
             $request->status('O_ITEM_CANCELLED_BY_US')->store;
 
             # skip actual INN-Reach interactions in dev_mode
-            unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
+            if ( !$self->{configuration}->{$centralCode}->{dev_mode} && !$options->{skip_api_request} ) {
                 my $response = $self->{plugin}->get_ua($centralCode)->post_request(
                     {
                         endpoint    => "/innreach/v2/circ/owningsitecancel/$trackingId/$centralCode",
@@ -85,14 +85,14 @@ sub cancel_request {
 
 =head3 final_checkin
 
-    $command->final_checkin( $request );
+    $command->final_checkin( $request, [ { skip_api_request => 1 } ] );
 
 Given a I<Koha::Illrequest> object, notifies the final check-in took place.
 
 =cut
 
 sub final_checkin {
-    my ( $self, $request ) = @_;
+    my ( $self, $request, $options ) = @_;
 
     INNReach::Ill::InconsistentStatus->throw( "Status is not correct: " . $request->status )
         unless $request->status =~ m/^O/;    # needs to be owning site flow
@@ -102,15 +102,18 @@ sub final_checkin {
     my $trackingId  = $attributes->find( { type => 'trackingId' } )->value;
     my $centralCode = $attributes->find( { type => 'centralCode' } )->value;
 
-    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
-        {
-            endpoint    => "/innreach/v2/circ/finalcheckin/$trackingId/$centralCode",
-            centralCode => $centralCode,
-        }
-    );
+    # skip actual INN-Reach interactions in dev_mode
+    if ( !$self->{configuration}->{$centralCode}->{dev_mode} && !$options->{skip_api_request} ) {
+        my $response = $self->{plugin}->get_ua($centralCode)->post_request(
+            {
+                endpoint    => "/innreach/v2/circ/finalcheckin/$trackingId/$centralCode",
+                centralCode => $centralCode,
+            }
+        );
 
-    INNReach::Ill::RequestFailed->throw( method => 'final_checkin', response => $response )
-        unless $response->is_success;
+        INNReach::Ill::RequestFailed->throw( method => 'final_checkin', response => $response )
+            unless $response->is_success;
+    }
 
     $request->status('O_ITEM_CHECKED_IN')->store;
 
@@ -119,14 +122,14 @@ sub final_checkin {
 
 =head3 item_shipped
 
-    $command->item_shipped( $request );
+    $command->item_shipped( $request, [ { skip_api_request => 1 } ] );
 
 Given a I<Koha::Illrequest> object, notifies the item has been shipped.
 
 =cut
 
 sub item_shipped {
-    my ( $self, $request ) = @_;
+    my ( $self, $request, $options ) = @_;
 
     my $req_id = $request->id;
 
@@ -197,7 +200,7 @@ sub item_shipped {
                 if $debug;
 
             # skip actual INN-Reach interactions in dev_mode
-            unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
+            if ( !$self->{configuration}->{$centralCode}->{dev_mode} && !$options->{skip_api_request} ) {
                 warn "[innreach]\t$req_id\tPOST to be called"
                     if $debug;
                 my $response = $self->{plugin}->get_ua($centralCode)->post_request(

@@ -38,14 +38,14 @@ to INN-Reach central servers
 
 =head3 item_received
 
-    $command->item_received( $ill_request );
+    $command->item_received( $ill_request, [ { skip_api_request => 1 } ] );
 
 Given a I<Koha::Illrequest> object, notifies the item has been received
 
 =cut
 
 sub item_received {
-    my ( $self, $request ) = @_;
+    my ( $self, $request, $options ) = @_;
 
     INNReach::Ill::InconsistentStatus->throw( "Status is not correct: " . $request->status )
         unless $request->status =~ m/^B/;    # needs to be borrowing site flow
@@ -59,7 +59,7 @@ sub item_received {
         sub {
 
             # skip actual INN-Reach interactions in dev_mode
-            unless ( $self->{configuration}->{$centralCode}->{dev_mode} ) {
+            if ( !$self->{configuration}->{$centralCode}->{dev_mode} && !$options->{skip_api_request} ) {
 
                 my $response = $self->{plugin}->get_ua($centralCode)->post_request(
                     {
@@ -81,10 +81,9 @@ sub item_received {
     return $self;
 }
 
-
 =head3 item_in_transit
 
-    $command->item_in_transit( $ill_request );
+    $command->item_in_transit( $ill_request, [ { skip_api_request => 1 } ] );
 
 Given a I<Koha::Illrequest> object, notifies the item has been sent back
 
@@ -105,7 +104,7 @@ sub item_in_transit {
         sub {
 
             # skip actual INN-Reach interactions in dev_mode
-            unless ( $self->{configuration}->{$centralCode}->{dev_mode} || !$options->{skip_api_request} ) {
+            if ( !$self->{configuration}->{$centralCode}->{dev_mode} && !$options->{skip_api_request} ) {
 
                 my $response = $self->{plugin}->get_ua($centralCode)->post_request(
                     {
@@ -152,7 +151,7 @@ sub item_in_transit {
 
 =head3 receive_unshipped
 
-    $command->receive_unshipped( $ill_request );
+    $command->receive_unshipped( $ill_request, [ { skip_api_request => 1 } ] );
 
 Given a I<Koha::Illrequest> object, notifies the item has been received but no
 I<itemshipped> message was received.
@@ -160,28 +159,31 @@ I<itemshipped> message was received.
 =cut
 
 sub receive_unshipped {
-    my ( $self, $request ) = @_;
+    my ( $self, $request, $options ) = @_;
 
-    INNReach::Ill::InconsistentStatus->throw(
-        "Status is not correct: " . $request->status )
-      unless $request->status =~ m/^B/; # needs to be borrowing site flow
+    INNReach::Ill::InconsistentStatus->throw( "Status is not correct: " . $request->status )
+        unless $request->status =~ m/^B/;    # needs to be borrowing site flow
 
     my $attributes = $request->extended_attributes;
 
     my $trackingId  = $attributes->find( { type => 'trackingId' } )->value;
     my $centralCode = $attributes->find( { type => 'centralCode' } )->value;
 
-    my $response = $self->{plugin}->get_ua($centralCode)->post_request(
-        {
-            endpoint => "/innreach/v2/circ/receiveunshipped/$trackingId/$centralCode",
-            centralCode => $centralCode,
-        }
-    );
+    # skip actual INN-Reach interactions in dev_mode
+    if ( !$self->{configuration}->{$centralCode}->{dev_mode} && !$options->{skip_api_request} ) {
 
-    INNReach::Ill::RequestFailed->throw(
-        method   => 'receive_unshipped',
-        response => $response
-    ) unless $response->is_success;
+        my $response = $self->{plugin}->get_ua($centralCode)->post_request(
+            {
+                endpoint    => "/innreach/v2/circ/receiveunshipped/$trackingId/$centralCode",
+                centralCode => $centralCode,
+            }
+        );
+
+        INNReach::Ill::RequestFailed->throw(
+            method   => 'receive_unshipped',
+            response => $response
+        ) unless $response->is_success;
+    }
 
     return $self;
 }
@@ -197,9 +199,8 @@ Given a I<Koha::Illrequest> object, marks the request as checked in at the ownin
 sub final_checkin {
     my ( $self, $request ) = @_;
 
-    INNReach::Ill::InconsistentStatus->throw(
-        "Status is not correct: " . $request->status )
-      unless $request->status =~ m/^B/; # needs to be borrowing site flow
+    INNReach::Ill::InconsistentStatus->throw( "Status is not correct: " . $request->status )
+        unless $request->status =~ m/^B/;    # needs to be borrowing site flow
 
     $request->status('B_ITEM_CHECKED_IN')->store;
 
