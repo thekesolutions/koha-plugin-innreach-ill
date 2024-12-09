@@ -435,7 +435,7 @@ sub mark_task {
         );
     } else {
         print STDOUT
-            "[innreach][DEBUG] Task ($task_id) success | $task->{action} $task->{object_type} $task->{object_id}\n";
+            "[innreach] Task ($task_id) success | $task->{action} $task->{object_type} $task->{object_id}\n";
         $query = $dbh->prepare(
             qq{
             UPDATE
