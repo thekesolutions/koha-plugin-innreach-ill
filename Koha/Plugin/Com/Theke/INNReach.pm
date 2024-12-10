@@ -51,7 +51,7 @@ BEGIN {
     require INNReach::BackgroundJobs::OwningSite::ItemShipped;
 }
 
-our $VERSION = "{VERSION}";
+our $VERSION = "5.3.16";
 
 our $metadata = {
     name            => 'INN-Reach connector plugin for Koha',
@@ -174,32 +174,38 @@ Install method. Takes care of table creation and initialization if required
 sub install {
     my ( $self, $args ) = @_;
 
+    my $dbh = C4::Context->dbh;
+
     my $task_queue = $self->get_qualified_table_name('task_queue');
 
-    unless ( $self->_table_exists( $task_queue ) ) {
-        C4::Context->dbh->do(qq{
+    unless ( $self->_table_exists($task_queue) ) {
+        $dbh->do(
+            qq{
             CREATE TABLE $task_queue (
                 `id`           INT(11) NOT NULL AUTO_INCREMENT,
                 `object_type`  ENUM('biblio', 'item', 'circulation', 'holds') NOT NULL DEFAULT 'biblio',
                 `object_id`    INT(11) NOT NULL DEFAULT 0,
                 `payload`      TEXT DEFAULT NULL,
-                `action`       ENUM('create', 'modify', 'delete', 'renewal', 'checkin', 'checkout', 'fill', 'cancel') NOT NULL DEFAULT 'modify',
-                `status`       ENUM('queued', 'retry', 'success', 'error', 'skipped') NOT NULL DEFAULT 'queued',
+                `action`       ENUM('create','modify','delete','renewal','checkin','checkout','fill','cancel','b_item_in_transit','b_item_received','o_cancel_request','o_final_checkin','o_item_shipped') NOT NULL DEFAULT 'modify',
+                `status`       ENUM('queued','retry','success','error','skipped') NOT NULL DEFAULT 'queued',
                 `attempts`     INT(11) NOT NULL DEFAULT 0,
                 `last_error`   VARCHAR(191) DEFAULT NULL,
                 `timestamp`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 `central_server` VARCHAR(10) NOT NULL,
+                `run_after`    TIMESTAMP NULL DEFAULT NULL,
                 PRIMARY KEY (`id`),
                 KEY `status` (`status`),
                 KEY `central_server` (`central_server`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        });
+        }
+        );
     }
 
     my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
 
-    unless ( $self->_table_exists( $agency_to_patron ) ) {
-        C4::Context->dbh->do(qq{
+    unless ( $self->_table_exists($agency_to_patron) ) {
+        $dbh->do(
+            qq{
             CREATE TABLE $agency_to_patron (
                 `central_server` VARCHAR(191) NOT NULL,
                 `local_server`   VARCHAR(191) NULL DEFAULT NULL,
@@ -208,33 +214,38 @@ sub install {
                 `timestamp`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (`central_server`,`agency_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        });
+        }
+        );
     }
 
     my $contributed_biblios = $self->get_qualified_table_name('contributed_biblios');
 
-    unless ( $self->_table_exists( $contributed_biblios ) ) {
-        C4::Context->dbh->do(qq{
+    unless ( $self->_table_exists($contributed_biblios) ) {
+        $dbh->do(
+            qq{
             CREATE TABLE $contributed_biblios (
                 `central_server` VARCHAR(191) NOT NULL,
                 `biblio_id`      INT(11) NOT NULL,
                 `timestamp`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (`central_server`,`biblio_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        });
+        }
+        );
     }
 
     my $contributed_items = $self->get_qualified_table_name('contributed_items');
 
-    unless ( $self->_table_exists( $contributed_items ) ) {
-        C4::Context->dbh->do(qq{
+    unless ( $self->_table_exists($contributed_items) ) {
+        $dbh->do(
+            qq{
             CREATE TABLE $contributed_items (
                 `central_server` VARCHAR(191) NOT NULL,
                 `item_id`        INT(11) NOT NULL,
                 `timestamp`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (`central_server`,`item_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        });
+        }
+        );
     }
 
     return 1;
@@ -249,6 +260,8 @@ Takes care of upgrading whatever is needed (table structure, new tables, informa
 sub upgrade {
     my ( $self, $args ) = @_;
 
+    my $dbh = C4::Context->dbh;
+
     my $new_version = "1.1.0";
     if (
         Koha::Plugins::Base::_version_compare(
@@ -259,7 +272,7 @@ sub upgrade {
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         unless ( $self->_table_exists($task_queue) ) {
-            C4::Context->dbh->do(qq{
+            $dbh->do(qq{
                 CREATE TABLE $task_queue (
                     `id`           INT(11) NOT NULL AUTO_INCREMENT,
                     `object_type`  ENUM('biblio', 'item') NOT NULL DEFAULT 'biblio',
@@ -287,7 +300,7 @@ sub upgrade {
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         unless ( $self->_table_exists($task_queue) ) {
-            C4::Context->dbh->do(qq{
+            $dbh->do(qq{
                 ALTER TABLE $task_queue
                     ADD COLUMN `last_error` VARCHAR(191) DEFAULT NULL AFTER `attempts`;
             });
@@ -307,7 +320,7 @@ sub upgrade {
           $self->get_qualified_table_name('agency_to_patron');
 
         unless ( $self->_table_exists($agency_to_patron) ) {
-            C4::Context->dbh->do(qq{
+            $dbh->do(qq{
                 CREATE TABLE $agency_to_patron (
                     `central_server` VARCHAR(191) NOT NULL,
                     `local_server`   VARCHAR(191) NULL DEFAULT NULL,
@@ -332,7 +345,7 @@ sub upgrade {
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         if ( $self->_table_exists($task_queue) ) {
-            C4::Context->dbh->do(qq{
+            $dbh->do(qq{
                 ALTER TABLE $task_queue
                     ADD COLUMN    `payload` TEXT DEFAULT NULL AFTER `object_id`,
                     MODIFY COLUMN `action`  ENUM('create', 'modify', 'delete', 'renew') NOT NULL DEFAULT 'modify';
@@ -352,11 +365,11 @@ sub upgrade {
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         if ( $self->_table_exists($task_queue) ) {
-            C4::Context->dbh->do(qq{
+            $dbh->do(qq{
                 ALTER TABLE $task_queue
                     ADD COLUMN `central_server` VARCHAR(10) NOT NULL AFTER `timestamp`;
             });
-            C4::Context->dbh->do(qq{
+            $dbh->do(qq{
                 ALTER TABLE $task_queue
                     ADD KEY `central_server` (`central_server`);
             });
@@ -375,7 +388,7 @@ sub upgrade {
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         if ( $self->_table_exists($task_queue) ) {
-            C4::Context->dbh->do(qq{
+            $dbh->do(qq{
                 ALTER TABLE $task_queue
                     MODIFY COLUMN `action` ENUM('create', 'modify', 'delete', 'renewal', 'checkin', 'checkout') NOT NULL DEFAULT 'modify';
             });
@@ -394,7 +407,7 @@ sub upgrade {
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         if ( $self->_table_exists($task_queue) ) {
-            C4::Context->dbh->do(qq{
+            $dbh->do(qq{
                 ALTER TABLE $task_queue
                     MODIFY COLUMN `status` ENUM('queued', 'retry', 'success', 'error', 'skipped') NOT NULL DEFAULT 'queued';
             });
@@ -412,7 +425,7 @@ sub upgrade {
         my $contributed_biblios = $self->get_qualified_table_name('contributed_biblios');
 
         if ( !$self->_table_exists( $contributed_biblios ) ) {
-            C4::Context->dbh->do(qq{
+            $dbh->do(qq{
                 CREATE TABLE $contributed_biblios (
                     `central_server` VARCHAR(191) NOT NULL,
                     `biblio_id`      INT(11) NOT NULL,
@@ -425,7 +438,7 @@ sub upgrade {
         my $contributed_items = $self->get_qualified_table_name('contributed_items');
 
         if ( !$self->_table_exists( $contributed_items ) ) {
-            C4::Context->dbh->do(qq{
+            $dbh->do(qq{
                 CREATE TABLE $contributed_items (
                     `central_server` VARCHAR(191) NOT NULL,
                     `item_id`        INT(11) NOT NULL,
@@ -448,7 +461,7 @@ sub upgrade {
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         if ( $self->_table_exists($task_queue) ) {
-            C4::Context->dbh->do(qq{
+            $dbh->do(qq{
                 ALTER TABLE $task_queue
                     MODIFY COLUMN `object_type` ENUM('biblio', 'item', 'circulation') NOT NULL DEFAULT 'biblio';
             });
@@ -467,15 +480,54 @@ sub upgrade {
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         if ( $self->_table_exists($task_queue) ) {
-            C4::Context->dbh->do(qq{
+            $dbh->do(qq{
                 ALTER TABLE $task_queue
                     MODIFY COLUMN `object_type` ENUM('biblio', 'item', 'circulation', 'holds') NOT NULL DEFAULT 'biblio';
             });
 
-            C4::Context->dbh->do(qq{
+            $dbh->do(qq{
                 ALTER TABLE $task_queue
                     MODIFY COLUMN `action` ENUM('create', 'modify', 'delete', 'renewal', 'checkin', 'checkout', 'fill', 'cancel') NOT NULL DEFAULT 'modify';
             });
+        }
+
+        $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
+    }
+
+    $new_version = "5.3.16";
+    if ( Koha::Plugins::Base::_version_compare( $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1 ) {
+
+        my $task_queue = $self->get_qualified_table_name('task_queue');
+
+        if ( $self->_table_exists($task_queue) ) {
+            $dbh->do(
+                qq{
+                ALTER TABLE $task_queue
+                    MODIFY COLUMN
+                    `action` ENUM(
+                        'create',
+                        'modify',
+                        'delete',
+                        'renewal',
+                        'checkin',
+                        'checkout',
+                        'fill',
+                        'cancel',
+                        'b_item_in_transit',
+                        'b_item_received',
+                        'o_cancel_request',
+                        'o_final_checkin',
+                        'o_item_shipped')
+                    NOT NULL DEFAULT 'modify';
+            }
+            );
+
+            $dbh->do(
+                qq{
+                ALTER TABLE $task_queue
+                    ADD COLUMN `run_after` TIMESTAMP NULL DEFAULT NULL AFTER `central_server`;
+            }
+            );
         }
 
         $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
