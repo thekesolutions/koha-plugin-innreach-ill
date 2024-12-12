@@ -87,8 +87,12 @@ sub run_queued_tasks {
         FROM
             $table
         WHERE
-            status='queued' OR
-            status='retry'
+            ( status='queued' OR
+            status='retry' )
+            AND (
+                 run_after IS NULL
+              OR run_after < NOW()
+            )
 	ORDER BY timestamp ASC
 	LIMIT 100
     }
