@@ -439,15 +439,14 @@ sub mark_task {
         );
     } else {
         print STDOUT
-            "[innreach] Task ($task_id) success | $task->{action} $task->{object_type} $task->{object_id}\n";
+            "[innreach][INFO] Task ($task_id) success | $task->{action} $task->{object_type} $task->{object_id}\n";
         $query = $dbh->prepare(
             qq{
             UPDATE
                 $table
             SET
                 status='$status',
-                attempts=$attempts,
-                last_error=NULL
+                attempts=$attempts
             WHERE
                 id=$task_id
         }
