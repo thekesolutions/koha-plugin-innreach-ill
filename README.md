@@ -168,6 +168,7 @@ d2ir:
     debug_mode: false
     debug_requests: false
     dev_mode: false
+    default_retry_delay: 120
 ```
 
 ### Options
