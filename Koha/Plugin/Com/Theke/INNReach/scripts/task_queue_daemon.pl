@@ -524,7 +524,7 @@ sub error_task {
             $table
         SET
             status='error',
-            last_error='$encoded_error',
+            last_error='$encoded_error'
         WHERE
             id=$task_id
     }
