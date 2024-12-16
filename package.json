@@ -1,31 +1,32 @@
 {
-  "name": "koha-plugin-innreach",
-  "version": "5.3.18",
-  "previous_version": "2.0.7",
-  "description": "INN-Reach connector plugin for Koha",
-  "devDependencies": {
-    "gulp": "^4.0.2",
-    "gulp-cli": "^2.3.0",
-    "gulp-run": "^1.7.1"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "kpz": "echo -n ${npm_package_name}-v${npm_package_version}.kpz",
-    "name": "echo -n ${npm_package_name}"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://gitlab.com/thekesolutions/plugins/koha-plugin-innreach.git"
-  },
-  "author": "Tomás Cohen Arazi <tomascohen@theke.io>",
-  "license": "GPL-3.0",
-  "bugs": {
-    "url": "https://gitlab.com/thekesolutions/plugins/koha-plugin-innreach/issues"
-  },
-  "homepage": "https://gitlab.com/thekesolutions/plugins/koha-plugin-innreach#readme",
-  "dependencies": {
-    "datetime": "0.0.3",
-    "jsonfile": "^5.0.0",
-    "node-datetime": "^2.0.0"
-  }
+    "name": "koha-plugin-innreach",
+    "version": "5.3.18",
+    "previous_version": "2.0.7",
+    "description": "INN-Reach connector plugin for Koha",
+    "devDependencies": {
+        "gulp": "^4.0.2",
+        "gulp-cli": "^2.3.0",
+        "gulp-run": "^1.7.1"
+    },
+    "scripts": {
+        "preversion": "sed -i -e \"s/^our \\$VERSION = .*/our \\$VERSION = \\\"$npm_new_version\\\";/\" Koha/Plugin/Com/Theke/INNReach.pm; git add -u",
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "kpz": "echo -n ${npm_package_name}-v${npm_package_version}.kpz",
+        "name": "echo -n ${npm_package_name}"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://gitlab.com/thekesolutions/plugins/koha-plugin-innreach.git"
+    },
+    "author": "Tomás Cohen Arazi <tomascohen@theke.io>",
+    "license": "GPL-3.0",
+    "bugs": {
+        "url": "https://gitlab.com/thekesolutions/plugins/koha-plugin-innreach/issues"
+    },
+    "homepage": "https://gitlab.com/thekesolutions/plugins/koha-plugin-innreach#readme",
+    "dependencies": {
+        "datetime": "0.0.3",
+        "jsonfile": "^5.0.0",
+        "node-datetime": "^2.0.0"
+    }
 }

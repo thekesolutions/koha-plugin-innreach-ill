@@ -131,7 +131,6 @@ function build() {
     return run(`
         mkdir dist ;
         cp -r Koha dist/. ;
-        sed -i -e "s/{VERSION}/${package_json.version}/g" ${pm_file_path_full_dist} ;
         sed -i -e "s/1980-06-18/${today}/g" ${pm_file_path_full_dist} ;
         cd dist ;
         zip -r ../${release_filename} ./Koha ;
