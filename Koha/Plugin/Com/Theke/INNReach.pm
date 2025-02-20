@@ -758,7 +758,7 @@ sub after_circ_action {
     my $central_server = $self->get_req_central_server($req);
 
     if ( $action eq 'renewal' ) {
-
+        $params->{payload}->{date_due} = $params->{payload}->{checkout}->date_due;
         $self->schedule_task(
             {
                 action         => $action,
