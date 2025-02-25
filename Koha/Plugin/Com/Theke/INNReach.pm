@@ -51,7 +51,7 @@ BEGIN {
     require INNReach::BackgroundJobs::OwningSite::ItemShipped;
 }
 
-our $VERSION = "5.3.20";
+our $VERSION = "5.3.21";
 
 our $metadata = {
     name            => 'INN-Reach connector plugin for Koha',
