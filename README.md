@@ -75,7 +75,7 @@ Then **enable** the *ILLModule* system preference.
 
 ## Install the plugin/ILL backend
 
-Download the latest *.kpz* file from the [releases](https://github.com/thekesolutions/koha-plugin-innreach/releases) page.
+Download the latest *.kpz* file from the [packages](https://gitlab.com/thekesolutions/plugins/koha-plugin-innreach/-/packages) page.
 Install it as any other plugin following the general [plugin install instructions](https://wiki.koha-community.org/wiki/Koha_plugins).
 
 ## Plugin configuration
