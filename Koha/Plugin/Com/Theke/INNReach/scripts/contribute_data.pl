@@ -189,7 +189,7 @@ if ( $items && !$decontribute ) {
         } catch {
             $status = "error ($_)";
         };
-        print STDOUT "# Contributing record: " . $item->id . " => $status\n"
+        print STDOUT "# Contributing item: " . $item->id . " => $status\n"
             unless $noout;
     }
 }
