@@ -25,7 +25,7 @@ use DDP;
 use Getopt::Long;
 use Koha::Script;
 use List::MoreUtils qw(any);
-use Try::Tiny qw(catch try);
+use Try::Tiny       qw(catch try);
 
 use Koha::Plugin::Com::Theke::INNReach;
 
@@ -33,12 +33,12 @@ binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
 my $biblio_id;
-my $biblios       = 0;
-my $items         = 0;
+my $biblios = 0;
+my $items   = 0;
 my $where;
-my $noout         = 0;
-my $exclude_items = 0;
-my $force         = 0;
+my $noout               = 0;
+my $exclude_items       = 0;
+my $force               = 0;
 my $overwrite_locations = 0;
 my $decontribute;
 my $delete_location;
@@ -74,12 +74,12 @@ unless ($result) {
     exit 1;
 }
 
-if ( $help ) {
+if ($help) {
     print_usage();
     exit 0;
 }
 
-unless ( $central_server ) {
+unless ($central_server) {
     print_usage();
     say "--central_server is missing (mandatory)";
     exit 1;
@@ -136,7 +136,7 @@ _USAGE_
 
 my $plugin = Koha::Plugin::Com::Theke::INNReach->new;
 
-unless ( any { $_ eq $central_server } $plugin->central_servers ) { # valid?
+unless ( any { $_ eq $central_server } $plugin->central_servers ) {    # valid?
     print_usage();
     say "$central_server is not a valid configured central server!";
     exit 1;
@@ -154,13 +154,44 @@ if ( $items || $biblio_id || $biblios || $recontribution ) {
 
 my $contribution = $plugin->contribution($central_server);
 
-if ($items) {
+if ( $items && !$decontribute ) {
 
-    unless ($decontribute) {
-        print_usage();
-        say "For --items, only decontribution is implemented";
-        exit 1;
+    my $configuration = $plugin->configuration->{$central_server};
+    my $exclude_empty_biblios =
+        $configuration->{contribution} ? $configuration->{contribution}->{exclude_empty_biblios} : 0;
+
+    my $query    = ($where) ? \[$where] : {};
+    my $items_rs = Koha::Items->search( $query, { -order_by => ['biblionumber'] } );
+
+    my $last_biblio_id = 0;
+    while ( my $item = $items_rs->next ) {
+        if ( $item->biblionumber != $last_biblio_id ) {
+
+            # new biblio, contribute and store id
+            my $status = 'ok';
+            try {
+                $contribution->contribute_bib( { biblio_id => $item->biblionumber } );
+            } catch {
+                $status = "error ($_)";
+            };
+            $last_biblio_id = $item->biblionumber;
+            print STDOUT "# Contributing record: " . $item->borrowernumber . " => $status\n"
+                unless $noout;
+        }
+
+        my $status = 'ok';
+        try {
+            $contribution->contribute_batch_items(
+                { biblio_id => $item->biblionumber, items => Koha::Items->search( { itemnumber => $item->id } ) } );
+        } catch {
+            $status = "error ($_)";
+        };
+        print STDOUT "# Contributing record: " . $item->id . " => $status\n"
+            unless $noout;
     }
+}
+
+if ( $items && $decontribute ) {
 
     unless ($where) {
         print_usage();
@@ -183,7 +214,7 @@ if ($items) {
         if ( $contributable_items->count == 0 && $exclude_empty_biblios ) {
             print STDOUT "# Decontributing empty biblio: " . $biblio->id . "\n";
             my $errors = $contribution->decontribute_bib( { biblio_id => $biblio->id } );
-            if ( $errors ) {
+            if ($errors) {
                 print STDOUT " - Status: Error (" . $errors . ")\n"
                     unless $noout;
             } else {
@@ -194,7 +225,7 @@ if ($items) {
         } else {
             print STDOUT "# Decontributing item: " . $item->id . "\n";
             my $errors = $contribution->decontribute_item( { item_id => $item->id } );
-            if ( $errors ) {
+            if ($errors) {
                 print STDOUT " - Status: Error (" . $errors . ")\n"
                     unless $noout;
             } else {
@@ -206,7 +237,7 @@ if ($items) {
 }
 
 if ( $biblios && $decontribute ) {
-    if ( $biblio_id ) {
+    if ($biblio_id) {
         print STDOUT "# Decontributing record: " . $biblio_id . "\n"
             unless $noout;
         my $errors = $contribution->decontribute_bib( { biblio_id => $biblio_id } );
@@ -221,7 +252,7 @@ if ( $biblios && $decontribute ) {
         my $query = {};
 
         if ($where) {
-            $query = \[ $where ];
+            $query = \[$where];
         }
 
         my $biblios = Koha::Biblios->search($query);
@@ -230,11 +261,10 @@ if ( $biblios && $decontribute ) {
             print STDOUT "# Decontributing record: " . $biblio->id . "\n"
                 unless $noout;
             my $errors = $contribution->decontribute_bib( { biblio_id => $biblio->id } );
-            if ( $errors ) {
+            if ($errors) {
                 print STDOUT " - Status: Error (" . $errors . ")\n"
                     unless $noout;
-            }
-            else {
+            } else {
                 print STDOUT " - Status: OK\n"
                     unless $noout;
             }
@@ -245,9 +275,8 @@ if ( $biblios && $decontribute ) {
     my $query = {};
     if ($biblio_id) {
         $query = { biblionumber => $biblio_id };
-    }
-    elsif ($where) {
-        $query = \[ $where ];
+    } elsif ($where) {
+        $query = \[$where];
     }
 
     my $biblios = Koha::Biblios->search($query);
@@ -262,23 +291,21 @@ if ( $biblios && $decontribute ) {
         if ( $items->count > 0 or $force ) {
             my $errors = $contribution->contribute_bib( { biblio_id => $biblio->id } );
 
-            if ( $errors ) {
+            if ($errors) {
                 print STDOUT " - Status: Error (" . $errors . ")\n"
                     unless $noout;
                 next;
-            }
-            else {
+            } else {
                 print STDOUT " - Status: OK\n"
                     unless $noout;
             }
-        }
-        else {
+        } else {
             print STDOUT " - Status: Skipped (no items)\n"
                 unless $noout;
             next;
         }
 
-        unless ( $exclude_items ) {
+        unless ($exclude_items) {
             if ( $items->count > 0 ) {
                 print STDOUT " - Items:\n"
                     unless $noout;
@@ -304,8 +331,7 @@ if ( $biblios && $decontribute ) {
                             unless $noout;
                     }
                 }
-            }
-            else {
+            } else {
                 print STDOUT " - Items: biblio has no items\n"
                     unless $noout;
             }
@@ -313,11 +339,11 @@ if ( $biblios && $decontribute ) {
     }
 }
 
-if ( $overwrite_locations ) {
+if ($overwrite_locations) {
     my $response = $contribution->get_locations_list();
 
     # delete current locations
-    foreach my $location ( @{ $response } ) {
+    foreach my $location ( @{$response} ) {
         $contribution->delete_single_location(
             {
                 library_id    => $location->{locationKey},
@@ -325,11 +351,12 @@ if ( $overwrite_locations ) {
             }
         );
     }
+
     # upload all new locations
-    $contribution->upload_locations_list({ centralServer => $central_server });
+    $contribution->upload_locations_list( { centralServer => $central_server } );
 }
 
-if ( $delete_location ) {
+if ($delete_location) {
     $contribution->delete_single_location(
         {
             library_id    => $delete_location,
@@ -338,7 +365,7 @@ if ( $delete_location ) {
     );
 }
 
-if ( $update_location ) {
+if ($update_location) {
     $contribution->update_single_location(
         {
             library_id    => $update_location,
@@ -347,8 +374,9 @@ if ( $update_location ) {
     );
 }
 
-if ( $recontribution ) {
+if ($recontribution) {
     if ( $all or $only_items ) {
+
         # remove items to be de-contributed
         my $deleted_contributed_items = $contribution->get_deleted_contributed_items(
             {
@@ -356,17 +384,16 @@ if ( $recontribution ) {
             }
         );
 
-        if ( scalar @{$deleted_contributed_items} > 0 )  {
+        if ( scalar @{$deleted_contributed_items} > 0 ) {
             print STDOUT "# Decontributing (deleted) items:\n"
                 unless $noout;
 
             foreach my $item_id ( @{$deleted_contributed_items} ) {
                 my $errors = $contribution->decontribute_item( { item_id => $item_id } );
-                if ( $errors ) {
+                if ($errors) {
                     print STDOUT "\t$item_id\t> Error (" . $errors . ")\n"
                         unless $noout;
-                }
-                else {
+                } else {
                     print STDOUT "\t$item_id\t> Ok\n"
                         unless $noout;
                 }
@@ -384,13 +411,12 @@ if ( $recontribution ) {
             print STDOUT "# Decontributing items (rules):\n"
                 unless $noout;
 
-            while( my $item = $items_to_be_decontributed->next ) {
+            while ( my $item = $items_to_be_decontributed->next ) {
                 my $errors = $contribution->decontribute_item( { item_id => $item->id } );
-                if ( $errors ) {
+                if ($errors) {
                     print STDOUT "\t" . $item->id . "\t> Error (" . $errors . ")\n"
                         unless $noout;
-                }
-                else {
+                } else {
                     print STDOUT "\t" . $item->id . "\t> Ok\n"
                         unless $noout;
                 }
@@ -416,7 +442,7 @@ if ( $recontribution ) {
                     $errors = "$_";
                 };
 
-                if ( $errors ) {
+                if ($errors) {
                     print STDOUT "\t" . $item->id . "\t> Error (" . $errors . ")\n"
                         unless $noout;
                 } else {
