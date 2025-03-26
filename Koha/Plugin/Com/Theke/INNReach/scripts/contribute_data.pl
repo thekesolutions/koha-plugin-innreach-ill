@@ -162,6 +162,9 @@ if ( $items && !$decontribute ) {
 
     my $query    = ($where) ? \[$where] : {};
     my $items_rs = Koha::Items->search( $query, { -order_by => ['biblionumber'] } );
+    # the caller knows what they are doing with  --where when they force
+    $items_rs = $contribution->filter_items_by_contributable( { items => $items_rs } )
+        unless $force;
 
     my $last_biblio_id = 0;
     while ( my $item = $items_rs->next ) {
