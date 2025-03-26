@@ -175,7 +175,7 @@ if ( $items && !$decontribute ) {
                 $status = "error ($_)";
             };
             $last_biblio_id = $item->biblionumber;
-            print STDOUT "# Contributing record: " . $item->borrowernumber . " => $status\n"
+            print STDOUT "# Contributing record: " . $item->biblionumber . " => $status\n"
                 unless $noout;
         }
 
