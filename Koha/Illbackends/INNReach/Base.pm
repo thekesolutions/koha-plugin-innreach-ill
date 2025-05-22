@@ -556,6 +556,7 @@ sub cancel_request {
                 my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
                 my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
                 my $patronName  = $attrs->find( { type => 'patronName' } )->value;
+                my $itemId      = $attrs->find( { type => 'itemId' } )->value;
 
                 $req->status('O_ITEM_CANCELLED_BY_US')->store;
 
@@ -570,7 +571,7 @@ sub cancel_request {
                         action         => 'modify',
                         central_server => $centralCode,
                         object_type    => 'item',
-                        object_id      => $hold->itemnumber,
+                        object_id      => $itemId,
                     }
                 );
 
