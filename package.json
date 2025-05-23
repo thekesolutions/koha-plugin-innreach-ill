@@ -1,12 +1,10 @@
 {
     "name": "koha-plugin-innreach",
     "version": "5.3.26",
-    "previous_version": "2.0.7",
     "description": "INN-Reach connector plugin for Koha",
     "devDependencies": {
         "gulp": "^4.0.2",
-        "gulp-cli": "^2.3.0",
-        "gulp-run": "^1.7.1"
+        "gulp-cli": "^3.0.0"
     },
     "scripts": {
         "preversion": "sed -i -e \"s/^our \\$VERSION = .*/our \\$VERSION = \\\"$npm_new_version\\\";/\" Koha/Plugin/Com/Theke/INNReach.pm; git add -u; rm Koha/Plugin/Com/Theke/INNReach.pm-e",
@@ -25,8 +23,6 @@
     },
     "homepage": "https://gitlab.com/thekesolutions/plugins/koha-plugin-innreach#readme",
     "dependencies": {
-        "datetime": "0.0.3",
-        "jsonfile": "^5.0.0",
         "node-datetime": "^2.0.0"
     }
 }
