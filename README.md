@@ -315,14 +315,40 @@ The `sync_bibliographic_data.pl` script first decontributes the biblios inside t
 so for recontribution (for example, when rules are changed) you should just run the script
 with the needed constraints.
 
-## Caveats
+## Slip printing
 
-The following endpoints have no clear fit in the documented flows and require further conversations to get implemented properly.
+The plugin implements the `notices_content` hook to make ILL-related information available to notices.
 
-```shell
-    PUT  /api/v1/contrib/innreach/v2/circ/receiveunshipped/{trackingId}/{centralCode}
+### HOLD_SLIP
+
+On this letter, the plugin makes this attributes available.
+
+* `[% plugin_content.innreach.ill_request | html %]`
+* `[% plugin_content.innreach.itemId | html %]`
+* `[% plugin_content.innreach.pickupLocation | html %]`
+* `[% plugin_content.innreach.patronName | html %]`
+* `[% plugin_content.innreach.centralPatronType | html %]`
+
+The `ill_request` attribute will only be available if the plugin finds the hold is linked to
+a valid INN-Reach ILL request. It should be used to detect the ILL context for displaying
+ILL specific messages.
+
+For example:
+
+```
+[% IF plugin_content.innreach.ill_request  %]
+<ul>
+    <li>ILL request ID: [% plugin_content.innreach.ill_request.id | html %]</li>
+    <li>Item ID: [% plugin_content.innreach.itemId | html %]</li>
+    <li>Pickup location: [% plugin_content.innreach.pickupLocation | html %]</li>
+    <li>Patron name: [% plugin_content.innreach.patronName | html %]</li>
+    <li>Central patron type: [% plugin_content.innreach.centralPatronType | html %]</li>
+<ul>
+[% END %]
 ```
 
-Also, Koha doesn't have a proper way to *move a hold* from one item/biblio to another. So there's no UI allowing to trigget the
-*transferrequest* flow on the owning site. The borrowing site does implement the route, though. So koha accepts *transferrequest*
+## Caveats
+
+Koha doesn't have a proper way to *move a hold* from one item/biblio to another. So there's no UI allowing to trigget the
+*transferrequest* flow on the owning site. The borrowing site does implement the route, though. So Koha accepts *transferrequest*
 and can act accordingly, but it needs to be generated from another third party server.
