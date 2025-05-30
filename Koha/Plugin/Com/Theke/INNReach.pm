@@ -555,6 +555,41 @@ sub _table_exists {
     return 0;
 }
 
+
+=head3 notices_content
+
+Hook that adds data for using in notices.
+
+=cut
+
+sub notices_content {
+    my ( $self, $params ) = @_;
+    my $result = {};
+
+    if ( $params->{letter_code} eq 'HOLD_SLIP' ) {
+
+        my $ill_request = $self->get_ill_request_from_attribute(
+            {
+                type  => 'hold_id',
+                value => $params->{tables}->{reserves}->{reserve_id},
+            }
+        );
+
+        if ($ill_request) {
+            $result->{ill_request} = $ill_request;
+            my $extended_attributes = $ill_request->extended_attributes->search(
+                { type => [qw{pickupLocation patronName centralPatronType itemId}] } );
+
+            while ( my $attr = $extended_attributes->next ) {
+                $result->{ $attr->type } = $attr->value
+                    if $attr;
+            }
+        }
+    }
+
+    return $result;
+}
+
 =head3 after_biblio_action
 
 Hook that is called on biblio modification
