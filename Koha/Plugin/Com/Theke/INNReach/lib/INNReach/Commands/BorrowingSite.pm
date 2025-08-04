@@ -81,6 +81,45 @@ sub item_received {
     return $self;
 }
 
+=head3 cancel_request
+
+    $command->cancel_request( $req, [ { skip_api_request => 1 } ]  );
+
+Given a I<Koha::ILL::Request> object, notifies the request has been cancelled.
+
+=cut
+
+sub cancel_request {
+    my ( $self, $req, $options ) = @_;
+
+    Koha::Database->schema->storage->txn_do(
+        sub {
+            my $attrs = $req->extended_attributes;
+
+            my $trackingId  = $attrs->find( { type => 'trackingId' } )->value;
+            my $centralCode = $attrs->find( { type => 'centralCode' } )->value;
+
+            # skip actual INN-Reach interactions in dev_mode
+            if ( !$self->{configuration}->{$centralCode}->{dev_mode} && !$options->{skip_api_request} ) {
+                my $response = $self->{plugin}->get_ua($centralCode)->post_request(
+                    {
+                        endpoint    => "/innreach/v2/circ/cancelitemhold/$trackingId/$centralCode",
+                        centralCode => $centralCode,
+                    }
+                );
+
+                INNReach::Ill::RequestFailed->throw( method => 'cancel_request', response => $response )
+                    unless $response->is_success;
+            }
+
+            $req->status('B_ITEM_CANCELLED_BY_US')->store;
+            $req->send_patron_notice('ILL_REQUEST_UNAVAIL');
+        }
+    );
+
+    return $self;
+}
+
 =head3 item_in_transit
 
     $command->item_in_transit( $ill_request, [ { skip_api_request => 1 } ] );
