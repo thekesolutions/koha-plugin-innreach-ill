@@ -137,7 +137,7 @@ my $c =
 my $req = $plugin->get_ill_rs()->find($request_id);
 
 try {
-    $c->$command( $req, { skip_api_req => $skip_api_req } );
+    $c->$command( $req, { skip_api_request => $skip_api_req } );
 } catch {
     if ( ref($_) eq 'INNReach::Ill::RequestFailed' ) {
         warn sprintf(
