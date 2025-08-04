@@ -78,7 +78,7 @@ if ( $owning && $borrowing ) {
 }
 
 my @valid_owning    = qw(cancel_request final_checkin item_shipped);
-my @valid_borrowing = qw(final_checkin item_received item_in_transit receive_unshipped);
+my @valid_borrowing = qw(cancel_request final_checkin item_received item_in_transit receive_unshipped);
 
 if ($list_commands) {
     if ($owning) {
@@ -121,6 +121,7 @@ Options:
     --borrowing            A borrowning site command will be executed
 
     --command <command>    The command to be run
+    --list_commands        Prints a list of the possible commands
 
     --skip_api_req         Skip actual API interaction (useful for cleanup) [optional]
 
