@@ -55,7 +55,7 @@ $dbh->do(q{
       AND plugin_class<>'Koha::Plugin::Com::Theke::INNReach'
 }) && step("Disabled other plugins");
 
-my $config_string = read_file('/kohadevbox/plugins/innreach/t/config.yaml');
+my $config_string = read_file('t/config.yaml');
 $plugin->store_data(
     {
         configuration => $config_string,
