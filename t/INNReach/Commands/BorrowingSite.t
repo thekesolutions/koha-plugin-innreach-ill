@@ -47,14 +47,10 @@ subtest 'new() tests' => sub {
 
     plan tests => 1;
 
-    my $c;
-
-    throws_ok { $c = INNReach::Commands::BorrowingSite->new; }
-    'INNReach::Ill::MissingParameter',
-        'Exception thrown if missing "plugin" parameter';
-
     my $p = Koha::Plugin::Com::Theke::INNReach->new;
-    $c = INNReach::Commands::BorrowingSite->new( { plugin => $p } );
+    my $c = $p->borrowing_commands;
+    
+    isa_ok( $c, 'INNReach::Commands::BorrowingSite', 'borrowing_commands returns correct object type' );
 };
 
 subtest 'item_in_transit() tests' => sub {
@@ -64,7 +60,7 @@ subtest 'item_in_transit() tests' => sub {
     $schema->storage->txn_begin;
 
     my $p = Koha::Plugin::Com::Theke::INNReach->new;
-    my $c = INNReach::Commands::BorrowingSite->new( { plugin => $p } );
+    my $c = $p->borrowing_commands;
 
     my $patron    = $builder->build_object( { class => 'Koha::Patrons' } );
     my $item      = $builder->build_sample_item();
