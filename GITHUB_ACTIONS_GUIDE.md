@@ -1,9 +1,9 @@
 # GitHub Actions Workflow Guide
 
-## What Should Happen After Tagging v5.4.4
+## What Should Happen After Tagging v5.4.5
 
 ### 1. Workflow Triggers
-The GitHub Actions workflow will trigger on the v5.4.4 tag and run:
+The GitHub Actions workflow will trigger on the v5.4.5 tag and run:
 
 - **Unit Tests Job**: Tests the plugin against Koha main, stable, and oldstable
 - **Release Job**: Builds the KPZ package and creates a GitHub release
@@ -19,8 +19,9 @@ The GitHub Actions workflow will trigger on the v5.4.4 tag and run:
 6. ✅ Launch KTD instance with plugins support
 7. ✅ Wait for KTD to be ready
 8. ✅ Install plugins in KTD
-9. ✅ Run plugin tests (`prove -v -r -s t/`)
-10. ✅ Cleanup KTD instance
+9. ✅ Bootstrap test environment (creates patron categories, etc.)
+10. ✅ Run plugin tests (`prove -v -r -s t/`)
+11. ✅ Cleanup KTD instance
 
 #### Release Job (only runs if unit tests pass):
 1. ✅ Checkout plugin code
@@ -34,8 +35,8 @@ The GitHub Actions workflow will trigger on the v5.4.4 tag and run:
 
 #### If Successful:
 - ✅ All tests pass across Koha versions
-- ✅ KPZ file created: `koha-plugin-innreach-v5.4.4.kpz`
-- ✅ GitHub release created at: `https://github.com/bywatersolutions/koha-plugin-innreach/releases/tag/v5.4.4`
+- ✅ KPZ file created: `koha-plugin-innreach-v5.4.5.kpz`
+- ✅ GitHub release created at: `https://github.com/thekesolutions/koha-plugin-innreach-ill/releases/tag/v5.4.5`
 - ✅ Release includes:
   - KPZ file for download
   - README.md
@@ -44,21 +45,21 @@ The GitHub Actions workflow will trigger on the v5.4.4 tag and run:
 #### If There Are Issues:
 - ❌ Test failures will be shown in the workflow logs
 - ❌ Build failures will prevent release creation
-- ❌ Logs available at: `https://github.com/bywatersolutions/koha-plugin-innreach/actions`
+- ❌ Logs available at: `https://github.com/thekesolutions/koha-plugin-innreach-ill/actions`
 
 ### 4. How to Monitor
 
 1. **GitHub Actions Tab**: 
-   - Go to: `https://github.com/bywatersolutions/koha-plugin-innreach/actions`
-   - Look for the workflow run triggered by the v5.4.4 tag
+   - Go to: `https://github.com/thekesolutions/koha-plugin-innreach-ill/actions`
+   - Look for the workflow run triggered by the v5.4.5 tag
 
 2. **CI Badge**: 
    - The badge in README.md will show current status
    - Green = passing, Red = failing
 
 3. **Releases Page**:
-   - Check: `https://github.com/bywatersolutions/koha-plugin-innreach/releases`
-   - Should show v5.4.4 release with KPZ download
+   - Check: `https://github.com/thekesolutions/koha-plugin-innreach-ill/releases`
+   - Should show v5.4.5 release with KPZ download
 
 ### 5. Troubleshooting
 
@@ -74,10 +75,10 @@ If the workflow fails:
 3. **Fix and re-tag**:
    ```bash
    # Fix the issue, then:
-   git tag -d v5.4.4
-   git push origin :refs/tags/v5.4.4
-   git tag v5.4.4
-   git push origin v5.4.4
+   git tag -d v5.4.5
+   git push origin :refs/tags/v5.4.5
+   git tag v5.4.5
+   git push origin v5.4.5
    ```
 
 ### 6. Next Steps
@@ -92,6 +93,7 @@ Once the release is successful:
 The workflow is configured in `.github/workflows/main.yml` and includes:
 - Multi-version testing matrix
 - Proper plugin installation
+- Bootstrap script execution for test environment setup
 - npm/gulp build integration
 - Automated release creation
 - Keep-alive functionality

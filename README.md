@@ -1,6 +1,6 @@
 # koha-plugin-innreach
 
-[![CI](https://github.com/bywatersolutions/koha-plugin-innreach/actions/workflows/main.yml/badge.svg)](https://github.com/bywatersolutions/koha-plugin-innreach/actions/workflows/main.yml)
+[![CI](https://github.com/thekesolutions/koha-plugin-innreach-ill/actions/workflows/main.yml/badge.svg)](https://github.com/thekesolutions/koha-plugin-innreach-ill/actions/workflows/main.yml)
 
 INN-Reach inter-library loan service integration plugin for Koha.
 This plugin implements the required API, ILL backend and tools to make
