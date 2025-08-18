@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced bootstrap script to create necessary patron categories (ILLLIBS, ILL, LIBSTAFF, etc.)
 - Resolved "categorycode=ILLLIBS does not exist" test failure
 - Fixed test environment setup to match Rapido plugin approach
+- Fixed bootstrap script to use relative path for config.yaml (resolves "No such file or directory" error)
+- Fixed CI badge URL to point to correct repository (thekesolutions/koha-plugin-innreach-ill)
 
 ### Added
 - Comprehensive patron category creation in bootstrap script
