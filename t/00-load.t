@@ -18,10 +18,15 @@
 use Modern::Perl;
 
 use Test::More;
-
-use Test::More;
 use File::Spec;
 use File::Find;
+
+# Suppress redefinition warnings during module loading tests
+# These warnings are common in plugin environments where modules
+# may be loaded multiple times during testing
+no warnings 'redefine';
+
+my %loaded_modules;
 
 find(
     {
@@ -32,6 +37,11 @@ find(
             return unless $m =~ s/[.]pm$//;
             $m =~ s{^.*/Koha/}{Koha/};
             $m =~ s{/}{::}g;
+            
+            # Skip if already loaded to prevent redefinition
+            return if $loaded_modules{$m};
+            $loaded_modules{$m} = 1;
+            
             use_ok($m) || BAIL_OUT("***** PROBLEMS LOADING FILE '$m'");
         },
     },
@@ -39,4 +49,3 @@ find(
 );
 
 done_testing();
-
