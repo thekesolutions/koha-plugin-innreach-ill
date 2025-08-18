@@ -24,6 +24,7 @@ use Try::Tiny qw(catch try);
 use C4::Context;
 use Koha::Database;
 use Koha::ItemTypes;
+use Koha::Patron::Categories;
 
 # For generating random data
 use t::lib::TestBuilder;
@@ -75,6 +76,37 @@ if (
 
 } else {
     step("Add 'ILL' library [SKIPPED]");
+}
+
+# Create necessary patron categories
+foreach my $category_data (
+    { categorycode => 'ILL',      description => 'ILL Patrons' },
+    { categorycode => 'ILLLIBS',  description => 'ILL Libraries' },
+    { categorycode => 'LIBSTAFF', description => 'Library Staff' },
+    { categorycode => 'AP',       description => 'Adult Patron' },
+    { categorycode => 'CH',       description => 'Child Patron' },
+    { categorycode => 'DR',       description => 'Doctor' },
+    { categorycode => 'DR2',      description => 'Doctor 2' },
+    { categorycode => 'NR',       description => 'Non-Resident' },
+    { categorycode => 'SR',       description => 'Senior' },
+) {
+    if ( !Koha::Patron::Categories->search({ categorycode => $category_data->{categorycode} })->count) {
+        Koha::Patron::Category->new({
+            categorycode => $category_data->{categorycode},
+            description => $category_data->{description},
+            enrolmentperiod => 99,
+            upperagelimit => 999,
+            dateofbirthrequired => 0,
+            enrolmentfee => 0.00,
+            overduenoticerequired => 0,
+            reservefee => 0.00,
+            hidelostitems => 0,
+            category_type => 'A'
+        })->store();
+        step( "Add $category_data->{categorycode} patron category" );
+    } else {
+        step( "Add $category_data->{categorycode} patron category [SKIPPED]" );
+    }
 }
 
 foreach my $item_type ( qw(D2IR_BK D2IR_CF) ) {

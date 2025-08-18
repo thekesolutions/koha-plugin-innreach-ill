@@ -67,6 +67,15 @@ jobs:
         export KTD_HOME=$(pwd)/../koha-testing-docker
         ktd --name innreachtest --shell --run "cd /kohadevbox/koha && perl misc/devel/install_plugins.pl"
 
+    - name: Bootstrap test environment
+      run: |
+        export KTD_HOME=$(pwd)/../koha-testing-docker
+        ktd --name innreachtest --shell --run "
+          cd /kohadevbox/plugins/${{ env.GITHUB_REPO }} &&
+          export PERL5LIB=\$PERL5LIB:Koha/Plugin/Com/Theke/INNReach/lib:. &&
+          perl t/bootstrap.pl
+        "
+
     - name: Run plugin tests
       run: |
         export KTD_HOME=$(pwd)/../koha-testing-docker
