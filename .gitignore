@@ -38,3 +38,4 @@ inc/
 
 # Project files
 .vstags
+node_modules

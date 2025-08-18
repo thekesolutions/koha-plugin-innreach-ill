@@ -21,8 +21,6 @@ use Try::Tiny qw(catch try);
 
 use Koha::Plugin::Com::Theke::INNReach::Exceptions;
 
-use INNReach::Commands::OwningSite;
-
 =head1 NAME
 
 INNReach::BackgroundJobs::OwningSite::FinalCheckin - Background task for notifying
@@ -59,7 +57,7 @@ sub process {
 
     require Koha::Plugin::Com::Theke::INNReach;
     my $plugin   = Koha::Plugin::Com::Theke::INNReach->new;
-    my $commands = INNReach::Commands::OwningSite->new( { plugin => $plugin } );
+    my $commands = $plugin->owning_commands;
 
     # ill_request_id param required by ->enqueue()
     my $req = $plugin->get_ill_rs->find( $args->{ill_request_id} );

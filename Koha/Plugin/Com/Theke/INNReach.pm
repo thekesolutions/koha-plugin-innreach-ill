@@ -27,7 +27,7 @@ use YAML::XS;
 
 use C4::Context;
 use C4::Circulation qw(AddIssue AddReturn);
-use C4::Reserves qw(AddReserve);
+use C4::Reserves    qw(AddReserve);
 
 use Koha::Biblios;
 use Koha::Database;
@@ -43,12 +43,6 @@ BEGIN {
     my $path = Module::Metadata->find_module_by_name(__PACKAGE__);
     $path =~ s!\.pm$!/lib!;
     unshift @INC, $path;
-
-    require INNReach::BackgroundJobs::BorrowingSite::ItemInTransit;
-    require INNReach::BackgroundJobs::BorrowingSite::ItemReceived;
-    require INNReach::BackgroundJobs::OwningSite::CancelRequest;
-    require INNReach::BackgroundJobs::OwningSite::FinalCheckin;
-    require INNReach::BackgroundJobs::OwningSite::ItemShipped;
 }
 
 our $VERSION = "5.4.4";
@@ -131,38 +125,63 @@ sub configuration {
     my ($self) = @_;
 
     my $configuration;
-    eval {
-        $configuration = YAML::XS::Load(
-            Encode::encode_utf8( $self->retrieve_data('configuration') ) );
-    };
+    eval { $configuration = YAML::XS::Load( Encode::encode_utf8( $self->retrieve_data('configuration') ) ); };
     die($@) if $@;
 
     my @default_item_types;
 
-    foreach my $centralServer ( keys %{ $configuration } ) {
+    foreach my $centralServer ( keys %{$configuration} ) {
+
         # Reverse the library_to_location key
         my $library_to_location = $configuration->{$centralServer}->{library_to_location};
-        $configuration->{$centralServer}->{location_to_library} =
-          { map { $library_to_location->{$_}->{location} => $_ }
-              keys %{$library_to_location} };
+        $configuration->{$centralServer}->{location_to_library} = {
+            map { $library_to_location->{$_}->{location} => $_ }
+                keys %{$library_to_location}
+        };
 
         # Reverse the local_to_central_patron_type key
         my $local_to_central_patron_type = $configuration->{$centralServer}->{local_to_central_patron_type};
-        my %central_to_local_patron_type = reverse %{ $local_to_central_patron_type };
+        my %central_to_local_patron_type = reverse %{$local_to_central_patron_type};
         $configuration->{$centralServer}->{central_to_local_patron_type} = \%central_to_local_patron_type;
 
         push @default_item_types, $configuration->{$centralServer}->{default_item_type}
             if exists $configuration->{$centralServer}->{default_item_type};
 
-        $configuration->{$centralServer}->{debt_blocks_holds} //= 1;
-        $configuration->{$centralServer}->{max_debt_blocks_holds} //= 100;
-        $configuration->{$centralServer}->{expiration_blocks_holds} //= 1;
+        $configuration->{$centralServer}->{debt_blocks_holds}        //= 1;
+        $configuration->{$centralServer}->{max_debt_blocks_holds}    //= 100;
+        $configuration->{$centralServer}->{expiration_blocks_holds}  //= 1;
         $configuration->{$centralServer}->{restriction_blocks_holds} //= 1;
     }
 
     $configuration->{default_item_types} = \@default_item_types;
 
     return $configuration;
+}
+
+=head3 borrowing_commands
+
+Returns a BorrowingSite commands object
+
+=cut
+
+sub borrowing_commands {
+    my ($self) = @_;
+
+    require INNReach::Commands::BorrowingSite;
+    return INNReach::Commands::BorrowingSite->new( { plugin => $self } );
+}
+
+=head3 owning_commands
+
+Returns an OwningSite commands object
+
+=cut
+
+sub owning_commands {
+    my ($self) = @_;
+
+    require INNReach::Commands::OwningSite;
+    return INNReach::Commands::OwningSite->new( { plugin => $self } );
 }
 
 =head3 install
@@ -263,16 +282,13 @@ sub upgrade {
     my $dbh = C4::Context->dbh;
 
     my $new_version = "1.1.0";
-    if (
-        Koha::Plugins::Base::_version_compare(
-            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
-      )
-    {
+    if ( Koha::Plugins::Base::_version_compare( $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1 ) {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         unless ( $self->_table_exists($task_queue) ) {
-            $dbh->do(qq{
+            $dbh->do(
+                qq{
                 CREATE TABLE $task_queue (
                     `id`           INT(11) NOT NULL AUTO_INCREMENT,
                     `object_type`  ENUM('biblio', 'item') NOT NULL DEFAULT 'biblio',
@@ -284,43 +300,38 @@ sub upgrade {
                     PRIMARY KEY (`id`),
                     KEY `status` (`status`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            });
+            }
+            );
         }
 
         $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
     $new_version = "1.1.18";
-    if (
-        Koha::Plugins::Base::_version_compare(
-            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
-      )
-    {
+    if ( Koha::Plugins::Base::_version_compare( $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1 ) {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         unless ( $self->_table_exists($task_queue) ) {
-            $dbh->do(qq{
+            $dbh->do(
+                qq{
                 ALTER TABLE $task_queue
                     ADD COLUMN `last_error` VARCHAR(191) DEFAULT NULL AFTER `attempts`;
-            });
+            }
+            );
         }
 
         $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
     $new_version = "2.1.4";
-    if (
-        Koha::Plugins::Base::_version_compare(
-            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
-      )
-    {
+    if ( Koha::Plugins::Base::_version_compare( $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1 ) {
 
-        my $agency_to_patron =
-          $self->get_qualified_table_name('agency_to_patron');
+        my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
 
         unless ( $self->_table_exists($agency_to_patron) ) {
-            $dbh->do(qq{
+            $dbh->do(
+                qq{
                 CREATE TABLE $agency_to_patron (
                     `central_server` VARCHAR(191) NOT NULL,
                     `local_server`   VARCHAR(191) NULL DEFAULT NULL,
@@ -329,166 +340,159 @@ sub upgrade {
                     `timestamp`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (`central_server`,`agency_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            });
+            }
+            );
         }
 
         $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
     $new_version = "2.2.6";
-    if (
-        Koha::Plugins::Base::_version_compare(
-            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
-      )
-    {
+    if ( Koha::Plugins::Base::_version_compare( $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1 ) {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         if ( $self->_table_exists($task_queue) ) {
-            $dbh->do(qq{
+            $dbh->do(
+                qq{
                 ALTER TABLE $task_queue
                     ADD COLUMN    `payload` TEXT DEFAULT NULL AFTER `object_id`,
                     MODIFY COLUMN `action`  ENUM('create', 'modify', 'delete', 'renew') NOT NULL DEFAULT 'modify';
-            });
+            }
+            );
         }
 
         $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
     $new_version = "2.3.0";
-    if (
-        Koha::Plugins::Base::_version_compare(
-            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
-      )
-    {
+    if ( Koha::Plugins::Base::_version_compare( $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1 ) {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         if ( $self->_table_exists($task_queue) ) {
-            $dbh->do(qq{
+            $dbh->do(
+                qq{
                 ALTER TABLE $task_queue
                     ADD COLUMN `central_server` VARCHAR(10) NOT NULL AFTER `timestamp`;
-            });
-            $dbh->do(qq{
+            }
+            );
+            $dbh->do(
+                qq{
                 ALTER TABLE $task_queue
                     ADD KEY `central_server` (`central_server`);
-            });
+            }
+            );
         }
 
         $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
     $new_version = "2.6.12";
-    if (
-        Koha::Plugins::Base::_version_compare(
-            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
-      )
-    {
+    if ( Koha::Plugins::Base::_version_compare( $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1 ) {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         if ( $self->_table_exists($task_queue) ) {
-            $dbh->do(qq{
+            $dbh->do(
+                qq{
                 ALTER TABLE $task_queue
                     MODIFY COLUMN `action` ENUM('create', 'modify', 'delete', 'renewal', 'checkin', 'checkout') NOT NULL DEFAULT 'modify';
-            });
+            }
+            );
         }
 
         $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
     $new_version = "3.3.14";
-    if (
-        Koha::Plugins::Base::_version_compare(
-            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
-      )
-    {
+    if ( Koha::Plugins::Base::_version_compare( $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1 ) {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         if ( $self->_table_exists($task_queue) ) {
-            $dbh->do(qq{
+            $dbh->do(
+                qq{
                 ALTER TABLE $task_queue
                     MODIFY COLUMN `status` ENUM('queued', 'retry', 'success', 'error', 'skipped') NOT NULL DEFAULT 'queued';
-            });
+            }
+            );
         }
 
         $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
     $new_version = "3.4.0";
-    if (
-        Koha::Plugins::Base::_version_compare(
-            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
-      )
-    {
+    if ( Koha::Plugins::Base::_version_compare( $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1 ) {
         my $contributed_biblios = $self->get_qualified_table_name('contributed_biblios');
 
-        if ( !$self->_table_exists( $contributed_biblios ) ) {
-            $dbh->do(qq{
+        if ( !$self->_table_exists($contributed_biblios) ) {
+            $dbh->do(
+                qq{
                 CREATE TABLE $contributed_biblios (
                     `central_server` VARCHAR(191) NOT NULL,
                     `biblio_id`      INT(11) NOT NULL,
                     `timestamp`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (`central_server`,`biblio_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            });
+            }
+            );
         }
 
         my $contributed_items = $self->get_qualified_table_name('contributed_items');
 
-        if ( !$self->_table_exists( $contributed_items ) ) {
-            $dbh->do(qq{
+        if ( !$self->_table_exists($contributed_items) ) {
+            $dbh->do(
+                qq{
                 CREATE TABLE $contributed_items (
                     `central_server` VARCHAR(191) NOT NULL,
                     `item_id`        INT(11) NOT NULL,
                     `timestamp`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (`central_server`,`item_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            });
+            }
+            );
         }
 
         $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
     $new_version = "3.8.1";
-    if (
-        Koha::Plugins::Base::_version_compare(
-            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
-      )
-    {
+    if ( Koha::Plugins::Base::_version_compare( $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1 ) {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         if ( $self->_table_exists($task_queue) ) {
-            $dbh->do(qq{
+            $dbh->do(
+                qq{
                 ALTER TABLE $task_queue
                     MODIFY COLUMN `object_type` ENUM('biblio', 'item', 'circulation') NOT NULL DEFAULT 'biblio';
-            });
+            }
+            );
         }
 
         $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
     }
 
     $new_version = "3.8.5";
-    if (
-        Koha::Plugins::Base::_version_compare(
-            $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1
-      )
-    {
+    if ( Koha::Plugins::Base::_version_compare( $self->retrieve_data('__INSTALLED_VERSION__'), $new_version ) == -1 ) {
 
         my $task_queue = $self->get_qualified_table_name('task_queue');
 
         if ( $self->_table_exists($task_queue) ) {
-            $dbh->do(qq{
+            $dbh->do(
+                qq{
                 ALTER TABLE $task_queue
                     MODIFY COLUMN `object_type` ENUM('biblio', 'item', 'circulation', 'holds') NOT NULL DEFAULT 'biblio';
-            });
+            }
+            );
 
-            $dbh->do(qq{
+            $dbh->do(
+                qq{
                 ALTER TABLE $task_queue
                     MODIFY COLUMN `action` ENUM('create', 'modify', 'delete', 'renewal', 'checkin', 'checkout', 'fill', 'cancel') NOT NULL DEFAULT 'modify';
-            });
+            }
+            );
         }
 
         $self->store_data( { '__INSTALLED_VERSION__' => $new_version } );
@@ -545,7 +549,7 @@ FIXME: Should be made available to plugins in core
 =cut
 
 sub _table_exists {
-    my ($self, $table) = @_;
+    my ( $self, $table ) = @_;
     eval {
         C4::Context->dbh->{PrintError} = 0;
         C4::Context->dbh->{RaiseError} = 1;
@@ -554,7 +558,6 @@ sub _table_exists {
     return 1 unless $@;
     return 0;
 }
-
 
 =head3 notices_content
 
@@ -606,7 +609,7 @@ sub after_biblio_action {
     my $configuration   = $self->configuration;
     my @central_servers = $self->central_servers;
 
-    foreach my $central_server ( @central_servers ) {
+    foreach my $central_server (@central_servers) {
 
         # skip if contribution disabled
         next
@@ -615,9 +618,7 @@ sub after_biblio_action {
         my $contribution = $self->contribution($central_server);
 
         if ( $action eq 'create' || $action eq 'modify' ) {
-            if ( $contribution->should_biblio_be_contributed( { biblio => $biblio } )
-                )
-            {
+            if ( $contribution->should_biblio_be_contributed( { biblio => $biblio } ) ) {
                 $self->schedule_task(
                     {
                         action         => $action,
@@ -627,9 +628,8 @@ sub after_biblio_action {
                         status         => 'queued',
                     }
                 );
-            } elsif (
-                $contribution->is_bib_contributed( { biblio_id => $biblio_id } ) )
-            {
+            } elsif ( $contribution->is_bib_contributed( { biblio_id => $biblio_id } ) ) {
+
                 # decontribute
                 $self->schedule_task(
                     {
@@ -675,7 +675,7 @@ sub after_item_action {
     my $configuration   = $self->configuration;
     my @central_servers = $self->central_servers;
 
-    foreach my $central_server ( @central_servers ) {
+    foreach my $central_server (@central_servers) {
 
         # skip if contribution disabled
         next
@@ -716,11 +716,11 @@ sub after_item_action {
         if ( $action eq 'delete' ) {
 
             my $exclude_empty_biblios =
-              ( !exists $configuration->{$central_server}->{contribution} )
-              ? 1
-              : $configuration->{$central_server}->{contribution}->{exclude_empty_biblios};
+                ( !exists $configuration->{$central_server}->{contribution} )
+                ? 1
+                : $configuration->{$central_server}->{contribution}->{exclude_empty_biblios};
 
-            if ( $exclude_empty_biblios ) {
+            if ($exclude_empty_biblios) {
 
                 my $biblio = Koha::Biblios->find( $item->biblionumber );
 
@@ -892,8 +892,7 @@ sub after_hold_action {
                 );
             }
         }
-    }
-    elsif ( $req->status =~ /^B_/ ) {
+    } elsif ( $req->status =~ /^B_/ ) {
         if ( $action eq 'fill' || $action eq 'waiting' || $action eq 'transfer' ) {
             if ( $req->status eq 'B_ITEM_SHIPPED' ) {
 
@@ -978,8 +977,8 @@ Method that returns the namespace for the plugin API to be put on
 =cut
 
 sub api_namespace {
-    my ( $self ) = @_;
-    
+    my ($self) = @_;
+
     return 'innreach';
 }
 
@@ -1050,7 +1049,7 @@ sub generate_patron_for_agency {
     my ( $self, $args ) = @_;
 
     my @mandatory_params = qw(central_server local_server description agency_id);
-    foreach my $param ( @mandatory_params ) {
+    foreach my $param (@mandatory_params) {
         INNReach::Ill::MissingParameter->throw( param => $param )
             unless exists $args->{$param};
     }
@@ -1068,42 +1067,46 @@ sub generate_patron_for_agency {
 
     my $patron;
 
-    Koha::Database->schema->txn_do( sub {
-        $patron = Koha::Patron->new(
-            {
-                branchcode   => $library_id,
-                categorycode => $category_code,
-                surname      => $self->gen_patron_description(
-                    {
-                        central_server => $central_server,
-                        local_server   => $local_server,
-                        description    => $description,
-                        agency_id      => $agency_id
-                    }
-                ),
-                cardnumber => $self->gen_cardnumber(
-                    {
-                        central_server => $central_server,
-                        local_server   => $local_server,
-                        description    => $description,
-                        agency_id      => $agency_id
-                    }
-                )
-            }
-        )->store;
+    Koha::Database->schema->txn_do(
+        sub {
+            $patron = Koha::Patron->new(
+                {
+                    branchcode   => $library_id,
+                    categorycode => $category_code,
+                    surname      => $self->gen_patron_description(
+                        {
+                            central_server => $central_server,
+                            local_server   => $local_server,
+                            description    => $description,
+                            agency_id      => $agency_id
+                        }
+                    ),
+                    cardnumber => $self->gen_cardnumber(
+                        {
+                            central_server => $central_server,
+                            local_server   => $local_server,
+                            description    => $description,
+                            agency_id      => $agency_id
+                        }
+                    )
+                }
+            )->store;
 
-        my $patron_id = $patron->borrowernumber;
+            my $patron_id = $patron->borrowernumber;
 
-        my $dbh = C4::Context->dbh;
-        my $sth = $dbh->prepare(qq{
+            my $dbh = C4::Context->dbh;
+            my $sth = $dbh->prepare(
+                qq{
             INSERT INTO $agency_to_patron
               ( central_server, local_server, agency_id, patron_id )
             VALUES
               ( '$central_server', '$local_server', '$agency_id', '$patron_id' );
-        });
+        }
+            );
 
-        $sth->execute();
-    });
+            $sth->execute();
+        }
+    );
 
     return $patron;
 }
@@ -1142,35 +1145,39 @@ sub update_patron_for_agency {
 
     my $patron;
 
-    Koha::Database->schema->txn_do( sub {
+    Koha::Database->schema->txn_do(
+        sub {
 
-        my $patron_id = $self->get_patron_id_from_agency({
-            central_server => $central_server,
-            agency_id      => $agency_id
-        });
+            my $patron_id = $self->get_patron_id_from_agency(
+                {
+                    central_server => $central_server,
+                    agency_id      => $agency_id
+                }
+            );
 
-        $patron = Koha::Patrons->find( $patron_id );
-        $patron->set(
-            {
-                surname => $self->gen_patron_description(
-                    {
-                        central_server => $central_server,
-                        local_server   => $local_server,
-                        description    => $description,
-                        agency_id      => $agency_id
-                    }
-                ),
-                cardnumber => $self->gen_cardnumber(
-                    {
-                        central_server => $central_server,
-                        local_server   => $local_server,
-                        description    => $description,
-                        agency_id      => $agency_id
-                    }
-                )
-            }
-        )->store;
-    });
+            $patron = Koha::Patrons->find($patron_id);
+            $patron->set(
+                {
+                    surname => $self->gen_patron_description(
+                        {
+                            central_server => $central_server,
+                            local_server   => $local_server,
+                            description    => $description,
+                            agency_id      => $agency_id
+                        }
+                    ),
+                    cardnumber => $self->gen_cardnumber(
+                        {
+                            central_server => $central_server,
+                            local_server   => $local_server,
+                            description    => $description,
+                            agency_id      => $agency_id
+                        }
+                    )
+                }
+            )->store;
+        }
+    );
 
     return $patron;
 }
@@ -1196,12 +1203,14 @@ sub get_patron_id_from_agency {
     my $agency_id      = $args->{agency_id};
 
     my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
-    my $dbh = C4::Context->dbh;
-    my $sth = $dbh->prepare(qq{
+    my $dbh              = C4::Context->dbh;
+    my $sth              = $dbh->prepare(
+        qq{
         SELECT patron_id
         FROM   $agency_to_patron
         WHERE  agency_id='$agency_id' AND central_server='$central_server'
-    });
+    }
+    );
 
     $sth->execute();
     my $result = $sth->fetchrow_hashref;
@@ -1274,12 +1283,12 @@ sub gen_cardnumber {
 =cut
 
 sub central_servers {
-    my ( $self ) = @_;
+    my ($self) = @_;
 
     my $configuration = $self->configuration;
 
     if ( defined $configuration ) {
-        return grep { $_ ne 'default_item_types' } keys %{ $configuration };
+        return grep { $_ ne 'default_item_types' } keys %{$configuration};
     }
 
     return ();
@@ -1296,14 +1305,14 @@ sub get_ill_request_from_biblio_id {
 
     my $biblio_id = $args->{biblio_id};
 
-    unless ( $biblio_id ) {
+    unless ($biblio_id) {
         INNReach::Ill::UnknownBiblioId->throw( biblio_id => $biblio_id );
     }
 
-    my $reqs = $self->get_ill_rs()->search({ biblio_id => $biblio_id });
+    my $reqs = $self->get_ill_rs()->search( { biblio_id => $biblio_id } );
 
     if ( $reqs->count > 1 ) {
-        $self->innreach_warn( "More than one ILL request for biblio_id ($biblio_id). Beware!");
+        $self->innreach_warn("More than one ILL request for biblio_id ($biblio_id). Beware!");
     }
 
     return unless $reqs->count > 0;
@@ -1321,7 +1330,7 @@ I<centralCode> attributes.
 =cut
 
 sub get_ill_request {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $trackingId  = $args->{trackingId};
     my $centralCode = $args->{centralCode};
@@ -1349,7 +1358,6 @@ sub get_ill_request {
     return $req;
 }
 
-
 =head3 get_ua
 
 This method retrieves a user agent to contact a central server.
@@ -1362,14 +1370,16 @@ sub get_ua {
     my $configuration = $self->configuration->{$central_server};
 
     unless ( $self->{_oauth2}->{$central_server} ) {
-        $self->{_oauth2}->{$central_server} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new({
-            client_id          => $configuration->{client_id},
-            client_secret      => $configuration->{client_secret},
-            api_base_url       => $configuration->{api_base_url},
-            api_token_base_url => $configuration->{api_token_base_url},
-            local_server_code  => $configuration->{localServerCode},
-            debug_requests     => $configuration->{debug_requests},
-        });
+        $self->{_oauth2}->{$central_server} = Koha::Plugin::Com::Theke::INNReach::OAuth2->new(
+            {
+                client_id          => $configuration->{client_id},
+                client_secret      => $configuration->{client_secret},
+                api_base_url       => $configuration->{api_base_url},
+                api_token_base_url => $configuration->{api_token_base_url},
+                local_server_code  => $configuration->{localServerCode},
+                debug_requests     => $configuration->{debug_requests},
+            }
+        );
     }
 
     return $self->{_oauth2}->{$central_server};
@@ -1427,7 +1437,6 @@ sub get_req_central_server {
 
     return;
 }
-
 
 =head2 Wrappers for Koha functions
 
@@ -1553,7 +1562,7 @@ This method wraps the ILL resultset class to make it future proof.
 =cut
 
 sub get_ill_rs {
-    my ( $self ) = @_;
+    my ($self) = @_;
 
     my $rs;
 
@@ -1707,13 +1716,13 @@ with the following structure:
 =cut
 
 sub sync_agencies {
-    my ($self, $central_server) = @_;
+    my ( $self, $central_server ) = @_;
 
     my $response = $self->contribution($central_server)->get_agencies_list();
 
     my $result = {};
 
-    foreach my $server (@{$response}) {
+    foreach my $server ( @{$response} ) {
         my $local_server = $server->{localCode};
         my $agency_list  = $server->{agencyList};
 
@@ -1735,21 +1744,24 @@ sub sync_agencies {
 
             $result->{$local_server}->{$agency_id}->{current_status} = 'no_entry';
 
-            if ( $patron_id ) {
+            if ($patron_id) {
                 $result->{$local_server}->{$agency_id}->{current_status} = 'entry_exists';
-                $patron = Koha::Patrons->find( $patron_id );
+                $patron = Koha::Patrons->find($patron_id);
             }
 
-            if ($patron_id && !$patron) {
+            if ( $patron_id && !$patron ) {
 
                 # cleanup needed!
-                $self->innreach_warn( "There is a 'agency_to_patron' entry for '$agency_id', but the patron is not present on the DB!");
+                $self->innreach_warn(
+                    "There is a 'agency_to_patron' entry for '$agency_id', but the patron is not present on the DB!");
                 my $agency_to_patron = $self->get_qualified_table_name('agency_to_patron');
 
-                my $sth = C4::Context->dbh->prepare(qq{
+                my $sth = C4::Context->dbh->prepare(
+                    qq{
                     DELETE FROM $agency_to_patron
                     WHERE patron_id='$patron_id';
-                });
+                }
+                );
 
                 $sth->execute();
                 $result->{$local_server}->{$agency_id}->{current_status} = 'invalid_entry';

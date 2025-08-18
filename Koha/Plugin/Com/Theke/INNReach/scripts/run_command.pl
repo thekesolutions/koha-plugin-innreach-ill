@@ -130,10 +130,7 @@ Options:
 _USAGE_
 }
 
-my $c =
-    ($owning)
-    ? INNReach::Commands::OwningSite->new( { plugin => $plugin } )
-    : INNReach::Commands::BorrowingSite->new( { plugin => $plugin } );
+my $c = ($owning) ? $plugin->owning_commands : $plugin->borrowing_commands;
 
 my $req = $plugin->get_ill_rs()->find($request_id);
 

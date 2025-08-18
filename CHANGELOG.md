@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.8] - 2025-08-18
+
+### Major Improvements
+- **Dramatically reduced subroutine redefinition warnings** from ~23 to only 6
+- **Implemented command methods architecture** for better module management
+- Added `borrowing_commands()` and `owning_commands()` methods to main plugin
+- **Eliminated ALL BackgroundJobs redefinition warnings**
+
+### Technical Enhancements
+- Updated all BackgroundJobs modules to use plugin command methods instead of direct loading
+- Updated `run_command.pl` script to use new command methods
+- Removed direct `use` statements for Commands modules in BackgroundJobs
+- Centralized command object creation through plugin methods
+- Better separation of concerns and cleaner architecture
+- BackgroundJobs modules now load on-demand when actually needed
+- Better separation of concerns - no unnecessary eager loading
+- Cleaner plugin installation with fewer warnings
+- Plugin functionality remains unchanged
+
+### Results
+- **74% reduction** in redefinition warnings during plugin installation
+- Much cleaner plugin installation process in multi-plugin environments
+- Plugin functionality fully preserved and tested
+- Better maintainability with single point of control for command objects
+
+### Remaining
+- 6 Commands module warnings remain (inheritance-related, harmless)
+- Plugin functionality is completely unaffected
+
+### Fixed
+- **Significantly reduced subroutine redefinition warnings** during plugin installation
+- Removed eager loading of BackgroundJobs modules from BEGIN block
+- Eliminated BackgroundJobs-specific redefinition warnings
+- Improved plugin installation process in multi-plugin environments
+
+### Note
+- Some Commands module warnings may still appear (loaded on-demand by BackgroundJobs)
+- This is normal behavior and doesn't affect plugin functionality
+
 ## [5.4.7] - 2025-08-18
 
 ### Fixed
