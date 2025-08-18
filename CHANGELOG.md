@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.7] - 2025-08-18
+
+### Fixed
+- **Properly fixed subroutine redefinition warnings** in 00-load.t test
+- Replaced File::Find approach with explicit module list for testing
+- Excluded BackgroundJobs and Commands modules that cause loading conflicts
+- Clean test output without masking real issues
+
+### Technical Improvements
+- Only loads main plugin modules that should be tested directly
+- Eliminates redefinition warnings through proper module selection
+- Maintains full test coverage of core plugin functionality
+- Better separation of testable vs system-loaded modules
+
 ## [5.4.6] - 2025-08-18
 
 ### Fixed
