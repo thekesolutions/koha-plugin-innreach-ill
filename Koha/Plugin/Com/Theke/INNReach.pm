@@ -125,8 +125,16 @@ sub configuration {
     my ($self) = @_;
 
     my $configuration;
-    eval { $configuration = YAML::XS::Load( Encode::encode_utf8( $self->retrieve_data('configuration') ) ); };
+    my $config_data = $self->retrieve_data('configuration');
+    
+    # Return empty hashref if no configuration is set
+    return {} unless defined $config_data && length($config_data);
+    
+    eval { $configuration = YAML::XS::Load( Encode::encode_utf8( $config_data ) ); };
     die($@) if $@;
+
+    # Return empty hashref if configuration is not a hash
+    return {} unless $configuration && ref($configuration) eq 'HASH';
 
     my @default_item_types;
 
