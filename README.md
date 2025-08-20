@@ -1,6 +1,8 @@
 # koha-plugin-innreach
 
 [![CI](https://github.com/thekesolutions/koha-plugin-innreach-ill/actions/workflows/main.yml/badge.svg)](https://github.com/thekesolutions/koha-plugin-innreach-ill/actions/workflows/main.yml)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/thekesolutions/koha-plugin-innreach-ill)](https://github.com/thekesolutions/koha-plugin-innreach-ill/releases)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 INN-Reach inter-library loan service integration plugin for Koha.
 This plugin implements the required API, ILL backend and tools to make
