@@ -1179,28 +1179,16 @@ sub filter_items_by_to_be_decontributed {
 
 =head3 get_deleted_contributed_items
 
-    my $item_ids = $contribution->get_deleted_contributed_items(
-        {
-            central_server => $central_server,
-        }
-    );
+    my $item_ids = $contribution->get_deleted_contributed_items();
 
-Given a I<central server code>, it returns a list of item ids,
-filtered by items that have been contributed to the specified central server
+Given a contribution object, it returns a list of item ids,
+filtered by items that have been contributed to the central server
 and are no longer present on the database.
 
 =cut
 
 sub get_deleted_contributed_items {
     my ( $self, $params ) = @_;
-
-    my $central_server = $params->{central_server};
-
-    INNReach::Ill::MissingParameter->throw( param => 'central_server' )
-        unless $central_server;
-
-    INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{ $self->{central_servers} };
 
     my $dbh               = C4::Context->dbh;
     my $contributed_items = $self->{plugin}->get_qualified_table_name('contributed_items');
@@ -1215,7 +1203,7 @@ sub get_deleted_contributed_items {
           LEFT JOIN items
           ON (items.itemnumber=b.item_id)
         ) WHERE items.itemnumber IS NULL;
-    }, undef, $central_server
+    }, undef, $self->{central_server}
     );
 
     return \@item_ids;

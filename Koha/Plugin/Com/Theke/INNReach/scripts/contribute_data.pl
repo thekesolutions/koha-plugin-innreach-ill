@@ -391,11 +391,7 @@ if ($recontribution) {
     if ( $all or $only_items ) {
 
         # remove items to be de-contributed
-        my $deleted_contributed_items = $contribution->get_deleted_contributed_items(
-            {
-                central_server => $central_server,
-            }
-        );
+        my $deleted_contributed_items = $contribution->get_deleted_contributed_items();
 
         if ( scalar @{$deleted_contributed_items} > 0 ) {
             print STDOUT "# Decontributing (deleted) items:\n"
