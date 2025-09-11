@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.10] - 2025-09-11
+
+### Added
+- [#1] Added `t::lib::Mocks::INNReach` module following Koha's t::lib::Mocks pattern
+- [#1] Added configuration override capability with deep merging and deletion support
+- [#1] Added comprehensive db_dependent tests for `filter_items_by_contributable()` method
+- [#1] Added comprehensive db_dependent tests for `filter_items_by_to_be_decontributed()` method
+- [#1] Added comprehensive development documentation (DEVELOPMENT.md)
+
+### Changed
+- [#1] Replaced Test::MockModule usage with standardized t::lib::Mocks::INNReach approach
+- [#1] Improved test structure following Koha testing standards with method-based subtests
+- [#1] Enhanced testing infrastructure with proper transaction management
+
+### Testing
+- All tests passing with comprehensive coverage of contribution filter methods
+- Tests validate both inclusion/exclusion rule evaluation and combined rule processing
+- Parameter validation and error handling thoroughly tested
+
 ## [5.4.8] - 2025-08-18
 
 ### Major Improvements
