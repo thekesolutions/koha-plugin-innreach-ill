@@ -13,12 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1] Added comprehensive db_dependent tests for `filter_items_by_contributable()` method
 - [#1] Added comprehensive db_dependent tests for `filter_items_by_to_be_decontributed()` method
 - [#1] Added comprehensive development documentation (DEVELOPMENT.md)
+- Added `.perltidyrc` from Koha project for consistent formatting standards
 
 ### Changed
 - [#1] Replaced Test::MockModule usage with standardized t::lib::Mocks::INNReach approach
 - [#1] Improved test structure following Koha testing standards with method-based subtests
 - [#1] Enhanced testing infrastructure with proper transaction management
 - [#1] Removed unrequired `central_server` parameter from `filter_items_by_to_be_decontributed()` method
+- Aligned GitHub CI with Rapido's configuration (twice-monthly cron schedule, Docker builder)
+- Updated release process to use Theke's koha-plugin-builder and include CHANGELOG.md
 
 ### Testing
 - All tests passing with comprehensive coverage of contribution filter methods
