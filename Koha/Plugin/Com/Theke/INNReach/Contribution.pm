@@ -183,12 +183,14 @@ sub contribute_batch_items {
     }
 
     INNReach::Ill::MissingParameter->throw( param => "items" )
-        unless $args->{items} && ref($args->{items}) eq 'Koha::Items';
+        unless $args->{items} && ref( $args->{items} ) eq 'Koha::Items';
 
     my @items = $args->{items}->as_list;
+
     # Error check before anything else
     foreach my $item (@items) {
-        INNReach::Ill::BadParameter->throw("Item (" . $item->itemnumber . ") doesn't belong to bib record ($biblio_id)")
+        INNReach::Ill::BadParameter->throw(
+            "Item (" . $item->itemnumber . ") doesn't belong to bib record ($biblio_id)" )
             unless $item->biblionumber == $biblio_id;
     }
 
@@ -296,7 +298,9 @@ sub update_item_status {
         my $data = {
             itemCircStatus => $self->item_circ_status( { item => $item } ),
             holdCount      => 0,
-            dueDateTime    => ( $item->onloan ) ? dt_from_string( $item->onloan )->epoch : undef,
+            dueDateTime    => ( $item->onloan )
+            ? dt_from_string( $item->onloan )->epoch
+            : undef,
         };
 
         my $response = $self->{plugin}->get_ua( $self->{central_server} )->post_request(
@@ -316,8 +320,7 @@ sub update_item_status {
 
                 # we pick the first one
                 my $THE_error = $iii_errors[0][0];
-                $errors =
-                    $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+                $errors = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
             }
         }
     } catch {
@@ -474,8 +477,7 @@ sub update_bib_status {
 
                 # we pick the first one
                 my $THE_error = $iii_errors[0][0];
-                $errors =
-                    $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
+                $errors = $THE_error->{reason} . q{: } . join( q{ | }, @{ $THE_error->{messages} } );
             }
         }
     } catch {
@@ -879,7 +881,8 @@ sub notify_borrower_renew {
         }
     );
 
-    INNReach::Ill::InconsistentStatus->throw( expected_status => 'B_ITEM_RECEIVED' ) unless $req;
+    INNReach::Ill::InconsistentStatus->throw( expected_status => 'B_ITEM_RECEIVED' )
+        unless $req;
 
     my $response;
 
@@ -935,7 +938,9 @@ sub item_circ_status {
         $status = 'Not Available';
     } elsif ( $item->notforloan ) {
         $status = 'Non-Lendable';
-    } elsif ( !C4::Context->preference('AllowHoldsOnDamagedItems') && $item->damaged ) {
+    } elsif ( !C4::Context->preference('AllowHoldsOnDamagedItems')
+        && $item->damaged )
+    {
         $status = 'Non-Lendable';
     } elsif ( $item->itemlost ) {
         $status = 'Not Available';
@@ -1078,7 +1083,8 @@ sub filter_items_by_contributable {
         && $configuration->{contribution}->{included_items} )
     {
         # there are rules!
-        $items = $items->search( $configuration->{contribution}->{included_items} );
+        $items =
+            $items->search( $configuration->{contribution}->{included_items} );
     }
 
     if ( exists $configuration->{contribution}->{excluded_items}
@@ -1133,12 +1139,11 @@ sub filter_items_by_contributed {
     my $items = $contribution->filter_items_by_to_be_decontributed(
         {
             items => $biblio->items,
-            central_server => $central_server
         }
     );
 
-Given a I<Koha::Items> iterator and a I<central server code>, it returns a new resultset,
-filtered by items that have been contributed and should be decontributed from the specified
+Given a I<Koha::Items> iterator, it returns a new resultset,
+filtered by items that have been contributed and should be decontributed from the
 central server.
 
 =cut
@@ -1151,36 +1156,23 @@ sub filter_items_by_to_be_decontributed {
     INNReach::Ill::MissingParameter->throw( param => 'items' )
         unless $items;
 
-    my $central_server = $params->{central_server};
-
-    INNReach::Ill::MissingParameter->throw( param => 'central_server' )
-        unless $central_server;
-
-    INNReach::Ill::InvalidCentralserver->throw( central_server => $central_server )
-        unless any { $_ eq $central_server } @{ $self->{central_servers} };
-
     $items = $self->filter_items_by_contributed( { items => $items } );
 
-    my $configuration = $self->{config}->{$central_server};
+    my $configuration = $self->{config}->{ $self->{central_server} };
 
-    if ( exists $configuration->{contribution}->{included_items} ) {
+    if ( exists $configuration->{contribution}->{included_items}
+        && $configuration->{contribution}->{included_items} )
+    {
+        # there are rules!
+        $items = $items->search( { '-not' => $configuration->{contribution}->{included_items} } );
+    }
 
-        # Allow-list case, overrides any deny-list setup
-        if ( $configuration->{contribution}->{included_items} ) {
-
-            # there are rules!
-            $items = $items->search( { '-not' => $configuration->{contribution}->{included_items} } );
-        }
-    } else {
-
-        # Deny-list case
-        if ( $configuration->{contribution}->{excluded_items} ) {
-
-            # there are rules!
-            $items = $items->search( $configuration->{contribution}->{excluded_items} );
-        } else {
-            $items = $items->empty;
-        }
+    if ( exists $configuration->{contribution}->{excluded_items}
+        && $configuration->{contribution}->{excluded_items} )
+    {
+        # there are rules!
+        $items =
+            $items->search( $configuration->{contribution}->{excluded_items} );
     }
 
     return $items->search;
@@ -1514,7 +1506,7 @@ sub item_to_iteminfo {
     my ( $self, $params ) = @_;
 
     INNReach::Ill::MissingParameter->throw( param => 'item' )
-        unless $params->{item} && ref($params->{item}) eq 'Koha::Item';
+        unless $params->{item} && ref( $params->{item} ) eq 'Koha::Item';
 
     my $item                = $params->{item};
     my $use_holding_library = $params->{use_holding_library} ? 1 : 0;
@@ -1525,7 +1517,8 @@ sub item_to_iteminfo {
     my $branch_to_use = $use_holding_library ? $item->holdingbranch : $item->homebranch;
 
     my $centralItemType = $configuration->{local_to_central_itype}->{ $item->effective_itemtype };
-    my $locationKey     = $configuration->{library_to_location}->{$branch_to_use}->{location};
+    my $locationKey =
+        $configuration->{library_to_location}->{$branch_to_use}->{location};
 
     # Skip the item if has unmapped values (that are relevant)
     unless ( $centralItemType && $locationKey ) {
@@ -1547,18 +1540,20 @@ sub item_to_iteminfo {
     }
 
     return {
-        itemId            => $item->itemnumber,
-        agencyCode        => $configuration->{mainAgency},
-        centralItemType   => $centralItemType,
-        locationKey       => $locationKey,
-        itemCircStatus    => $self->item_circ_status( { item => $item } ),
-        holdCount         => 0,
-        dueDateTime       => ( $item->onloan ) ? dt_from_string( $item->onloan )->epoch : undef,
+        itemId          => $item->itemnumber,
+        agencyCode      => $configuration->{mainAgency},
+        centralItemType => $centralItemType,
+        locationKey     => $locationKey,
+        itemCircStatus  => $self->item_circ_status( { item => $item } ),
+        holdCount       => 0,
+        dueDateTime     => ( $item->onloan )
+        ? dt_from_string( $item->onloan )->epoch
+        : undef,
         callNumber        => $item->itemcallnumber,
         volumeDesignation => $item->enumchron,
         copyNumber        => $item->copynumber,
         itemNote          => substr( $item->itemnotes // '', 0, 256 ),
-        suppress          => 'n',                                                                  # TODO: revisit
+        suppress          => 'n',                                        # TODO: revisit
     };
 }
 

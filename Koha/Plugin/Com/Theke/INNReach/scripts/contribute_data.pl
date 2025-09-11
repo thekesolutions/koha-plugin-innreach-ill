@@ -158,10 +158,14 @@ if ( $items && !$decontribute ) {
 
     my $configuration = $plugin->configuration->{$central_server};
     my $exclude_empty_biblios =
-        $configuration->{contribution} ? $configuration->{contribution}->{exclude_empty_biblios} : 0;
+          $configuration->{contribution}
+        ? $configuration->{contribution}->{exclude_empty_biblios}
+        : 0;
 
-    my $query    = ($where) ? \[$where] : {};
-    my $items_rs = Koha::Items->search( $query, { -order_by => ['biblionumber'] } );
+    my $query = ($where) ? \[$where] : {};
+    my $items_rs =
+        Koha::Items->search( $query, { -order_by => ['biblionumber'] } );
+
     # the caller knows what they are doing with  --where when they force
     $items_rs = $contribution->filter_items_by_contributable( { items => $items_rs } )
         unless $force;
@@ -185,7 +189,11 @@ if ( $items && !$decontribute ) {
         my $status = 'ok';
         try {
             $contribution->contribute_batch_items(
-                { biblio_id => $item->biblionumber, items => Koha::Items->search( { itemnumber => $item->id } ) } );
+                {
+                    biblio_id => $item->biblionumber,
+                    items     => Koha::Items->search( { itemnumber => $item->id } )
+                }
+            );
         } catch {
             $status = "error ($_)";
         };
@@ -205,7 +213,9 @@ if ( $items && $decontribute ) {
     # normal flow
     my $configuration = $plugin->configuration->{$central_server};
     my $exclude_empty_biblios =
-        $configuration->{contribution} ? $configuration->{contribution}->{exclude_empty_biblios} : 0;
+          $configuration->{contribution}
+        ? $configuration->{contribution}->{exclude_empty_biblios}
+        : 0;
 
     my $query    = \[$where];
     my $items_rs = Koha::Items->search($query);
@@ -405,8 +415,7 @@ if ($recontribution) {
 
         my $items_to_be_decontributed = $contribution->filter_items_by_to_be_decontributed(
             {
-                central_server => $central_server,
-                items          => Koha::Items->new,
+                items => Koha::Items->new,
             }
         );
 
