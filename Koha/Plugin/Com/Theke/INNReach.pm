@@ -45,7 +45,7 @@ BEGIN {
     unshift @INC, $path;
 }
 
-our $VERSION = "5.4.9";
+our $VERSION = "5.4.10";
 
 our $metadata = {
     name            => 'INN-Reach connector plugin for Koha',
