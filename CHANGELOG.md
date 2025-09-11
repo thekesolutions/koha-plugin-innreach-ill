@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1] Added configuration override capability with deep merging and deletion support
 - [#1] Added comprehensive db_dependent tests for `filter_items_by_contributable()` method
 - [#1] Added comprehensive db_dependent tests for `filter_items_by_to_be_decontributed()` method
+- [#1] Added comprehensive db_dependent tests for `get_deleted_contributed_items()` method
 - [#1] Added comprehensive development documentation (DEVELOPMENT.md)
 - Added `.perltidyrc` from Koha project for consistent formatting standards
 

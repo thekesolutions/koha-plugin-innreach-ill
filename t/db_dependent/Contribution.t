@@ -17,7 +17,7 @@
 
 use Modern::Perl;
 
-use Test::More tests => 2;
+use Test::More tests => 3;
 use Test::MockModule;
 use Test::Exception;
 
@@ -54,12 +54,7 @@ subtest 'filter_items_by_contributable() tests' => sub {
     # Create test items with different ccodes
     my @item_ids;
     foreach my $ccode (qw(a b c d e f)) {
-        my $item = $builder->build_object(
-            {
-                class => 'Koha::Items',
-                value => { ccode => $ccode }
-            }
-        );
+        my $item = $builder->build_sample_item( { ccode => $ccode, itype => $itemtype->itemtype } );
         push( @item_ids, $item->id );
     }
 
@@ -182,6 +177,53 @@ subtest 'filter_items_by_contributable() tests' => sub {
     $schema->storage->txn_rollback;
 };
 
+subtest 'get_deleted_contributed_items() tests' => sub {
+    plan tests => 3;
+
+    $schema->storage->txn_begin;
+
+    # Create test objects
+    my $library  = $builder->build_object( { class => 'Koha::Libraries' } );
+    my $category = $builder->build_object( { class => 'Koha::Patron::Categories' } );
+    my $itemtype = $builder->build_object( { class => 'Koha::ItemTypes' } );
+
+    my $plugin = t::lib::Mocks::INNReach->new(
+        {
+            library  => $library,
+            category => $category,
+            itemtype => $itemtype,
+        }
+    );
+    my $c = $plugin->contribution($central_server);
+
+    # Test with no contributed items
+    my $deleted_items = $c->get_deleted_contributed_items();
+    is( scalar @$deleted_items, 0, 'Returns empty list when no contributed items exist' );
+
+    # Create an item and mark it as contributed
+    my $item                    = $builder->build_sample_item( { itype => $itemtype->itemtype } );
+    my $contributed_items_table = $plugin->get_qualified_table_name('contributed_items');
+    my $dbh                     = C4::Context->dbh;
+
+    $dbh->do(
+        "INSERT INTO $contributed_items_table (item_id, central_server) VALUES (?, ?)",
+        undef, $item->itemnumber, $central_server
+    );
+
+    # Test with existing item
+    $deleted_items = $c->get_deleted_contributed_items();
+    is( scalar @$deleted_items, 0, 'Returns empty list when contributed item exists' );
+
+    # Delete the item and test again
+    my $item_id = $item->itemnumber;
+    $item->delete;
+
+    $deleted_items = $c->get_deleted_contributed_items();
+    is( scalar @$deleted_items, 1, 'Returns 1 item when contributed item is deleted' );
+
+    $schema->storage->txn_rollback;
+};
+
 subtest 'filter_items_by_to_be_decontributed() tests' => sub {
     plan tests => 7;
 
@@ -208,7 +250,7 @@ subtest 'filter_items_by_to_be_decontributed() tests' => sub {
         my $item = $builder->build_object(
             {
                 class => 'Koha::Items',
-                value => { ccode => $ccode }
+                value => { ccode => $ccode, itype => $itemtype->itemtype }
             }
         );
         push( @item_ids,          $item->id );
