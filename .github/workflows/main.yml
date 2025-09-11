@@ -6,7 +6,7 @@ on:
       - main
       - master
   schedule:
-    - cron: "0 6 * * *"
+    - cron: "0 6 1,15 * *"
 
 jobs:
   unit_tests:
@@ -141,34 +141,16 @@ jobs:
         GITHUB_CONTEXT: ${{ toJson(steps.myvars.outputs) }}
       run: echo "$GITHUB_CONTEXT"
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-
-    - name: Install dependencies and build
-      run: |
-        npm install
-        npm install -g gulp-cli
-        gulp build
-
     - name: Build Koha Plugin kpz artifact
       id: kpz
       run: |
-        # The gulp build should have created the kpz file
-        KPZ_FILE=$(npm run kpz -s)
-        if [ ! -f "$KPZ_FILE" ]; then
-          echo "KPZ file not found: $KPZ_FILE"
-          echo "Available files:"
-          ls -la *.kpz || echo "No kpz files found"
-          exit 1
-        fi
-        echo "filename=$KPZ_FILE" >> $GITHUB_OUTPUT
+        docker run -v ${PWD}:/plugin registry.gitlab.com/thekesolutions/tools/koha-plugin-builder
+        echo "filename=$(ls *.kpz)" >> $GITHUB_OUTPUT
 
     - name: See if kpz was created
       run: |
         echo "FILENAME: ${{ steps.kpz.outputs.filename }}"
-        ls -alh *.kpz || echo "No kpz files found"
+        ls -alh
 
     - name: Release
       uses: softprops/action-gh-release@v2
@@ -176,7 +158,7 @@ jobs:
       with:
         files: |
           ${{ steps.kpz.outputs.filename }}
-          README.md
+          CHANGELOG.md
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
