@@ -1072,8 +1072,7 @@ sub filter_items_by_contributable {
 
     my $force_enabled = $params->{force_enabled};
 
-    my $central_server = $self->{central_server};
-    my $configuration  = $self->{config}->{$central_server};
+    my $configuration = $self->{config}->{ $self->{central_server} };
 
     return $items->empty
         unless $configuration->{contribution}->{enabled}
