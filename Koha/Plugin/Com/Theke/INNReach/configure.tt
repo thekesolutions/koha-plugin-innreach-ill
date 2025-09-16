@@ -1,34 +1,12 @@
+[% WRAPPER "wrapper-staff-tool-plugin.inc" method="config" plugin_title="INNReach" %]
 [% USE raw %]
 [% USE Asset %]
-
-[% INCLUDE 'doc-head-open.inc' %]
- <title>Koha &rsaquo; INN-Reach integration &rsaquo; Configuration</title>
-[% INCLUDE 'doc-head-close.inc' %]
   <style>
     .CodeMirror {
       border: 2px solid #eee;
       height: auto;
     }
   </style>
-  <script type="text/javascript">
-
-      $(document).ready(function(){
-        $("#refresh").on("click",function(e){
-            e.preventDefault;
-            $('#api_key').val(gen_api_key(32));
-        });
-      });
-
-      function gen_api_key(size) {
-        var output = "";
-        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-        for (var i = 0; i < size; i++)
-          output += chars.charAt(Math.floor(Math.random() * chars.length));
-
-        return output;
-      }
-  </script>
 
 [% Asset.js( "lib/codemirror/codemirror.min.js" ) | $raw %]
 [% Asset.css("lib/codemirror/codemirror.min.css") | $raw %]
@@ -36,18 +14,11 @@
 
 </head>
 <body>
-[% INCLUDE 'header.inc' %]
-[% INCLUDE 'cat-search.inc' %]
 
-<div id="breadcrumbs">
-    <a href="/cgi-bin/koha/mainpage.pl">Home</a> &rsaquo;
-    <a href="?class=[% CLASS %]&method=configure">INN-Reach integration</a> &rsaquo;
-    Configuration
-</div>
+<div id="doc3" class="panel panel-default" style="padding:10px;">
+     <h1 class="panel-title">INN-Reach: Configuration</h1>
 
-<div id="doc3" class="yui-t2">
-  <div id="yui-main">
-    <h2>INN-Reach configuration</h2>
+
 
     [% IF errors %]
         [% FOREACH error IN errors %]
@@ -65,30 +36,31 @@
     [% END %]
 
     <br/>
-      <h4>Central servers</h4>
-      <form method="post">
-        <input type="hidden" name="class"  value="[% CLASS %]"/>
-        <input type="hidden" name="method" value="configure"/>
-        <input type="hidden" name="step"   value="configure"/>
-        <input type="hidden" name="save"   value="1"/>
-        <input type="hidden" name="op"     value="cud-save"/>
-        [% INCLUDE 'csrf-token.inc' %]
-        <div class="input-group">
-          <span class="input-group-addon" id="configuration_label">Configuration</span>
-          <textarea rows="200"
-                    columns="200"
-                    class="form-control"
-                    aria-describedby="configuration_label"
-                    name="configuration"
-                    id="configuration">[%- configuration -%]</textarea>
-        </div>
-        <br/>
-        <button type="submit" value="Save" class="btn btn-default" type="button">Save</button>
-      </form>
+          <div class="panel-heading">
+                  <h3 class="panel-title">Central servers</h3>
+      </div>
+      <div class="panel-body">
+        <form method="post">
+          <input type="hidden" name="class"  value="[% CLASS %]"/>
+          <input type="hidden" name="method" value="configure"/>
+          <input type="hidden" name="step"   value="configure"/>
+          <input type="hidden" name="save"   value="1"/>
+          <input type="hidden" name="op"     value="cud-save"/>
+          [% INCLUDE 'csrf-token.inc' %]
+          <div class="input-group">
+            <span class="input-group-addon" id="configuration_label">Configuration</span>
+            <textarea rows="200"
+                      columns="200"
+                      class="form-control"
+                      aria-describedby="configuration_label"
+                      name="configuration"
+                      id="configuration">[%- configuration -%]</textarea>
+          </div>
+          <br/>
+          <button type="submit" value="Save" class="btn btn-default" type="button">Save</button>
+        </form>
   </div>
-  <div class="yui-b">
-    <div id="navmenu">&nbsp;</div>
-  </div>
+
 
 
     [% Asset.js( "lib/codemirror/yaml.min.js" ) | $raw %]
@@ -107,5 +79,6 @@
             });
         });
     </script>
-
-[% INCLUDE 'intranet-bottom.inc' %]
+    [% INCLUDE 'intranet-bottom.inc' %]
+  [% END %]
+  
