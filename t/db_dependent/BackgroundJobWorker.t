@@ -21,13 +21,15 @@ use Test::More tests => 5;
 use Test::MockModule;
 use JSON qw( encode_json decode_json );
 
+use t::lib::TestBuilder;
+use t::lib::Mocks::INNReach;
+
 use Koha::Database;
 use Koha::BackgroundJob;
 use Koha::BackgroundJobs;
 
-use Koha::Plugin::Com::Theke::INNReach;
-
 my $schema = Koha::Database->new->schema;
+my $builder = t::lib::TestBuilder->new;
 
 =head1 NAME
 
@@ -49,6 +51,16 @@ subtest 'Background job discovery tests' => sub {
     plan tests => 6;
 
     $schema->storage->txn_begin;
+
+    # Create plugin mock for test independence
+    my $library  = $builder->build_object( { class => 'Koha::Libraries' } );
+    my $category = $builder->build_object( { class => 'Koha::Patron::Categories' } );
+    my $itemtype = $builder->build_object( { class => 'Koha::ItemTypes' } );
+    my $plugin = t::lib::Mocks::INNReach->new({
+        library  => $library,
+        category => $category,
+        itemtype => $itemtype
+    });
 
     # Test that INNReach background jobs are properly registered with Koha
     my $bg_job = Koha::BackgroundJob->new;
@@ -79,6 +91,16 @@ subtest 'Background job worker simulation tests' => sub {
     plan tests => 5; # 5 job types
 
     $schema->storage->txn_begin;
+
+    # Create plugin mock for test independence
+    my $library  = $builder->build_object( { class => 'Koha::Libraries' } );
+    my $category = $builder->build_object( { class => 'Koha::Patron::Categories' } );
+    my $itemtype = $builder->build_object( { class => 'Koha::ItemTypes' } );
+    my $plugin = t::lib::Mocks::INNReach->new({
+        library  => $library,
+        category => $category,
+        itemtype => $itemtype
+    });
 
     my $bg_job = Koha::BackgroundJob->new;
     my $plugin_mappings = $bg_job->plugin_types_to_classes;
@@ -130,6 +152,16 @@ subtest 'New plugin methods usage tests' => sub {
 
     $schema->storage->txn_begin;
 
+    # Create plugin mock for test independence
+    my $library  = $builder->build_object( { class => 'Koha::Libraries' } );
+    my $category = $builder->build_object( { class => 'Koha::Patron::Categories' } );
+    my $itemtype = $builder->build_object( { class => 'Koha::ItemTypes' } );
+    my $plugin = t::lib::Mocks::INNReach->new({
+        library  => $library,
+        category => $category,
+        itemtype => $itemtype
+    });
+
     my $bg_job = Koha::BackgroundJob->new;
     my $plugin_mappings = $bg_job->plugin_types_to_classes;
     my @innreach_types = grep { /innreach/i } keys %$plugin_mappings;
@@ -174,6 +206,16 @@ subtest 'No eager loading verification tests' => sub {
 
     $schema->storage->txn_begin;
 
+    # Create plugin mock for test independence
+    my $library  = $builder->build_object( { class => 'Koha::Libraries' } );
+    my $category = $builder->build_object( { class => 'Koha::Patron::Categories' } );
+    my $itemtype = $builder->build_object( { class => 'Koha::ItemTypes' } );
+    my $plugin = t::lib::Mocks::INNReach->new({
+        library  => $library,
+        category => $category,
+        itemtype => $itemtype
+    });
+
     # Find the main plugin file
     my $plugin_file;
     foreach my $inc_path (@INC) {
@@ -206,6 +248,16 @@ subtest 'End-to-end background job worker process tests' => sub {
     plan tests => 6;
 
     $schema->storage->txn_begin;
+
+    # Create plugin mock for test independence
+    my $library  = $builder->build_object( { class => 'Koha::Libraries' } );
+    my $category = $builder->build_object( { class => 'Koha::Patron::Categories' } );
+    my $itemtype = $builder->build_object( { class => 'Koha::ItemTypes' } );
+    my $plugin = t::lib::Mocks::INNReach->new({
+        library  => $library,
+        category => $category,
+        itemtype => $itemtype
+    });
 
     # Test complete worker process simulation
     my $test_type = 'plugin_innreach_b_item_in_transit';

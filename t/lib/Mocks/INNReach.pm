@@ -20,6 +20,7 @@ package t::lib::Mocks::INNReach;
 use Modern::Perl;
 
 use YAML::XS;
+use C4::Context;
 use Koha::Plugin::Com::Theke::INNReach;
 
 =head1 NAME
@@ -54,7 +55,8 @@ t::lib::Mocks::INNReach - Mock INNReach plugin for testing
 =head1 DESCRIPTION
 
 Provides a standardized way to create INNReach plugin instances with
-test configuration, following Koha's t::lib::Mocks pattern.
+test configuration and essential system setup, following Koha's t::lib::Mocks pattern.
+Includes bootstrap functionality to ensure tests can run independently.
 
 =head1 METHODS
 
@@ -67,7 +69,8 @@ test configuration, following Koha's t::lib::Mocks pattern.
         config   => $hashref    # Optional: override configuration
     });
 
-Creates a new INNReach plugin instance with test configuration.
+Creates a new INNReach plugin instance with test configuration and performs
+essential system setup for test independence.
 
 =cut
 
@@ -78,6 +81,10 @@ sub new {
     my $category = $params->{category} || die "category parameter required";
     my $itemtype = $params->{itemtype} || die "itemtype parameter required";
     my $config   = $params->{config};
+
+    # Perform essential system setup (from bootstrap.pl)
+    $class->_setup_system_preferences();
+    $class->_setup_plugin_state();
 
     # Default configuration structure
     my $default_config = {
@@ -163,6 +170,46 @@ sub new {
     $plugin->store_data( { configuration => $config_yaml } );
 
     return $plugin;
+}
+
+=head2 _setup_system_preferences
+
+Sets up essential system preferences for INNReach testing.
+
+=cut
+
+sub _setup_system_preferences {
+    my ($class) = @_;
+
+    # Set required system preferences
+    C4::Context->set_preference( 'ILLModule', 1 );
+    C4::Context->set_preference( 'RESTBasicAuth', 1 );
+}
+
+=head2 _setup_plugin_state
+
+Ensures INNReach plugin is enabled and other plugins are disabled.
+
+=cut
+
+sub _setup_plugin_state {
+    my ($class) = @_;
+
+    my $dbh = C4::Context->dbh;
+
+    # Enable INNReach plugin
+    $dbh->do(q{
+        UPDATE plugin_data SET plugin_value=1
+        WHERE plugin_key='__ENABLED__'
+          AND plugin_class='Koha::Plugin::Com::Theke::INNReach'
+    });
+
+    # Disable other plugins to avoid conflicts
+    $dbh->do(q{
+        UPDATE plugin_data SET plugin_value=0
+        WHERE plugin_key='__ENABLED__'
+          AND plugin_class<>'Koha::Plugin::Com::Theke::INNReach'
+    });
 }
 
 1;
