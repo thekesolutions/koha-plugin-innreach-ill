@@ -340,6 +340,122 @@ prove -v t/db_dependent/Contribution.t
 - Contribution rule processing
 - Item eligibility determination
 
+## Configuration Management
+
+### config.pl Script
+
+The INNReach plugin includes a configuration management script that allows dumping and loading YAML configuration:
+
+**Location:** `Koha/Plugin/Com/Theke/INNReach/scripts/config.pl`
+
+#### Usage Examples
+
+```bash
+# Get into KTD shell
+ktd --name innreach --shell
+cd /kohadevbox/plugins/innreach-ill
+
+# Set up environment
+export PERL5LIB=/kohadevbox/koha:/kohadevbox/plugins/innreach-ill:.
+
+# Dump current configuration to console
+perl Koha/Plugin/Com/Theke/INNReach/scripts/config.pl --dump
+
+# Dump configuration to file
+perl Koha/Plugin/Com/Theke/INNReach/scripts/config.pl --dump --file config.yaml
+
+# Load configuration from file
+perl Koha/Plugin/Com/Theke/INNReach/scripts/config.pl --load --file config.yaml
+
+# Load configuration from STDIN
+cat config.yaml | perl Koha/Plugin/Com/Theke/INNReach/scripts/config.pl --load
+
+# Force load configuration despite validation errors
+perl Koha/Plugin/Com/Theke/INNReach/scripts/config.pl --load --file config.yaml --force
+```
+
+#### Configuration Validation
+
+The script performs comprehensive validation using the plugin's `check_configuration()` method:
+
+**Validation Process:**
+1. **YAML Syntax**: Validates YAML syntax using `YAML::XS::Load()`
+2. **Structure Validation**: Uses `$plugin->check_configuration()` to validate configuration structure
+3. **Error Reporting**: Reports validation errors to STDERR
+4. **Force Override**: `--force` flag allows storing configuration despite validation errors
+
+**Validation Behavior:**
+- **Without --force**: Configuration is rejected and original configuration restored if validation fails
+- **With --force**: Validation errors are reported to STDERR but configuration is stored anyway
+- **Cache Invalidation**: Cached configuration is automatically cleared after loading new configuration
+
+#### Configuration Storage
+
+The plugin uses Koha's plugin framework data storage methods:
+
+```perl
+# Store raw YAML configuration
+$plugin->store_data({ configuration => $yaml_content });
+
+# Retrieve raw YAML configuration  
+my $config_yaml = $plugin->retrieve_data('configuration');
+
+# Clear cached processed configuration
+$plugin->store_data({ cached_configuration => undef });
+```
+
+**Data Flow:**
+1. Raw YAML stored in `configuration` key
+2. Processed configuration cached in `cached_configuration` key
+3. `configuration()` method processes raw YAML and applies defaults
+4. Cache is invalidated when new configuration is loaded
+
+#### Error Handling
+
+**YAML Syntax Errors:**
+```bash
+$ perl config.pl --load --file invalid.yaml
+Invalid YAML syntax: YAML::XS::Load Error: The problem:
+
+    found character that cannot start any token
+
+was found at document: 1, line: 3, column: 1
+```
+
+**Configuration Validation Errors:**
+```bash
+$ perl config.pl --load --file config.yaml
+Configuration validation failed:
+  - Central server 'd2ir' is missing required field 'api_base_url'
+  - Invalid patron type mapping: 'INVALID' not found
+
+Use --force to override validation errors.
+```
+
+**Force Override:**
+```bash
+$ perl config.pl --load --file config.yaml --force
+Configuration validation warnings (forced):
+  - Central server 'd2ir' is missing required field 'api_base_url'
+  - Invalid patron type mapping: 'INVALID' not found
+Configuration loaded from 'config.yaml'
+Configuration stored despite validation errors.
+```
+
+#### Integration with Plugin Configuration System
+
+The script integrates seamlessly with the plugin's existing configuration system:
+
+- **Temporary Storage**: Configuration is temporarily stored for validation
+- **Rollback on Failure**: Original configuration is restored if validation fails (without --force)
+- **Cache Management**: Cached configuration is properly invalidated
+- **Validation Integration**: Uses the same validation logic as the plugin's web interface
+
+**Business Logic:**
+- Central server validation
+- Contribution rule processing
+- Item eligibility determination
+
 ## Key Architecture Points
 
 ### Contribution System
