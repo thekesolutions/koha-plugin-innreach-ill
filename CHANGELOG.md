@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.5.0] - 2025-09-17
 
+### Added
+- [#2] Enhanced `t::lib::Mocks::INNReach` with bootstrap functionality for complete test independence
+- [#2] Added system preference and plugin state setup to mock framework
+
 ### Changed
 - [#2] Reorganized test structure: moved all database-dependent tests to `t/db_dependent/` directory
-- [#2] Enhanced `t::lib::Mocks::INNReach` with bootstrap functionality for complete test independence
 - [#2] Updated all database-dependent tests to use plugin mock framework consistently
-- [#2] Added system preference and plugin state setup to mock framework
 - [#2] Eliminated dependency on `bootstrap.pl` script for test execution
+- Updated configuration UI to use Koha's "wrapper-staff-tool-plugin.inc" for better integration
+- Simplified configuration template code and removed unused elements
+- Improved configuration page as foundation for future UI enhancements
 
 ### Removed
 - [#2] Removed duplicate `t/Contribution.t` test (functionality preserved in `t/db_dependent/Contribution.t`)
