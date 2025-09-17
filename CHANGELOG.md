@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.5.0] - 2025-09-17
+
+### Changed
+- [#2] Reorganized test structure: moved all database-dependent tests to `t/db_dependent/` directory
+- [#2] Enhanced `t::lib::Mocks::INNReach` with bootstrap functionality for complete test independence
+- [#2] Updated all database-dependent tests to use plugin mock framework consistently
+- [#2] Added system preference and plugin state setup to mock framework
+- [#2] Eliminated dependency on `bootstrap.pl` script for test execution
+
+### Removed
+- [#2] Removed duplicate `t/Contribution.t` test (functionality preserved in `t/db_dependent/Contribution.t`)
+
+## [5.4.12] - 2025-09-16
+
+### Fixed
+- [#1] Fixed biblio creation in `t/db_dependent/Contribution.t` tests to ensure proper test data setup
+- [#1] Resolved test failures by ensuring biblios exist before creating items in contribution tests
+- [#1] Improved test reliability and consistency across different test environments
+
 ## [5.4.10] - 2025-09-11
 
 ### Added
