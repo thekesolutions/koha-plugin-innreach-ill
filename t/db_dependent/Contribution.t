@@ -17,13 +17,14 @@
 
 use Modern::Perl;
 
-use Test::More tests => 3;
+use Test::More tests => 4;
 use Test::MockModule;
 use Test::Exception;
 
 use List::MoreUtils qw(any);
 
 use Koha::Database;
+use Koha::DateUtils qw(dt_from_string);
 use t::lib::TestBuilder;
 use t::lib::Mocks::INNReach;
 
@@ -351,6 +352,105 @@ subtest 'filter_items_by_to_be_decontributed() tests' => sub {
         $c->filter_items_by_to_be_decontributed( { items => undef } );
     }
     'INNReach::Ill::MissingParameter', 'Throws exception when items is undef';
+
+    $schema->storage->txn_rollback;
+};
+
+subtest 'item_to_iteminfo() tests' => sub {
+    plan tests => 4;
+
+    $schema->storage->txn_begin;
+
+    # Create test objects for plugin configuration
+    my $library  = $builder->build_object( { class => 'Koha::Libraries' } );
+    my $category = $builder->build_object( { class => 'Koha::Patron::Categories' } );
+    my $itemtype = $builder->build_object( { class => 'Koha::ItemTypes' } );
+
+    # Create plugin with test configuration
+    my $plugin = t::lib::Mocks::INNReach->new(
+        {
+            library  => $library,
+            category => $category,
+            itemtype => $itemtype
+        }
+    );
+
+    my $c = $plugin->contribution($central_server);
+
+    subtest 'Valid onloan date' => sub {
+        plan tests => 2;
+
+        my $item = $builder->build_sample_item(
+            {
+                onloan        => '2023-12-25',
+                itype         => $itemtype->itemtype,
+                homebranch    => $library->branchcode,
+                holdingbranch => $library->branchcode
+            }
+        );
+        my $iteminfo = $c->item_to_iteminfo( { item => $item } );
+
+        ok( defined $iteminfo->{dueDateTime}, 'dueDateTime is set for valid onloan date' );
+        is( $iteminfo->{dueDateTime}, dt_from_string('2023-12-25')->epoch, 'dueDateTime matches expected epoch' );
+    };
+
+    subtest 'Invalid onloan date 0000-00-00' => sub {
+        plan tests => 1;
+
+        my $item = $builder->build_sample_item(
+            {
+                itype         => $itemtype->itemtype,
+                homebranch    => $library->branchcode,
+                holdingbranch => $library->branchcode
+            }
+        );
+
+        # Set the problematic date directly on the object to simulate the data issue
+        $item->onloan('0000-00-00');
+
+        my $iteminfo = $c->item_to_iteminfo( { item => $item } );
+
+        is( $iteminfo->{dueDateTime}, undef, 'dueDateTime is undef for 0000-00-00 date' );
+    };
+
+    subtest 'Invalid onloan date format' => sub {
+        plan tests => 1;
+
+        my $item = $builder->build_sample_item(
+            {
+                itype         => $itemtype->itemtype,
+                homebranch    => $library->branchcode,
+                holdingbranch => $library->branchcode
+            }
+        );
+
+        # Set the invalid date directly on the object to simulate the data issue
+        $item->onloan('invalid-date');
+
+        # Capture warnings
+        my $warning;
+        local $SIG{__WARN__} = sub { $warning = shift };
+
+        my $iteminfo = $c->item_to_iteminfo( { item => $item } );
+
+        is( $iteminfo->{dueDateTime}, undef, 'dueDateTime is undef for invalid date format' );
+    };
+
+    subtest 'No onloan date' => sub {
+        plan tests => 1;
+
+        my $item = $builder->build_sample_item(
+            {
+                onloan        => undef,
+                itype         => $itemtype->itemtype,
+                homebranch    => $library->branchcode,
+                holdingbranch => $library->branchcode
+            }
+        );
+        my $iteminfo = $c->item_to_iteminfo( { item => $item } );
+
+        is( $iteminfo->{dueDateTime}, undef, 'dueDateTime is undef when onloan is null' );
+    };
 
     $schema->storage->txn_rollback;
 };

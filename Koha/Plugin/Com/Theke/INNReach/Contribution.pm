@@ -1526,21 +1526,30 @@ sub item_to_iteminfo {
         }
     }
 
+    my $item_onloan;
+
+    if ( $item->onloan && $item->onloan ne '0000-00-00' ) {
+        try {
+            $item_onloan = dt_from_string( $item->onloan )->epoch;
+        } catch {
+            warn "Invalid onloan date for item " . $item->itemnumber . ": " . $item->onloan;
+            $item_onloan = undef;
+        };
+    }
+
     return {
-        itemId          => $item->itemnumber,
-        agencyCode      => $configuration->{mainAgency},
-        centralItemType => $centralItemType,
-        locationKey     => $locationKey,
-        itemCircStatus  => $self->item_circ_status( { item => $item } ),
-        holdCount       => 0,
-        dueDateTime     => ( $item->onloan )
-        ? dt_from_string( $item->onloan )->epoch
-        : undef,
+        itemId            => $item->itemnumber,
+        agencyCode        => $configuration->{mainAgency},
+        centralItemType   => $centralItemType,
+        locationKey       => $locationKey,
+        itemCircStatus    => $self->item_circ_status( { item => $item } ),
+        holdCount         => 0,
+        dueDateTime       => $item_onloan,
         callNumber        => $item->itemcallnumber,
         volumeDesignation => $item->enumchron,
         copyNumber        => $item->copynumber,
         itemNote          => substr( $item->itemnotes // '', 0, 256 ),
-        suppress          => 'n',                                        # TODO: revisit
+        suppress          => 'n',                                            # TODO: revisit
     };
 }
 
