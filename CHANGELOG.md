@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.5.2] - 2025-09-25
+
+### Fixed
+- [#6] Fixed broken background job enqueuing caused by removal of BackgroundJobs module loading in BEGIN block
+- [#6] Moved BackgroundJobs module loading from BEGIN block to new() method to maintain functionality while reducing redefinition warnings
+- [#6] Background jobs (ItemShipped, CancelRequest, ItemReceived, etc.) now properly enqueue again
+
+## [5.5.1] - 2025-09-24
+
+### Fixed
+- [#5] Enhanced item_to_iteminfo() method with resilient date handling for invalid onloan dates
+- [#5] Added try/catch protection against 0000-00-00 and other malformed date values that could crash task queue processing
+- [#5] Invalid dates now gracefully fallback to undef for dueDateTime with appropriate warning logging
+
+### Added
+- Comprehensive test coverage for item_to_iteminfo() method including edge cases for invalid date handling
+
 ## [5.5.0] - 2025-09-17
 
 ### Added

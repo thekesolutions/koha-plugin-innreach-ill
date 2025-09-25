@@ -81,6 +81,14 @@ sub new {
 
     my $self = $class->SUPER::new($args);
 
+    # Load BackgroundJobs modules on-demand to avoid redefinition warnings
+    # but ensure they're available when needed
+    require INNReach::BackgroundJobs::BorrowingSite::ItemInTransit;
+    require INNReach::BackgroundJobs::BorrowingSite::ItemReceived;
+    require INNReach::BackgroundJobs::OwningSite::CancelRequest;
+    require INNReach::BackgroundJobs::OwningSite::FinalCheckin;
+    require INNReach::BackgroundJobs::OwningSite::ItemShipped;
+
     return $self;
 }
 
