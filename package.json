@@ -1,6 +1,6 @@
 {
     "name": "koha-plugin-innreach",
-    "version": "5.5.1",
+    "version": "5.5.2",
     "description": "INN-Reach connector plugin for Koha",
     "devDependencies": {
         "gulp": "^4.0.2",
