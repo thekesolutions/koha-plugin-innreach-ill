@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.5.3] - 2025-10-13
+
+### Fixed
+- Fixed bootstrap.pl to use generate_patron_for_agency method instead of manual patron creation
+- Ensures proper agency-to-patron mapping table population for API requests
+- Fixed library existence check to prevent constraint violation errors during bootstrap
+
+### Added
+- Added agencies.yaml configuration file with distinct agency codes for testing
+- Enhanced bootstrap output formatting with UTF-8 support and professional nested sections
+- Added proper agency patron creation that includes database mapping tables
+
+### Changed
+- Improved bootstrap.pl error handling and user experience with clear section headers
+- Updated agency codes to be distinct from library location codes to prevent conflicts
+
 ## [5.5.2] - 2025-09-25
 
 ### Fixed

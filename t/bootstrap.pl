@@ -143,30 +143,22 @@ print STDOUT "\nAgency Patrons:\n";
 my $agencies_config = YAML::XS::LoadFile('t/agencies.yaml');
 
 foreach my $agency ( @{ $agencies_config->{agencies} } ) {
-    my $cardnumber = "AGENCY_" . uc( $agency->{agency_code} );
-    my $userid     = lc( $agency->{agency_code} ) . "_agency";
-
     # Check if patron already exists
-    my $existing_patron = Koha::Patrons->search( { cardnumber => $cardnumber } )->next;
-
-    if ( !$existing_patron ) {
-        my $patron = $builder->build_object(
-            {
-                class => 'Koha::Patrons',
-                value => {
-                    cardnumber   => $cardnumber,
-                    userid       => $userid,
-                    surname      => "Agency",
-                    firstname    => $agency->{description},
-                    categorycode => 'ILL',
-                    branchcode   => 'ILL',
-                    flags        => 1,                        # circulate permission
-                }
-            }
-        );
-        step( "$cardnumber created ($agency->{description})", 1 );
+    my $existing_patron_id = $plugin->get_patron_id_from_agency({
+        agency_id      => $agency->{agency_code},
+        central_server => $agency->{central_server}
+    });
+    
+    if ( !$existing_patron_id ) {
+        my $patron = $plugin->generate_patron_for_agency({
+            central_server => $agency->{central_server},
+            local_server   => $agency->{local_server},
+            agency_id      => $agency->{agency_code},
+            description    => $agency->{description}
+        });
+        step( "$agency->{agency_code} agency patron created ($agency->{description})", 1 );
     } else {
-        step( "$cardnumber already exists", 1 );
+        step( "$agency->{agency_code} agency patron already exists", 1 );
     }
 }
 
