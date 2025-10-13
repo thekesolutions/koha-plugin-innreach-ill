@@ -17,9 +17,14 @@
 
 use Modern::Perl;
 
+use utf8;
+binmode( STDOUT, ':encoding(UTF-8)' );
+binmode( STDERR, ':encoding(UTF-8)' );
+
 use DDP;
 use File::Slurp;
 use Try::Tiny qw(catch try);
+use YAML::XS;
 
 use C4::Context;
 use Koha::Database;
@@ -31,29 +36,37 @@ use t::lib::TestBuilder;
 
 use Koha::Plugin::Com::Theke::INNReach;
 
+print STDOUT "\n=== INNReach Plugin Bootstrap ===\n\n";
+
 my $builder = t::lib::TestBuilder->new;
 my $plugin  = Koha::Plugin::Com::Theke::INNReach->new;
 
+print STDOUT "System Preferences:\n";
 C4::Context->set_preference( 'ILLModule', 1 )
-    && step("ILLModule set");
+    && step( "ILLModule enabled", 1 );
 
 C4::Context->set_preference( 'RESTBasicAuth', 1 )
-    && step("RESTBasicAuth set");
+    && step( "RESTBasicAuth enabled", 1 );
 
+print STDOUT "\nPlugin Configuration:\n";
 my $dbh = C4::Context->dbh;
 
 # Make sure the plugin is enabled
-$dbh->do(q{
+$dbh->do(
+    q{
     UPDATE plugin_data SET plugin_value=1
     WHERE plugin_key='__ENABLED__'
       AND plugin_class='Koha::Plugin::Com::Theke::INNReach'
-}) && step("Enabled INNReach plugin");
+}
+) && step( "INNReach plugin enabled", 1 );
 
-$dbh->do(q{
+$dbh->do(
+    q{
     UPDATE plugin_data SET plugin_value=0
     WHERE plugin_key='__ENABLED__'
       AND plugin_class<>'Koha::Plugin::Com::Theke::INNReach'
-}) && step("Disabled other plugins");
+}
+) && step( "Other plugins disabled", 1 );
 
 my $config_string = read_file('t/config.yaml');
 $plugin->store_data(
@@ -61,22 +74,23 @@ $plugin->store_data(
         configuration => $config_string,
     }
 );
-step("Configuration loaded (from t/config.yaml)");
+step( "Configuration loaded from t/config.yaml", 1 );
 
-if (
+print STDOUT "\nLibraries:\n";
+my $ill_library = Koha::Libraries->search( { branchcode => 'ILL' } )->next;
+if ( !$ill_library ) {
     $builder->build_object(
         {
             class => 'Koha::Libraries',
             value => { branchcode => 'ILL', pickup_location => 1 }
         }
-    )
-    )
-{
-    step("Added 'ILL' library");
-
+    );
+    step( "ILL library created", 1 );
 } else {
-    step("Add 'ILL' library [SKIPPED]");
+    step( "ILL library already exists", 1 );
 }
+
+print STDOUT "\nPatron Categories:\n";
 
 # Create necessary patron categories
 foreach my $category_data (
@@ -89,40 +103,81 @@ foreach my $category_data (
     { categorycode => 'DR2',      description => 'Doctor 2' },
     { categorycode => 'NR',       description => 'Non-Resident' },
     { categorycode => 'SR',       description => 'Senior' },
-) {
-    if ( !Koha::Patron::Categories->search({ categorycode => $category_data->{categorycode} })->count) {
-        Koha::Patron::Category->new({
-            categorycode => $category_data->{categorycode},
-            description => $category_data->{description},
-            enrolmentperiod => 99,
-            upperagelimit => 999,
-            dateofbirthrequired => 0,
-            enrolmentfee => 0.00,
-            overduenoticerequired => 0,
-            reservefee => 0.00,
-            hidelostitems => 0,
-            category_type => 'A'
-        })->store();
-        step( "Add $category_data->{categorycode} patron category" );
+    )
+{
+    if ( !Koha::Patron::Categories->search( { categorycode => $category_data->{categorycode} } )->count ) {
+        Koha::Patron::Category->new(
+            {
+                categorycode          => $category_data->{categorycode},
+                description           => $category_data->{description},
+                enrolmentperiod       => 99,
+                upperagelimit         => 999,
+                dateofbirthrequired   => 0,
+                enrolmentfee          => 0.00,
+                overduenoticerequired => 0,
+                reservefee            => 0.00,
+                hidelostitems         => 0,
+                category_type         => 'A'
+            }
+        )->store();
+        step( "$category_data->{categorycode} category created", 1 );
     } else {
-        step( "Add $category_data->{categorycode} patron category [SKIPPED]" );
+        step( "$category_data->{categorycode} category already exists", 1 );
     }
 }
 
-foreach my $item_type ( qw(D2IR_BK D2IR_CF) ) {
+print STDOUT "\nItem Types:\n";
+foreach my $item_type (qw(D2IR_BK D2IR_CF)) {
 
-    if ( !Koha::ItemTypes->search({ itemtype => $item_type })->count) {
-        Koha::ItemType->new({ itemtype => $item_type })->store();
-        step( "Add $item_type item type" );
+    if ( !Koha::ItemTypes->search( { itemtype => $item_type } )->count ) {
+        Koha::ItemType->new( { itemtype => $item_type } )->store();
+        step( "$item_type item type created", 1 );
     } else {
-        step( "Add $item_type item type [SKIPPED]" );
+        step( "$item_type item type already exists", 1 );
     }
 }
+
+print STDOUT "\nAgency Patrons:\n";
+
+# Create agency patrons from agencies.yaml
+my $agencies_config = YAML::XS::LoadFile('t/agencies.yaml');
+
+foreach my $agency ( @{ $agencies_config->{agencies} } ) {
+    my $cardnumber = "AGENCY_" . uc( $agency->{agency_code} );
+    my $userid     = lc( $agency->{agency_code} ) . "_agency";
+
+    # Check if patron already exists
+    my $existing_patron = Koha::Patrons->search( { cardnumber => $cardnumber } )->next;
+
+    if ( !$existing_patron ) {
+        my $patron = $builder->build_object(
+            {
+                class => 'Koha::Patrons',
+                value => {
+                    cardnumber   => $cardnumber,
+                    userid       => $userid,
+                    surname      => "Agency",
+                    firstname    => $agency->{description},
+                    categorycode => 'ILL',
+                    branchcode   => 'ILL',
+                    flags        => 1,                        # circulate permission
+                }
+            }
+        );
+        step( "$cardnumber created ($agency->{description})", 1 );
+    } else {
+        step( "$cardnumber already exists", 1 );
+    }
+}
+
+print STDOUT "\n=== Bootstrap completed successfully ===\n";
 
 sub step {
-    my ($message) = @_;
+    my ( $message, $level ) = @_;
+    $level //= 0;
 
-    print STDOUT "* $message\n";
+    my $indent = "  " x $level;
+    print STDOUT "$indent✓ $message\n";
 }
 
 1;

@@ -1,0 +1,18 @@
+---
+agencies:
+  - central_server: d2ir
+    local_server: koha1
+    agency_code: agcy1
+    description: "Agency 1 - CPL"
+  - central_server: d2ir
+    local_server: koha1
+    agency_code: agcy2
+    description: "Agency 2 - MPL"
+  - central_server: d2ir
+    local_server: koha1
+    agency_code: agcy3
+    description: "Agency 3 - Test"
+  - central_server: d2ir
+    local_server: koha1
+    agency_code: agcy4
+    description: "Agency 4 - Test"
