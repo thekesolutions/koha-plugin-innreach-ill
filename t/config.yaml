@@ -57,12 +57,12 @@ d2ir:
         - ltrim
         - rtrim
     borrowing:
-        automatic_item_in_transit: false
-        automatic_item_receive: false
+        automatic_item_in_transit: true
+        automatic_item_receive: true
     lending:
-        automatic_final_checkin: false
-        automatic_item_shipped: false
-        automatic_item_shipped_debug: false
+        automatic_final_checkin: true
+        automatic_item_shipped: true
+        automatic_item_shipped_debug: true
     default_item_type: ILL
     default_item_ccode: GENERAL_STACKS
     default_notforloan: -1 | null
