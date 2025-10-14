@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed bootstrap.pl to use generate_patron_for_agency method instead of manual patron creation
 - Ensures proper agency-to-patron mapping table population for API requests
 - Fixed library existence check to prevent constraint violation errors during bootstrap
+- [#8] Enhanced notices_content hook to work with all hold-related notices (not just HOLD_SLIP)
 
 ### Added
 - Added agencies.yaml configuration file with distinct agency codes for testing
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#7] Updated bootstrap configuration defaults to enable automatic circulation workflows
 - [#7] Set automatic_item_in_transit, automatic_item_receive, automatic_final_checkin, and automatic_item_shipped to true by default
 - [#7] Enabled automatic_item_shipped_debug for better testing visibility
+- [#8] Modified letter_code matching from exact 'HOLD_SLIP' to pattern matching /^HOLD/ for broader notice support
 - Improved bootstrap.pl error handling and user experience with clear section headers
 - Updated agency codes to be distinct from library location codes to prevent conflicts
 
