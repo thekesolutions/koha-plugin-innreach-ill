@@ -1,0 +1,34 @@
+# Codespell ignore file for INNReach ILL plugin
+# Add words that should be ignored by the spell checker
+
+# Technical terms and proper nouns
+INNReach
+ILL
+API
+OAuth
+JSON
+YAML
+KTD
+Koha
+ByWater
+ByWaterSolutions
+BibLibre
+OpenFifth
+Theke
+
+# INNReach specific terms
+D2IR
+PAPI
+centralServer
+localServer
+owningsite
+borrowingsite
+BorrowingSite
+
+# Common abbreviations
+config
+configs
+plugin
+plugins
+biblio
+circ
