@@ -707,30 +707,47 @@ sub after_item_action {
             next
                 if $item_type eq $configuration->{$central_server}->{default_item_type};
 
-            # Skip if rules say so
-            next
-                if ( !$contribution->should_item_be_contributed( { item => $item } ) );
+            if ( $contribution->should_item_be_contributed( { item => $item } ) ) {
+                # Skip if item type is not mapped
+                if ( !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type} ) {
+                    $self->innreach_warn("No 'local_to_central_itype' mapping for $item_type ($central_server)");
+                    next;
+                }
 
-            # Skip if item type is not mapped
-            if ( !exists $configuration->{$central_server}->{local_to_central_itype}->{$item_type} ) {
-                $self->innreach_warn("No 'local_to_central_itype' mapping for $item_type ($central_server)");
-                next;
+                $self->schedule_task(
+                    {
+                        action         => $action,
+                        central_server => $central_server,
+                        object_id      => $item_id,
+                        object_type    => 'item',
+                        status         => 'queued',
+                    }
+                );
+            } elsif ( $contribution->is_item_contributed( { item_id => $item_id } ) ) {
+                # Item was contributed but now shouldn't be (e.g., checked out) - schedule de-contribution
+                $self->schedule_task(
+                    {
+                        action         => 'delete',
+                        central_server => $central_server,
+                        object_id      => $item_id,
+                        object_type    => 'item',
+                        status         => 'queued',
+                    }
+                );
             }
-        }
+        } else {
+            # Handle delete action
+            $self->schedule_task(
+                {
+                    action         => $action,
+                    central_server => $central_server,
+                    object_id      => $item_id,
+                    object_type    => 'item',
+                    status         => 'queued',
+                }
+            );
 
-        $self->schedule_task(
-            {
-                action         => $action,
-                central_server => $central_server,
-                object_id      => $item_id,
-                object_type    => 'item',
-                status         => 'queued',
-            }
-        );
-
-        # Do it after inserting the item de-contribution
-        if ( $action eq 'delete' ) {
-
+            # Do it after inserting the item de-contribution
             my $exclude_empty_biblios =
                 ( !exists $configuration->{$central_server}->{contribution} )
                 ? 1
