@@ -106,20 +106,23 @@ foreach my $category_data (
     )
 {
     if ( !Koha::Patron::Categories->search( { categorycode => $category_data->{categorycode} } )->count ) {
-        Koha::Patron::Category->new(
-            {
-                categorycode          => $category_data->{categorycode},
-                description           => $category_data->{description},
-                enrolmentperiod       => 99,
-                upperagelimit         => 999,
-                dateofbirthrequired   => 0,
-                enrolmentfee          => 0.00,
-                overduenoticerequired => 0,
-                reservefee            => 0.00,
-                hidelostitems         => 0,
-                category_type         => 'A'
-            }
-        )->store();
+        my $params = {
+            categorycode          => $category_data->{categorycode},
+            description           => $category_data->{description},
+            enrolmentperiod       => 99,
+            upperagelimit         => 999,
+            dateofbirthrequired   => 0,
+            enrolmentfee          => 0.00,
+            overduenoticerequired => 0,
+            hidelostitems         => 0,
+            category_type         => 'A'
+        };
+
+        # reservefee was removed from categories in Bug 3492
+        $params->{reservefee} = 0.00
+            if Koha::Database->new->schema->source('Category')->has_column('reservefee');
+
+        Koha::Patron::Category->new($params)->store();
         step( "$category_data->{categorycode} category created", 1 );
     } else {
         step( "$category_data->{categorycode} category already exists", 1 );
