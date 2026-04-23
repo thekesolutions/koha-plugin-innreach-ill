@@ -66,7 +66,7 @@ jobs:
       run: |
         cd ../koha-testing-docker
         export KTD_HOME=$(pwd)
-        ktd --name innreachtest --wait-ready 120
+        ktd --name innreachtest --wait-ready 240
 
     - name: Install plugins in KTD
       run: |
