@@ -889,6 +889,11 @@ sub after_hold_action {
     my $payload = $params->{payload};
     my $hold    = $payload->{hold};
 
+    # For any hold action that changes item availability, update contributed items
+    if ( $action eq 'fill' || $action eq 'waiting' || $action eq 'cancel' ) {
+        $self->_update_contributed_item_for_hold($hold);
+    }
+
     my $req = $self->get_ill_request_from_attribute(
         {
             type  => 'hold_id',
@@ -939,6 +944,43 @@ sub after_hold_action {
     }
 
     return;
+}
+
+=head3 _update_contributed_item_for_hold
+
+    $self->_update_contributed_item_for_hold($hold);
+
+Queues an item modify task for each central server where the hold's item
+is contributed. Called from C<after_hold_action> so the central server
+gets updated availability when a hold is filled, set to waiting, or
+cancelled.
+
+=cut
+
+sub _update_contributed_item_for_hold {
+    my ( $self, $hold ) = @_;
+
+    my $item_id = $hold->itemnumber;
+    return unless $item_id;
+
+    my $configuration   = $self->configuration;
+    my @central_servers = $self->central_servers;
+
+    for my $central_server (@central_servers) {
+        next unless $configuration->{$central_server}->{contribution}->{enabled};
+
+        my $contribution = $self->contribution($central_server);
+        next unless $contribution->is_item_contributed( { item_id => $item_id } );
+
+        $self->schedule_task(
+            {
+                action         => 'modify',
+                central_server => $central_server,
+                object_id      => $item_id,
+                object_type    => 'item',
+            }
+        );
+    }
 }
 
 =head3 schedule_task
