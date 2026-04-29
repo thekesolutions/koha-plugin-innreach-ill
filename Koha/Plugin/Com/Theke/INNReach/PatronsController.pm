@@ -50,7 +50,7 @@ sub verifypatron {
     my $passcode           = $body->{passcode} // undef;
     my $centralCode        = $c->req->headers->header('X-From-Code');
 
-    my $configuration = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
+    my $configuration       = Koha::Plugin::Com::Theke::INNReach->new->configuration->{$centralCode};
     my $require_patron_auth = $configuration->{require_patron_auth} // 'false';
     $require_patron_auth = ( $require_patron_auth eq 'true' ) ? 1 : 0;
 
@@ -65,9 +65,9 @@ sub verifypatron {
         );
     }
 
-    unless ( defined $patron_id and
-             defined $patron_agency_code and
-             defined $patronName )
+    unless (defined $patron_id
+        and defined $patron_agency_code
+        and defined $patronName )
     {
         # All fields are mandatory
         my @errors;
@@ -103,23 +103,35 @@ sub verifypatron {
         );
     }
 
-    my $pass_valid = 1;
+    my $borrowernumber = $patron->borrowernumber;
+    my $pass_valid     = 1;
 
-    if ( $require_patron_auth ) {
+    if ($require_patron_auth) {
         $pass_valid = ( checkpw_hash( $passcode, $patron->password ) );
     }
 
-    my $expiration_date     = dt_from_string( $patron->dateexpiry );
-    my $agency_code         = $configuration->{mainAgency};
-    my $central_patron_type = (exists $configuration->{local_to_central_patron_type}->{$patron->categorycode})
-                                ? $configuration->{local_to_central_patron_type}->{$patron->categorycode}
-                                : 200;
-    my $local_loans         = $patron->checkouts->count;
-    my $non_local_loans     = 0;    # TODO: retrieve from INNReach table
+    my $expiration_date = dt_from_string( $patron->dateexpiry );
+    my $agency_code     = $configuration->{mainAgency};
+    my $central_patron_type =
+        ( exists $configuration->{local_to_central_patron_type}->{ $patron->categorycode } )
+        ? $configuration->{local_to_central_patron_type}->{ $patron->categorycode }
+        : 200;
+    my $local_loans    = $patron->checkouts->count;
+    my $dbh            = C4::Context->dbh;
+    my $innreach_loans = $dbh->prepare(
+        "SELECT count(illrequest_id) FROM illrequests
+	    WHERE borrowernumber=?
+	    AND status IN ('B_ITEM_REQUESTED','B_ITEM_SHIPPED','B_ITEM_RECEIVED','B_ITEM_RECALLED','B_ITEM_CLAIMED_RETURNED');
+	    "
+    );
+    $innreach_loans->execute($borrowernumber);
+    my $result          = $innreach_loans->fetchrow;
+    my $non_local_loans = $result;                     # TODO: retrieve from INNReach table
 
     # Borrowed from SIP/Patron.pm
-    my $fines_amount = ($patron->account->balance > 0) ? $patron->account->balance : 0;
-    my $debt_blocks_holds = ( defined $configuration->{debt_blocks_holds} and $configuration->{debt_blocks_holds} eq 'true' ) ? 1 : 0;
+    my $fines_amount = ( $patron->account->balance > 0 ) ? $patron->account->balance : 0;
+    my $debt_blocks_holds =
+        ( defined $configuration->{debt_blocks_holds} and $configuration->{debt_blocks_holds} eq 'true' ) ? 1 : 0;
     my $max_debt_blocks_holds = $configuration->{max_debt_blocks_holds};
 
     my $max_fees = $max_debt_blocks_holds // C4::Context->preference('maxoutstanding') + 0;
@@ -133,10 +145,10 @@ sub verifypatron {
         if ( defined $firstname and $firstname ne '' ) {
             $THE_name .= ", $firstname";
         }
-    }
-    elsif ( defined $firstname and $firstname ne '' ) {
+    } elsif ( defined $firstname and $firstname ne '' ) {
         $THE_name = $firstname;
     }
+
     # else { # no surname and no firstname
     #    $THE_name = "";
     #}
@@ -155,18 +167,16 @@ sub verifypatron {
 
     push @errors, 'Patron authentication failure.' unless $pass_valid;
 
-    if (     defined $configuration->{restriction_blocks_holds}
-         and $configuration->{restriction_blocks_holds} eq 'true'
-         and $patron->is_debarred
-        )
+    if (    defined $configuration->{restriction_blocks_holds}
+        and $configuration->{restriction_blocks_holds} eq 'true'
+        and $patron->is_debarred )
     {
         push @errors, 'The patron is restricted.';
     }
 
-    if (     defined $configuration->{expiration_blocks_holds}
-         and $configuration->{expiration_blocks_holds} eq 'true'
-         and $patron->is_expired
-       )
+    if (    defined $configuration->{expiration_blocks_holds}
+        and $configuration->{expiration_blocks_holds} eq 'true'
+        and $patron->is_expired )
     {
         push @errors, 'The patron has expired.';
     }
@@ -179,6 +189,7 @@ sub verifypatron {
     my $THE_reason = '';
 
     if ( scalar @errors > 0 ) {
+
         # There's something preventing circ, pick the first reason
         $THE_status = 'error';
         $THE_reason = $errors[0];
