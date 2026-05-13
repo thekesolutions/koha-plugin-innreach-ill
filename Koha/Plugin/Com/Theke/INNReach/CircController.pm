@@ -1437,8 +1437,8 @@ sub get_print_slip {
         # / Koha::Illrequest->get_notice
 
         $template->param(
-            slip  => $slip->{content},
-            title => $slip->{title},
+            slip  => $slip ? $slip->{content} : undef,
+            title => $slip ? $slip->{title}   : undef
         );
 
         return $c->render(

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- [#21] Fix print slip causing a 500 error in the staff interface
 - [#18] Update GitHub Actions to Node.js 24 runtime
 
 ## [5.5.7] - 2026-04-29
