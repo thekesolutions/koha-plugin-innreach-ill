@@ -68,10 +68,24 @@ sub item_received {
                     }
                 );
 
-                INNReach::Ill::RequestFailed->throw(
-                    method   => 'item_received',
-                    response => $response
-                ) unless $response->is_success;
+                unless ( $response->is_success ) {
+
+                    # Auto-recover: central rejected because it already moved past this state
+                    # (e.g. due to a Koha transaction rollback that lost the local status update).
+                    # If ITEM RECEIVED is not in the allowed list, central already processed it.
+                    my $allowed = $response->headers->header('X-IR-Allowed-Circulation') // '';
+                    if ( $allowed && $allowed !~ /ITEM RECEIVED/i ) {
+                        warn sprintf(
+                            "[innreach] [ill_req=%s]\titem_received rejected by central (stale state), marking received locally. Allowed: %s",
+                            $request->id, $allowed
+                        );
+                    } else {
+                        INNReach::Ill::RequestFailed->throw(
+                            method   => 'item_received',
+                            response => $response
+                        );
+                    }
+                }
             }
 
             $request->status('B_ITEM_RECEIVED')->store;

@@ -635,8 +635,19 @@ sub item_received {
             }
         );
 
-        INNReach::Ill::RequestFailed->throw( method => 'cancel_request', response => $response )
-            unless $response->is_success;
+        unless ( $response->is_success ) {
+
+            # Auto-recover: central already moved past this state
+            my $allowed = $response->headers->header('X-IR-Allowed-Circulation') // '';
+            if ( $allowed && $allowed !~ /ITEM RECEIVED/i ) {
+                warn sprintf(
+                    "[innreach] [ill_req=%s]\titem_received rejected by central (stale state), marking received locally. Allowed: %s",
+                    $req->id, $allowed
+                );
+            } else {
+                INNReach::Ill::RequestFailed->throw( method => 'item_received', response => $response );
+            }
+        }
     }
 
     $req->status('B_ITEM_RECEIVED')->store;

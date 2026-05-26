@@ -29,9 +29,22 @@
             [% END %]
             [% SWITCH m.code %]
                 [% CASE 'request_failed' %]
-                    <span>Error sending <b>[% m.method | html %]</b> request: [% m.response | html %]<span>
+                    <span>Error sending <b>[% m.method | html %]</b> request: [% m.response | html %]</span>
+                    [% IF m.method == 'item_received' %]
+                        <form method="post" action="/cgi-bin/koha/ill/ill-requests.pl" style="margin-top: 1em;">
+                            <input type="hidden" name="ill_request_id" value="[% report.ill_request_id | html %]" />
+                            <input type="hidden" name="op" value="innreach_item_received_override" />
+                            <label>
+                                <input type="checkbox" name="skip_api_request" value="1" />
+                                Mark as received regardless (skip central server notification)
+                            </label>
+                            <button type="submit" class="btn btn-warning btn-sm" style="margin-left: 0.5em;">
+                                <i class="fa fa-check"></i> Force mark as received
+                            </button>
+                        </form>
+                    [% END %]
             [% CASE %]
-                    <span>Unhandled error: [% m.error | html %]<span>
+                    <span>Unhandled error: [% m.error | html %]</span>
             [% END %]
         </div>
     [% END %]

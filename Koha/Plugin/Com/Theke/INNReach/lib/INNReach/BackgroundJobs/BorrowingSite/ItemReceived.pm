@@ -63,7 +63,7 @@ sub process {
     my $req = $plugin->get_ill_rs->find( $args->{ill_request_id} );
 
     try {
-        $commands->item_received($req);
+        $commands->item_received( $req, { skip_api_request => $args->{skip_api_request} } );
         $self->step;
     } catch {
         if ( ref($_) eq 'INNReach::Ill::RequestFailed' ) {
@@ -85,7 +85,8 @@ sub process {
     };
 
     my $data = $self->decoded_data;
-    $data->{messages} = \@messages;
+    $data->{messages}       = \@messages;
+    $data->{ill_request_id} = $args->{ill_request_id};
 
     return $self->finish($data);
 }
