@@ -1766,6 +1766,65 @@ sub check_configuration {
     push @errors, { code => 'CirculateILL_enabled' }
         if C4::Context->preference('CirculateILL');
 
+    push @errors, @{ $self->_check_anonymization_setup( { central_servers => \@central_servers } ) };
+
+    return \@errors;
+}
+
+=head3 _check_anonymization_setup
+
+    my $errors = $self->_check_anonymization_setup( { central_servers => \@central_servers } );
+
+Checks the patron anonymization setup, and returns an arrayref of errors.
+
+Koha anonymizes checkouts and holds for patrons whose privacy is set to 'never'
+(I<borrowers.privacy> = 2), and treats a failure to anonymize as fatal: the
+surrounding transaction is rolled back. That aborts checkins and hold transitions,
+and takes any work our hooks did in that transaction down with it.
+
+So a broken B<AnonymousPatron> only bites once some patron actually has privacy set
+to 'never'. We report it when that is the case, and separately flag partner
+categories that hand every virtual ILL patron a 'never' default.
+
+=cut
+
+sub _check_anonymization_setup {
+    my ( $self, $params ) = @_;
+
+    my @central_servers = @{ $params->{central_servers} };
+    my $configuration   = $self->configuration;
+
+    my @errors;
+
+    my $anonymization_used = Koha::Patrons->search( { privacy => 2 }, { rows => 1 } )->single ? 1 : 0;
+
+    foreach my $central_server (@central_servers) {
+        my $category = Koha::Patron::Categories->find( $configuration->{$central_server}->{partners_category} );
+
+        next unless $category;
+        next unless ( $category->default_privacy // q{} ) eq 'never';
+
+        $anonymization_used = 1;
+
+        push @errors,
+            {
+            code           => 'partners_category_privacy_never',
+            central_server => $central_server,
+            value          => $category->categorycode,
+            };
+    }
+
+    return \@errors
+        unless $anonymization_used;
+
+    my $anonymous_patron = C4::Context->preference('AnonymousPatron');
+
+    if ( !$anonymous_patron ) {
+        push @errors, { code => 'anonymous_patron_not_set' };
+    } elsif ( !Koha::Patrons->find($anonymous_patron) ) {
+        push @errors, { code => 'anonymous_patron_not_found', value => $anonymous_patron };
+    }
+
     return \@errors;
 }
 
