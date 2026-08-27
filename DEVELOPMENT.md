@@ -96,8 +96,13 @@ subtest 'a_method() tests' => sub {
 
 3. **Run tests to ensure formatting didn't break anything**:
    ```bash
-   ktd --name innreach --shell --run "cd /kohadevbox/plugins/innreach-ill && export PERL5LIB=/kohadevbox/koha:/kohadevbox/plugins/innreach-ill:. && prove -lr t/"
+   ktd --name innreach --shell --run "cd /kohadevbox/plugins/innreach-ill && export PERL5LIB=\$PERL5LIB:Koha/Plugin/Com/Theke/INNReach/lib:. && prove -r -s t/"
    ```
+
+   This is the same invocation CI uses. `Koha/Plugin/Com/Theke/INNReach/lib` must be
+   on `PERL5LIB` or the `INNReach::*` modules will not resolve, and tests such as
+   `t/INNReach/Commands/BorrowingSite.t` fail locally while passing on CI. The
+   database also needs to have been prepared once — see [KTD Setup](#ktd-setup).
 
 4. **Commit with clean, formatted code**:
    ```bash
@@ -118,7 +123,7 @@ ktd --name innreach --shell --run "cd /kohadevbox/plugins/innreach-ill && /kohad
 find . -name "*.bak" -delete
 
 # 4. Verify tests still pass
-ktd --name innreach --shell --run "cd /kohadevbox/plugins/innreach-ill && export PERL5LIB=/kohadevbox/koha:/kohadevbox/plugins/innreach-ill:. && prove -lr t/"
+ktd --name innreach --shell --run "cd /kohadevbox/plugins/innreach-ill && export PERL5LIB=\$PERL5LIB:Koha/Plugin/Com/Theke/INNReach/lib:. && prove -r -s t/"
 
 # 5. Commit
 git add .
@@ -261,7 +266,7 @@ is( $filtered_items->count, 2, 'Returns correct number of items' );
 
 ```bash
 # In KTD environment
-ktd --name innreach --shell --run "cd /kohadevbox/plugins/innreach-ill && export PERL5LIB=/kohadevbox/koha:/kohadevbox/plugins/innreach-ill:. && prove -v t/db_dependent/Contribution.t"
+ktd --name innreach --shell --run "cd /kohadevbox/plugins/innreach-ill && export PERL5LIB=\$PERL5LIB:Koha/Plugin/Com/Theke/INNReach/lib:. && prove -v t/db_dependent/Contribution.t"
 ```
 
 ## Quick Start
@@ -273,13 +278,23 @@ export KTD_HOME=/path/to/koha-testing-docker
 export PLUGINS_DIR=/path/to/plugins/parent/dir
 export SYNC_REPO=/path/to/kohaclone
 
-# Launch KTD with plugins
-ktd --name innreach --plugins up -d
-ktd --name innreach --wait-ready 120
+# Launch KTD with just this plugin, to avoid interference from the others in
+# PLUGINS_DIR. Always pass --proxy: without it the stack binds host ports
+# 8080/8081 directly, so a second named stack cannot start alongside it.
+ktd --name innreach --proxy --single-plugin $PLUGINS_DIR/innreach-ill up -d
+ktd --name innreach --wait-ready 240
 
-# Install plugin
+# Install plugin: registers plugin_methods and creates the plugin's tables
 ktd --name innreach --shell --run "cd /kohadevbox/koha && perl misc/devel/install_plugins.pl"
+
+# Bootstrap the test environment: sysprefs, categories, item types, agency patrons
+ktd --name innreach --shell --run "cd /kohadevbox/plugins/innreach-ill && export PERL5LIB=\$PERL5LIB:Koha/Plugin/Com/Theke/INNReach/lib:. && perl t/bootstrap.pl"
 ```
+
+Both the install and the bootstrap step are needed before the suite will pass, and
+both must be repeated after a `reset_all`. CI runs them in exactly this order — see
+`.github/workflows/main.yml`. Skipping them produces failures that do not reproduce
+on CI.
 
 ## Standard Testing
 
@@ -307,10 +322,10 @@ ktd --name innreach --shell
 
 # Inside KTD, set up environment and run tests
 cd /kohadevbox/plugins/innreach-ill
-export PERL5LIB=$PERL5LIB:/kohadevbox/plugins/innreach-ill:.
+export PERL5LIB=$PERL5LIB:Koha/Plugin/Com/Theke/INNReach/lib:.
 
-# Run all tests
-prove -v t/ t/db_dependent/
+# Run all tests, the way CI does
+prove -r -s t/
 
 # Run specific test categories
 prove -v t/                    # Unit tests only
@@ -320,6 +335,10 @@ prove -v t/db_dependent/       # Database-dependent tests only
 prove -v t/Contribution.t
 prove -v t/db_dependent/Contribution.t
 ```
+
+`Koha/Plugin/Com/Theke/INNReach/lib` is where the `INNReach::*` modules live, so it
+has to be on `PERL5LIB`. Without it, tests that load `INNReach::Commands::*` or
+`INNReach::BackgroundJobs::*` fail locally even though CI is green.
 
 #### Test Coverage Areas
 
@@ -356,7 +375,7 @@ ktd --name innreach --shell
 cd /kohadevbox/plugins/innreach-ill
 
 # Set up environment
-export PERL5LIB=/kohadevbox/koha:/kohadevbox/plugins/innreach-ill:.
+export PERL5LIB=$PERL5LIB:Koha/Plugin/Com/Theke/INNReach/lib:.
 
 # Dump current configuration to console
 perl Koha/Plugin/Com/Theke/INNReach/scripts/config.pl --dump
@@ -523,11 +542,18 @@ if ( exists $configuration->{contribution}->{excluded_items}
 ### KTD Environment
 - **`/.env: No such file or directory`**: Set `KTD_HOME` environment variable
 - **Plugin not found**: Check `PLUGINS_DIR` points to parent directory
-- **Module loading**: Ensure `PERL5LIB` includes plugin directory
+- **Module loading**: Ensure `PERL5LIB` includes `Koha/Plugin/Com/Theke/INNReach/lib`
+- **Port already allocated**: Launch with `--proxy` so the stack routes through the
+  local traefik instance instead of binding host ports
 
 ### Testing
 - **Test plan errors**: Count subtests, not internal tests
 - **Database isolation**: Always use transactions in db_dependent tests
+- **Tests fail locally but pass on CI**: nearly always missing setup rather than a
+  real failure. Check that `misc/devel/install_plugins.pl` and `t/bootstrap.pl` have
+  been run against the current database, and that `PERL5LIB` carries the plugin's
+  `lib` directory. Compare against `.github/workflows/main.yml` before concluding a
+  failure is pre-existing.
 - **Mock warnings**: Use `Test::MockModule` and mock all called methods
 - **Configuration mocking**: Mock the `configuration()` method to return test data
 
@@ -566,8 +592,9 @@ ktd --name innreach --shell
 # Inside KTD:
 cd /kohadevbox/koha && perl misc/devel/install_plugins.pl  # Reinstall plugin
 cd /kohadevbox/plugins/innreach-ill                        # Go to plugin dir
-export PERL5LIB=$PERL5LIB:/kohadevbox/plugins/innreach-ill:.
-prove -v t/ t/db_dependent/                                # Run tests
+export PERL5LIB=$PERL5LIB:Koha/Plugin/Com/Theke/INNReach/lib:.
+perl t/bootstrap.pl                                        # Prepare test data
+prove -r -s t/                                             # Run tests
 ```
 
 ## Packaging Notes
