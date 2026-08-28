@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- [#25] Automate CHANGELOG `[Unreleased]` handling during `npm version` (stamp release, open next development cycle), aligning with the `rapido-ill` plugin
 - [#24] Configuration page now warns about a broken patron anonymization setup: an unset or dangling `AnonymousPatron` while patrons use privacy 'never', and partner categories defaulting to privacy 'never'
 
 ## [5.6.1] - 2026-05-26
